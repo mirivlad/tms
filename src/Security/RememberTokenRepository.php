@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace Tms\Security;
 
 use DateTimeImmutable;
+use DateTimeZone;
 use PDO;
 
 final class RememberTokenRepository
 {
+    private readonly DateTimeZone $utc;
+
     public function __construct(private readonly PDO $db)
     {
+        $this->utc = new DateTimeZone('UTC');
     }
 
     public function store(int $userId, RememberToken $token, DateTimeImmutable $expiresAt): void
@@ -23,7 +27,7 @@ final class RememberTokenRepository
             'selector' => $token->selector,
             'user_id' => $userId,
             'verifier_hash' => $token->verifierHash(),
-            'expires_at' => $expiresAt->format('Y-m-d H:i:s'),
+            'expires_at' => $expiresAt->setTimezone($this->utc)->format('Y-m-d H:i:s'),
         ]);
     }
 
@@ -46,7 +50,7 @@ final class RememberTokenRepository
             selector: (string) $row['selector'],
             userId: (int) $row['user_id'],
             verifierHash: (string) $row['verifier_hash'],
-            expiresAt: new DateTimeImmutable((string) $row['expires_at']),
+            expiresAt: new DateTimeImmutable((string) $row['expires_at'], $this->utc),
         );
     }
 
