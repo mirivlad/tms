@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tms\Application;
 
 use DateInterval;
+use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use RuntimeException;
@@ -30,7 +31,7 @@ use Tms\Security\SessionManager;
 final class ApplicationFactory
 {
     /**
-     * @return App<null>
+     * @return App<ContainerInterface|null>
      */
     public function create(): App
     {
@@ -51,6 +52,7 @@ final class ApplicationFactory
             'password' => $this->requiredEnv('DB_PASS'),
         ]))->connect();
 
+        /** @var App<ContainerInterface|null> $app */
         $app = SlimAppFactory::create();
         $twig = Twig::create(dirname(__DIR__, 2) . '/templates', ['cache' => false]);
 
