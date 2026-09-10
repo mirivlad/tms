@@ -5,11 +5,9 @@ declare(strict_types=1);
 namespace Tms\Application;
 
 use DateInterval;
-use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use RuntimeException;
-use Slim\App;
 use Slim\Factory\AppFactory as SlimAppFactory;
 use Slim\Views\Twig;
 use Slim\Views\TwigMiddleware;
@@ -30,10 +28,7 @@ use Tms\Security\SessionManager;
 
 final class ApplicationFactory
 {
-    /**
-     * @return App<ContainerInterface|null>
-     */
-    public function create(): App
+    public function run(): void
     {
         $debug = $this->boolEnv('APP_DEBUG', false);
         $sameSite = $this->env('SESSION_SAMESITE', 'Lax');
@@ -52,7 +47,6 @@ final class ApplicationFactory
             'password' => $this->requiredEnv('DB_PASS'),
         ]))->connect();
 
-        /** @var App<ContainerInterface|null> $app */
         $app = SlimAppFactory::create();
         $twig = Twig::create(dirname(__DIR__, 2) . '/templates', ['cache' => false]);
 
@@ -128,7 +122,7 @@ final class ApplicationFactory
         $app->addRoutingMiddleware();
         $app->addErrorMiddleware($debug, true, true);
 
-        return $app;
+        $app->run();
     }
 
     private function startSession(bool $secure, string $sameSite): void
