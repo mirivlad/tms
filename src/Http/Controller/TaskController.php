@@ -142,9 +142,13 @@ final class TaskController
             return $this->notFound($response);
         }
 
-        $customer = $task->customerId !== null
-            ? $this->customers->findForUser($userId, $task->customerId)?->name ?? ''
-            : '';
+        $customer = '';
+        if ($task->customerId !== null) {
+            $customerRecord = $this->customers->findForUser($userId, $task->customerId);
+            if ($customerRecord !== null) {
+                $customer = $customerRecord->name;
+            }
+        }
 
         return $this->renderForm($request, $response, [
             'title' => $task->title,
@@ -313,7 +317,10 @@ final class TaskController
         }
 
         $existing = $this->customers->findByNameForUser($userId, $name);
-        return $existing?->id ?? $this->customers->createForUser($userId, $name);
+        if ($existing !== null) {
+            return $existing->id;
+        }
+        return $this->customers->createForUser($userId, $name);
     }
 
     private function normalizeDeadline(mixed $value): ?string
