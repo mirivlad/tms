@@ -1,0 +1,94 @@
+name: Preview release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - VERSION
+      - compose.portainer.yaml
+      - .github/workflows/preview-release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  packages: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(tr -d '[:space:]' < VERSION)"
+          test -n "$version"
+          case "$version" in
+            *[!0-9A-Za-z.-]*) echo "Invalid VERSION: $version" >&2; exit 1 ;;
+          esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64
+          tags: |
+            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.tag }}
+            ghcr.io/${{ github.repository }}:preview
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=${{ steps.version.outputs.version }}
+            org.opencontainers.image.revision=${{ github.sha }}
+
+      - name: Create GitHub prerelease
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          notes=$(cat <<'EOF'
+          First public TMS preview intended for self-hosted UI/UX evaluation.
+
+          Included in this preview:
+          - secure login, logout and rotating persistent login;
+          - owner-isolated task storage and metadata;
+          - dashboard and task list with filtering;
+          - task create/edit/delete flow;
+          - Kanban board with progressive drag-and-drop;
+          - calendar with deadline/no-deadline/all modes;
+          - MariaDB migrations and first-admin CLI bootstrap;
+          - Docker Compose and an image-based Portainer Stack.
+
+          This is intentionally a prerelease, not the stable v0.1.0. Custom fields, attachments, notification integrations, settings UI and other donor functionality are still being migrated.
+
+          Container image:
+          `ghcr.io/mirivlad/tms:${TAG}`
+          EOF
+          )
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; leaving it unchanged."
+          else
+            printf '%s\n' "$notes" | sed "s/\${TAG}/$TAG/g" > /tmp/release-notes.md
+            gh release create "$TAG" \
+              --target "$GITHUB_SHA" \
+              --prerelease \
+              --title "TMS $TAG" \
+              --notes-file /tmp/release-notes.md
+          fi
