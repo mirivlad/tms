@@ -41,11 +41,7 @@
                 return;
             }
 
-            dragged = {
-                card,
-                source: card.parentElement,
-                taskId,
-            };
+            dragged = {card, source: card.parentElement, taskId};
             card.classList.add('dragging');
             event.dataTransfer.effectAllowed = 'move';
             event.dataTransfer.setData('text/plain', taskId);
@@ -109,11 +105,19 @@
                     method: 'POST',
                     body,
                     credentials: 'same-origin',
-                    headers: {'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8'},
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8',
+                    },
                 });
 
                 if (!response.ok) {
                     throw new Error(`Status update failed with HTTP ${response.status}`);
+                }
+
+                const result = await response.json();
+                if (result.status !== 'ok') {
+                    throw new Error('Status update returned an unexpected result.');
                 }
 
                 if (select) {
