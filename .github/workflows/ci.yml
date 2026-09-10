@@ -31,6 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       APP_URL: http://127.0.0.1:18080
+      APP_TIMEZONE: Asia/Tokyo
       DB_PASS: ci-database-password-not-a-secret
       SESSION_SECURE: "false"
       TMS_PORT: "18080"
@@ -88,7 +89,7 @@ jobs:
             exit 1
           fi
 
-          foreign_month=$(date +%Y-%m)
+          foreign_month=$(TZ="$APP_TIMEZONE" date +%Y-%m)
           db "INSERT INTO tasks (created_by, title, description, status_id, deadline) VALUES ($other_id, 'Foreign calendar leak', '', $foreign_status, '${foreign_month}-15 13:00:00')"
 
       - name: Exercise authenticated task workflow
@@ -122,7 +123,7 @@ jobs:
           test -n "$task_csrf"
           test -n "$default_status"
 
-          calendar_month=$(date +%Y-%m)
+          calendar_month=$(TZ="$APP_TIMEZONE" date +%Y-%m)
           create_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
             --cookie /tmp/tms-cookies \
             --data-urlencode "_csrf=$task_csrf" \
@@ -155,6 +156,14 @@ jobs:
           task_id=$(db "SELECT id FROM tasks WHERE created_by = $admin_id AND title = 'CI urgent task' LIMIT 1")
           test -n "$task_id"
           test "$(db "SELECT COUNT(*) FROM customers WHERE user_id = $admin_id AND name = 'CI Customer'")" = "1"
+
+          created_at=$(db "SELECT DATE_FORMAT(created_at, '%Y-%m-%d %H:%i') FROM tasks WHERE id = $task_id")
+          expected_now=$(TZ="$APP_TIMEZONE" date '+%Y-%m-%d %H:%M')
+          expected_previous=$(TZ="$APP_TIMEZONE" date -d '1 minute ago' '+%Y-%m-%d %H:%M')
+          if [ "$created_at" != "$expected_now" ] && [ "$created_at" != "$expected_previous" ]; then
+            echo "Task timestamp $created_at does not match configured APP_TIMEZONE=$APP_TIMEZONE." >&2
+            exit 1
+          fi
 
           in_progress=$(db "SELECT id FROM statuses WHERE user_id = $admin_id AND name = 'In progress' LIMIT 1")
           move_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
