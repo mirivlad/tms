@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace Tms\Application;
 
 use DateInterval;
+use DateTimeImmutable;
+use DateTimeZone;
+use PDO;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use RuntimeException;
@@ -37,6 +40,7 @@ final class ApplicationFactory
 {
     public function run(): void
     {
+        $timezoneOffset = $this->configureTimezone($this->env('APP_TIMEZONE', 'UTC'));
         $debug = $this->boolEnv('APP_DEBUG', false);
         $sameSite = $this->env('SESSION_SAMESITE', 'Lax');
         $secureCookies = $this->boolEnv('SESSION_SECURE', true);
@@ -53,6 +57,7 @@ final class ApplicationFactory
             'user' => $this->requiredEnv('DB_USER'),
             'password' => $this->requiredEnv('DB_PASS'),
         ]))->connect();
+        $this->configureDatabaseTimezone($db, $timezoneOffset);
 
         $app = SlimAppFactory::create();
         $twig = Twig::create(dirname(__DIR__, 2) . '/templates', [
@@ -164,6 +169,33 @@ final class ApplicationFactory
         $app->addErrorMiddleware($debug, true, true);
 
         $app->run();
+    }
+
+    private function configureTimezone(string $timezone): string
+    {
+        try {
+            $zone = new DateTimeZone($timezone);
+        } catch (Throwable $exception) {
+            throw new RuntimeException('APP_TIMEZONE must be a valid PHP/IANA timezone.', 0, $exception);
+        }
+
+        if (!date_default_timezone_set($zone->getName())) {
+            throw new RuntimeException('Unable to configure APP_TIMEZONE.');
+        }
+
+        return (new DateTimeImmutable('now', $zone))->format('P');
+    }
+
+    private function configureDatabaseTimezone(PDO $db, string $timezoneOffset): void
+    {
+        if (preg_match('/^[+-](?:0\d|1[0-4]):[0-5]\d$/D', $timezoneOffset) !== 1) {
+            throw new RuntimeException('Unable to derive a valid database timezone offset.');
+        }
+
+        $quoted = $db->quote($timezoneOffset);
+        if ($quoted === false || $db->exec('SET time_zone = ' . $quoted) === false) {
+            throw new RuntimeException('Unable to configure the database session timezone.');
+        }
     }
 
     private function startSession(bool $secure, string $sameSite): void

@@ -55,6 +55,15 @@ jobs:
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
             org.opencontainers.image.revision=${{ github.sha }}
 
+      - name: Verify anonymous image pull
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}:${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker logout ghcr.io
+          docker pull "$IMAGE"
+
       - name: Create GitHub prerelease
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -63,7 +72,7 @@ jobs:
         run: |
           set -euo pipefail
           notes=$(cat <<'EOF'
-          First public TMS preview intended for self-hosted UI/UX evaluation.
+          Public TMS preview intended for self-hosted UI/UX evaluation.
 
           Included in this preview:
           - secure login, logout and rotating persistent login;

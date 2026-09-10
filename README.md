@@ -6,17 +6,19 @@ TMS is a lightweight, self-hosted task management system for people who want to 
 
 ## Current preview
 
-The first published preview is `v0.1.0-preview.1`.
+The current published preview is `v0.1.0-preview.2`.
 
 Container image:
 
 ```text
-ghcr.io/mirivlad/tms:v0.1.0-preview.1
+ghcr.io/mirivlad/tms:v0.1.0-preview.2
 ```
 
 The `preview` image tag follows the newest preview build. For a deployment you want to keep stable while evaluating it, prefer the versioned tag above.
 
 This is intentionally a prerelease for deployment and UI/UX evaluation, not the final `v0.1.0`.
+
+`v0.1.0-preview.2` supersedes the first preview by applying `APP_TIMEZONE` consistently to PHP and each application database session, so task timestamps, overdue calculations and calendar rendering share the same configured wall-clock timezone.
 
 ## Direction
 
@@ -65,6 +67,7 @@ At minimum, set:
 
 - `DB_PASS` to a strong random database password;
 - `APP_URL` to the URL users will open in their browser;
+- `APP_TIMEZONE` to the timezone in which users enter and view task dates, for example `Europe/Berlin`;
 - `SESSION_SECURE=true` when the browser reaches TMS over HTTPS;
 - `SESSION_SECURE=false` only when intentionally testing over plain HTTP.
 
@@ -98,12 +101,13 @@ In **Stacks → Add stack**, use the repository stack file or paste the contents
 
 ```text
 APP_URL=https://tasks.example.com
+APP_TIMEZONE=Europe/Berlin
 DB_PASS=<strong random database password>
 SESSION_SECURE=true
 TMS_PORT=8080
 ```
 
-`APP_URL` must be the browser-visible URL, not the container hostname. Point your reverse proxy for the chosen subdomain at `TMS_PORT` on the Docker host.
+`APP_URL` must be the browser-visible URL, not the container hostname. `APP_TIMEZONE` must be a valid PHP/IANA timezone and should match the wall-clock timezone users expect for task deadlines and calendar dates. Point your reverse proxy for the chosen subdomain at `TMS_PORT` on the Docker host.
 
 Deploy the Stack, then open the `app` container console and create the first administrator:
 
@@ -116,7 +120,7 @@ Migrations run automatically on startup, so there is no SQL dump to import. Pers
 To pin another image explicitly, set for example:
 
 ```text
-TMS_IMAGE=ghcr.io/mirivlad/tms:v0.1.0-preview.1
+TMS_IMAGE=ghcr.io/mirivlad/tms:v0.1.0-preview.2
 ```
 
 ## Native development bootstrap
