@@ -1,27 +1,65 @@
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Dashboard · TMS</title>
-    <link rel="stylesheet" href="/assets/app.css">
-</head>
-<body>
-<header class="topbar">
-    <div class="brand">TMS</div>
-    <div class="topbar-actions">
-        <span class="muted">{{ username }}</span>
-        <form method="post" action="/logout">
-            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-            <button class="secondary" type="submit">Sign out</button>
-        </form>
+{% extends "app_layout.twig" %}
+
+{% block title %}Overview · TMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <p class="eyebrow">Overview</p>
+        <h1>Task overview</h1>
+        <p class="muted">A compact view of what needs attention.</p>
     </div>
-</header>
-<main class="page">
-    <section class="panel">
-        <h1>TMS is running</h1>
-        <p>The secure application shell is active. Task views will be migrated onto this foundation next.</p>
-    </section>
-</main>
-</body>
-</html>
+    <a class="button-link" href="/tasks/new">New task</a>
+</div>
+
+<section class="stats-grid" aria-label="Task statistics">
+    <a class="stat-card" href="/tasks">
+        <span class="stat-value">{{ total_tasks }}</span>
+        <span class="stat-label">All tasks</span>
+    </a>
+    <a class="stat-card" href="/tasks">
+        <span class="stat-value">{{ open_tasks }}</span>
+        <span class="stat-label">Open</span>
+    </a>
+    <a class="stat-card" href="/tasks?priority=urgent">
+        <span class="stat-value">{{ urgent_tasks }}</span>
+        <span class="stat-label">Urgent</span>
+    </a>
+    <a class="stat-card" href="/tasks?overdue=1">
+        <span class="stat-value">{{ overdue_tasks }}</span>
+        <span class="stat-label">Overdue</span>
+    </a>
+</section>
+
+<section class="content-card">
+    <div class="section-heading">
+        <div>
+            <h2>Next tasks</h2>
+            <p class="muted">Nearest deadlines first; tasks without deadlines follow.</p>
+        </div>
+        <a href="/tasks">View all</a>
+    </div>
+
+    {% if next_tasks is empty %}
+        <div class="empty-state">
+            <strong>No tasks yet.</strong>
+            <span>Create the first task and TMS is ready to work.</span>
+        </div>
+    {% else %}
+        <div class="task-list compact-list">
+            {% for task in next_tasks %}
+                <a class="task-row" href="/tasks/{{ task.id }}/edit">
+                    <span class="status-dot" style="--status-color: {{ status_map[task.statusId].color|default('#6b7280') }}"></span>
+                    <span class="task-row-main">
+                        <strong>{{ task.title }}</strong>
+                        <span class="muted">
+                            {{ status_map[task.statusId].name|default('No status') }} · {{ priority_labels[task.priority]|default('Medium') }}
+                        </span>
+                    </span>
+                    <span class="task-deadline">{{ task.deadline ? task.deadline|date('Y-m-d H:i') : 'No deadline' }}</span>
+                </a>
+            {% endfor %}
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

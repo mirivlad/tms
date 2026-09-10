@@ -13,18 +13,13 @@ final class CustomerRepository
     {
     }
 
-    /**
-     * @return list<CustomerRecord>
-     */
+    /** @return list<CustomerRecord> */
     public function listForUser(int $userId, int $limit = 100): array
     {
         $limit = max(1, min($limit, 500));
         $stmt = $this->db->prepare(
-            'SELECT id, user_id, name
-             FROM customers
-             WHERE user_id = :user_id
-             ORDER BY name ASC, id ASC
-             LIMIT :limit'
+            'SELECT id, user_id, name FROM customers
+             WHERE user_id = :user_id ORDER BY name ASC, id ASC LIMIT :limit'
         );
         $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
@@ -42,30 +37,39 @@ final class CustomerRepository
     public function findForUser(int $userId, int $customerId): ?CustomerRecord
     {
         $stmt = $this->db->prepare(
-            'SELECT id, user_id, name
-             FROM customers
-             WHERE id = :id AND user_id = :user_id
-             LIMIT 1'
+            'SELECT id, user_id, name FROM customers
+             WHERE id = :id AND user_id = :user_id LIMIT 1'
         );
         $stmt->execute(['id' => $customerId, 'user_id' => $userId]);
-
         $row = $stmt->fetch();
         return is_array($row) ? $this->hydrate($row) : null;
     }
 
-    /**
-     * @return list<CustomerRecord>
-     */
+    public function findByNameForUser(int $userId, string $name): ?CustomerRecord
+    {
+        $name = trim($name);
+        if ($name === '') {
+            return null;
+        }
+
+        $stmt = $this->db->prepare(
+            'SELECT id, user_id, name FROM customers
+             WHERE user_id = :user_id AND name = :name LIMIT 1'
+        );
+        $stmt->execute(['user_id' => $userId, 'name' => $name]);
+        $row = $stmt->fetch();
+        return is_array($row) ? $this->hydrate($row) : null;
+    }
+
+    /** @return list<CustomerRecord> */
     public function searchForUser(int $userId, string $query, int $limit = 10): array
     {
         $limit = max(1, min($limit, 50));
         $needle = '%' . $this->escapeLike(trim($query)) . '%';
         $stmt = $this->db->prepare(
-            "SELECT id, user_id, name
-             FROM customers
+            "SELECT id, user_id, name FROM customers
              WHERE user_id = :user_id AND name LIKE :needle ESCAPE '!'
-             ORDER BY name ASC, id ASC
-             LIMIT :limit"
+             ORDER BY name ASC, id ASC LIMIT :limit"
         );
         $stmt->bindValue(':user_id', $userId, PDO::PARAM_INT);
         $stmt->bindValue(':needle', $needle, PDO::PARAM_STR);
@@ -87,6 +91,9 @@ final class CustomerRepository
         if ($name === '') {
             throw new DomainException('Customer name cannot be empty.');
         }
+        if (mb_strlen($name) > 255) {
+            throw new DomainException('Customer name cannot exceed 255 characters.');
+        }
 
         $stmt = $this->db->prepare(
             'INSERT INTO customers (user_id, name, created_at, updated_at)
@@ -102,21 +109,18 @@ final class CustomerRepository
         if ($name === '') {
             throw new DomainException('Customer name cannot be empty.');
         }
-
+        if (mb_strlen($name) > 255) {
+            throw new DomainException('Customer name cannot exceed 255 characters.');
+        }
         if ($this->findForUser($userId, $customerId) === null) {
             return false;
         }
 
         $stmt = $this->db->prepare(
-            'UPDATE customers
-             SET name = :name, updated_at = CURRENT_TIMESTAMP
+            'UPDATE customers SET name = :name, updated_at = CURRENT_TIMESTAMP
              WHERE id = :id AND user_id = :user_id'
         );
-        $stmt->execute([
-            'name' => $name,
-            'id' => $customerId,
-            'user_id' => $userId,
-        ]);
+        $stmt->execute(['name' => $name, 'id' => $customerId, 'user_id' => $userId]);
         return true;
     }
 
@@ -144,9 +148,7 @@ final class CustomerRepository
         return str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $value);
     }
 
-    /**
-     * @param array<string, mixed> $row
-     */
+    /** @param array<string, mixed> $row */
     private function hydrate(array $row): CustomerRecord
     {
         return new CustomerRecord(

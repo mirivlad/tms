@@ -12,9 +12,14 @@ use Slim\Factory\AppFactory as SlimAppFactory;
 use Slim\Views\Twig;
 use Slim\Views\TwigMiddleware;
 use Throwable;
+use Tms\Domain\Customer\CustomerRepository;
+use Tms\Domain\Status\StatusRepository;
+use Tms\Domain\Task\TaskRepository;
+use Tms\Domain\TaskType\TaskTypeRepository;
 use Tms\Domain\User\UserRepository;
 use Tms\Http\Controller\AuthController;
 use Tms\Http\Controller\DashboardController;
+use Tms\Http\Controller\TaskController;
 use Tms\Http\CookiePolicy;
 use Tms\Http\Middleware\CsrfMiddleware;
 use Tms\Http\Middleware\PersistentLoginMiddleware;
@@ -54,6 +59,10 @@ final class ApplicationFactory
         ]);
 
         $users = new UserRepository($db);
+        $statuses = new StatusRepository($db);
+        $taskTypes = new TaskTypeRepository($db);
+        $customers = new CustomerRepository($db);
+        $tasks = new TaskRepository($db);
         $sessions = new SessionManager(new NativeSessionIdRegenerator());
         $passwordAuthenticator = new PasswordAuthenticator($users);
         $rememberTokens = new RememberTokenRepository($db);
@@ -69,7 +78,15 @@ final class ApplicationFactory
             $rememberLifetime,
             $rememberCookieName,
         );
-        $dashboardController = new DashboardController($twig, $sessions);
+        $dashboardController = new DashboardController($twig, $sessions, $tasks, $statuses);
+        $taskController = new TaskController(
+            $twig,
+            $sessions,
+            $tasks,
+            $statuses,
+            $taskTypes,
+            $customers,
+        );
         $requireAuth = new RequireAuthMiddleware($sessions);
 
         $app->get('/', static function (
@@ -106,7 +123,16 @@ final class ApplicationFactory
         $app->get('/login', [$authController, 'showLogin']);
         $app->post('/login', [$authController, 'login']);
         $app->post('/logout', [$authController, 'logout'])->add($requireAuth);
+
         $app->get('/dashboard', [$dashboardController, 'show'])->add($requireAuth);
+        $app->get('/tasks', [$taskController, 'index'])->add($requireAuth);
+        $app->get('/tasks/new', [$taskController, 'new'])->add($requireAuth);
+        $app->post('/tasks', [$taskController, 'create'])->add($requireAuth);
+        $app->get('/tasks/{id:[0-9]+}/edit', [$taskController, 'edit'])->add($requireAuth);
+        $app->post('/tasks/{id:[0-9]+}', [$taskController, 'update'])->add($requireAuth);
+        $app->post('/tasks/{id:[0-9]+}/delete', [$taskController, 'delete'])->add($requireAuth);
+        $app->post('/tasks/{id:[0-9]+}/status', [$taskController, 'move'])->add($requireAuth);
+        $app->get('/board', [$taskController, 'board'])->add($requireAuth);
 
         // Slim middleware is executed in reverse registration order. CSRF is
         // registered first so body parsing and persistent-login restoration run
@@ -158,7 +184,6 @@ final class ApplicationFactory
         if ($value === '') {
             throw new RuntimeException(sprintf('Required environment variable %s is not set.', $name));
         }
-
         return $value;
     }
 
@@ -168,7 +193,6 @@ final class ApplicationFactory
         if ($value === false) {
             $value = $_ENV[$name] ?? $_SERVER[$name] ?? $default;
         }
-
         return is_string($value) ? $value : $default;
     }
 
