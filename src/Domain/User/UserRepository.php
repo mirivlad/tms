@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Tms\Domain\User;
 
+use DomainException;
 use PDO;
+use RuntimeException;
 
 final class UserRepository
 {
@@ -57,6 +59,43 @@ final class UserRepository
             'password_hash' => $passwordHash,
             'id' => $userId,
         ]);
+    }
+
+    public function createAdmin(string $username, string $email, string $passwordHash): int
+    {
+        $exists = $this->db->prepare(
+            'SELECT 1 FROM users WHERE username = :username OR email = :email LIMIT 1'
+        );
+        $exists->execute([
+            'username' => $username,
+            'email' => $email,
+        ]);
+
+        if ($exists->fetchColumn() !== false) {
+            throw new DomainException('A user with that username or email already exists.');
+        }
+
+        $insert = $this->db->prepare(
+            'INSERT INTO users (
+                username, email, password_hash, role, is_active,
+                email_verified_at, approved_at, created_at, updated_at
+             ) VALUES (
+                :username, :email, :password_hash, \'admin\', 1,
+                UTC_TIMESTAMP(), UTC_TIMESTAMP(), UTC_TIMESTAMP(), UTC_TIMESTAMP()
+             )'
+        );
+        $insert->execute([
+            'username' => $username,
+            'email' => $email,
+            'password_hash' => $passwordHash,
+        ]);
+
+        $id = $this->db->lastInsertId();
+        if ($id === false || (int) $id < 1) {
+            throw new RuntimeException('Unable to determine the created administrator ID.');
+        }
+
+        return (int) $id;
     }
 
     /**
