@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard · TMS</title>
+    <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body>
+<header class="topbar">
+    <div class="brand">TMS</div>
+    <div class="topbar-actions">
+        <span class="muted">{{ username }}</span>
+        <form method="post" action="/logout">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <button class="secondary" type="submit">Sign out</button>
+        </form>
+    </div>
+</header>
+<main class="page">
+    <section class="panel">
+        <h1>TMS is running</h1>
+        <p>The secure application shell is active. Task views will be migrated onto this foundation next.</p>
+    </section>
+</main>
+</body>
+</html>
