@@ -7,25 +7,25 @@
     <div>
         <p class="eyebrow">Board</p>
         <h1>Task board</h1>
-        <p class="muted">Completed columns keep only tasks updated during the last seven days.</p>
+        <p class="muted">Drag cards between columns or use the Move to selector. Completed columns keep only tasks updated during the last seven days.</p>
     </div>
     <a class="button-link" href="/tasks/new">New task</a>
 </div>
 
-<div class="board" role="list">
+<div class="board" role="list" data-board>
     {% for status in statuses %}
-        <section class="board-column" role="listitem">
+        <section class="board-column" role="listitem" data-status-id="{{ status.id }}">
             <header class="board-column-header">
                 <div>
                     <span class="status-dot" style="--status-color: {{ status.color }}"></span>
                     <strong>{{ status.name }}</strong>
                 </div>
-                <span class="count-badge">{{ tasks_by_status[status.id]|length }}</span>
+                <span class="count-badge" data-count>{{ tasks_by_status[status.id]|length }}</span>
             </header>
 
-            <div class="board-cards">
+            <div class="board-cards" data-status-id="{{ status.id }}">
                 {% for task in tasks_by_status[status.id] %}
-                    <article class="task-card">
+                    <article class="task-card" draggable="true" data-task-id="{{ task.id }}">
                         <div class="task-card-topline">
                             <span class="priority priority-{{ task.priority }}">{{ priority_labels[task.priority]|default('Medium') }}</span>
                             {% if task.deadline %}<span class="muted small">{{ task.deadline|date('Y-m-d H:i') }}</span>{% endif %}
@@ -48,11 +48,11 @@
                             </label>
                         </form>
                     </article>
-                {% else %}
-                    <div class="board-empty">No tasks</div>
                 {% endfor %}
+                <div class="board-empty" {{ tasks_by_status[status.id] is not empty ? 'hidden' : '' }}>No tasks</div>
             </div>
         </section>
     {% endfor %}
 </div>
+<script src="/assets/board.js" defer></script>
 {% endblock %}
