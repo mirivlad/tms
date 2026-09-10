@@ -63,7 +63,7 @@ final class CustomerRepository
         $stmt = $this->db->prepare(
             "SELECT id, user_id, name
              FROM customers
-             WHERE user_id = :user_id AND name LIKE :needle ESCAPE '\\'
+             WHERE user_id = :user_id AND name LIKE :needle ESCAPE '!'
              ORDER BY name ASC, id ASC
              LIMIT :limit"
         );
@@ -141,7 +141,7 @@ final class CustomerRepository
 
     private function escapeLike(string $value): string
     {
-        return str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], $value);
+        return str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $value);
     }
 
     /**
