@@ -1,0 +1,24 @@
+.task-card[draggable="true"] {
+    cursor: grab;
+    transition: opacity .12s ease, transform .12s ease, border-color .12s ease;
+}
+
+.task-card[draggable="true"]:active {
+    cursor: grabbing;
+}
+
+.task-card.dragging {
+    opacity: .42;
+    transform: scale(.985);
+}
+
+.board-cards.drop-target {
+    outline: 2px dashed #60758d;
+    outline-offset: -5px;
+    border-radius: 9px;
+    background: #171d24;
+}
+
+.board-empty[hidden] {
+    display: none;
+}

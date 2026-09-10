@@ -1,0 +1,113 @@
+{% extends "app_layout.twig" %}
+
+{% block title %}Calendar · TMS{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/assets/calendar.css">{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <p class="eyebrow">Calendar</p>
+        <h1>{{ month_label }}</h1>
+        <p class="muted">Deadlines are placed on their due date; tasks without a deadline can be shown on their creation date.</p>
+    </div>
+    <a class="button-link" href="/tasks/new">New task</a>
+</div>
+
+<section class="content-card calendar-controls">
+    <div class="calendar-month-nav">
+        <a class="button-link secondary-link" href="/calendar?{{ previous_query }}">← Previous</a>
+        <form method="get" action="/calendar" class="month-jump">
+            <input type="month" name="month" value="{{ month }}" min="1970-01" max="2100-12" aria-label="Calendar month">
+            <input type="hidden" name="mode" value="{{ filters.mode }}">
+            {% if filters.status_id %}<input type="hidden" name="status_id" value="{{ filters.status_id }}">{% endif %}
+            {% if filters.type_id %}<input type="hidden" name="type_id" value="{{ filters.type_id }}">{% endif %}
+            {% if filters.customer_id %}<input type="hidden" name="customer_id" value="{{ filters.customer_id }}">{% endif %}
+            {% if filters.priority %}<input type="hidden" name="priority" value="{{ filters.priority }}">{% endif %}
+            <button type="submit">Go</button>
+        </form>
+        <a class="button-link secondary-link" href="/calendar?{{ next_query }}">Next →</a>
+    </div>
+
+    <form method="get" action="/calendar" class="calendar-filters">
+        <input type="hidden" name="month" value="{{ month }}">
+        <label>
+            Show
+            <select name="mode">
+                <option value="deadlines_only" {{ filters.mode == 'deadlines_only' ? 'selected' : '' }}>Deadlines</option>
+                <option value="no_deadlines" {{ filters.mode == 'no_deadlines' ? 'selected' : '' }}>No deadline</option>
+                <option value="all" {{ filters.mode == 'all' ? 'selected' : '' }}>All</option>
+            </select>
+        </label>
+        <label>
+            Status
+            <select name="status_id">
+                <option value="">All statuses</option>
+                {% for status in statuses %}
+                    <option value="{{ status.id }}" {{ filters.status_id == status.id ? 'selected' : '' }}>{{ status.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Type
+            <select name="type_id">
+                <option value="">All types</option>
+                {% for type in types %}
+                    <option value="{{ type.id }}" {{ filters.type_id == type.id ? 'selected' : '' }}>{{ type.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Priority
+            <select name="priority">
+                <option value="">All priorities</option>
+                <option value="urgent" {{ filters.priority == 'urgent' ? 'selected' : '' }}>Urgent</option>
+                <option value="high" {{ filters.priority == 'high' ? 'selected' : '' }}>High</option>
+                <option value="medium" {{ filters.priority == 'medium' ? 'selected' : '' }}>Medium</option>
+                <option value="low" {{ filters.priority == 'low' ? 'selected' : '' }}>Low</option>
+            </select>
+        </label>
+        <label>
+            Customer
+            <select name="customer_id">
+                <option value="">All customers</option>
+                {% for customer in customers %}
+                    <option value="{{ customer.id }}" {{ filters.customer_id == customer.id ? 'selected' : '' }}>{{ customer.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <div class="filter-actions">
+            <button type="submit">Apply</button>
+            <a class="text-link" href="/calendar?month={{ month }}">Reset</a>
+        </div>
+    </form>
+</section>
+
+<section class="calendar-shell" aria-label="Calendar for {{ month_label }}">
+    <div class="calendar-grid calendar-weekdays" aria-hidden="true">
+        <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+    </div>
+    <div class="calendar-grid calendar-days">
+        {% for day in days %}
+            <article class="calendar-day {{ day.current_month ? '' : 'outside-month' }} {{ day.today ? 'today' : '' }}">
+                <header class="calendar-day-number">
+                    <time datetime="{{ day.date }}">{{ day.day }}</time>
+                </header>
+                <div class="calendar-task-list">
+                    {% for task in day.tasks %}
+                        <a class="calendar-task priority-border-{{ task.priority }}" href="/tasks/{{ task.id }}/edit" title="{{ task.title }}">
+                            <span class="status-dot" style="--status-color: {{ status_map[task.statusId].color|default('#6b7280') }}"></span>
+                            <span class="calendar-task-text">
+                                <strong>{{ task.title }}</strong>
+                                <small>
+                                    {% if task.deadline %}{{ task.deadline|date('H:i') }}{% else %}created{% endif %}
+                                    · {{ priority_labels[task.priority]|default('Medium') }}
+                                </small>
+                            </span>
+                        </a>
+                    {% endfor %}
+                </div>
+            </article>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}

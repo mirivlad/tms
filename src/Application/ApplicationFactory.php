@@ -18,8 +18,10 @@ use Tms\Domain\Task\TaskRepository;
 use Tms\Domain\TaskType\TaskTypeRepository;
 use Tms\Domain\User\UserRepository;
 use Tms\Http\Controller\AuthController;
+use Tms\Http\Controller\CalendarController;
 use Tms\Http\Controller\DashboardController;
 use Tms\Http\Controller\TaskController;
+use Tms\Http\Controller\TaskStatusController;
 use Tms\Http\CookiePolicy;
 use Tms\Http\Middleware\CsrfMiddleware;
 use Tms\Http\Middleware\PersistentLoginMiddleware;
@@ -87,6 +89,15 @@ final class ApplicationFactory
             $taskTypes,
             $customers,
         );
+        $taskStatusController = new TaskStatusController($sessions, $tasks, $statuses);
+        $calendarController = new CalendarController(
+            $twig,
+            $sessions,
+            $tasks,
+            $statuses,
+            $taskTypes,
+            $customers,
+        );
         $requireAuth = new RequireAuthMiddleware($sessions);
 
         $app->get('/', static function (
@@ -131,8 +142,9 @@ final class ApplicationFactory
         $app->get('/tasks/{id:[0-9]+}/edit', [$taskController, 'edit'])->add($requireAuth);
         $app->post('/tasks/{id:[0-9]+}', [$taskController, 'update'])->add($requireAuth);
         $app->post('/tasks/{id:[0-9]+}/delete', [$taskController, 'delete'])->add($requireAuth);
-        $app->post('/tasks/{id:[0-9]+}/status', [$taskController, 'move'])->add($requireAuth);
+        $app->post('/tasks/{id:[0-9]+}/status', [$taskStatusController, 'move'])->add($requireAuth);
         $app->get('/board', [$taskController, 'board'])->add($requireAuth);
+        $app->get('/calendar', [$calendarController, 'show'])->add($requireAuth);
 
         // Slim middleware is executed in reverse registration order. CSRF is
         // registered first so body parsing and persistent-login restoration run

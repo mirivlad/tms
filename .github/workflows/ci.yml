@@ -38,6 +38,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Validate board JavaScript
+        run: node --check public/assets/board.js
+
       - name: Validate Compose configuration
         run: docker compose config --quiet
 
@@ -85,6 +88,9 @@ jobs:
             exit 1
           fi
 
+          foreign_month=$(date +%Y-%m)
+          db "INSERT INTO tasks (created_by, title, description, status_id, deadline) VALUES ($other_id, 'Foreign calendar leak', '', $foreign_status, '${foreign_month}-15 13:00:00')"
+
       - name: Exercise authenticated task workflow
         run: |
           db() {
@@ -116,6 +122,7 @@ jobs:
           test -n "$task_csrf"
           test -n "$default_status"
 
+          calendar_month=$(date +%Y-%m)
           create_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
             --cookie /tmp/tms-cookies \
             --data-urlencode "_csrf=$task_csrf" \
@@ -123,6 +130,7 @@ jobs:
             --data-urlencode "description=Created through the real web form" \
             --data-urlencode "status_id=$default_status" \
             --data-urlencode "priority=urgent" \
+            --data-urlencode "deadline=${calendar_month}-15T12:00" \
             --data-urlencode "customer=CI Customer" \
             http://127.0.0.1:18080/tasks)
           test "$create_status" = "302"
@@ -130,7 +138,18 @@ jobs:
           curl --fail --silent --cookie /tmp/tms-cookies \
             http://127.0.0.1:18080/tasks | grep -q 'CI urgent task'
           curl --fail --silent --cookie /tmp/tms-cookies \
-            http://127.0.0.1:18080/board | grep -q 'CI urgent task'
+            http://127.0.0.1:18080/board > /tmp/board.html
+          grep -q 'CI urgent task' /tmp/board.html
+          grep -q 'draggable="true"' /tmp/board.html
+          grep -q '/assets/board.js' /tmp/board.html
+
+          curl --fail --silent --cookie /tmp/tms-cookies \
+            "http://127.0.0.1:18080/calendar?month=$calendar_month" > /tmp/calendar.html
+          grep -q 'CI urgent task' /tmp/calendar.html
+          if grep -q 'Foreign calendar leak' /tmp/calendar.html; then
+            echo "Calendar leaked another user's task." >&2
+            exit 1
+          fi
 
           admin_id=$(db "SELECT id FROM users WHERE username = 'ciadmin' LIMIT 1")
           task_id=$(db "SELECT id FROM tasks WHERE created_by = $admin_id AND title = 'CI urgent task' LIMIT 1")
