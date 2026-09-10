@@ -30,17 +30,13 @@ final class TaskRepository
         return is_array($row) ? $this->hydrate($row) : null;
     }
 
-    /**
-     * @return list<TaskRecord>
-     */
+    /** @return list<TaskRecord> */
     public function listForUser(int $userId): array
     {
         return $this->listFilteredForUser($userId);
     }
 
-    /**
-     * @return list<TaskRecord>
-     */
+    /** @return list<TaskRecord> */
     public function listFilteredForUser(
         int $userId,
         ?int $statusId = null,
@@ -91,16 +87,65 @@ final class TaskRepository
         $sql .= ' ORDER BY CASE WHEN t.deadline IS NULL THEN 1 ELSE 0 END ASC,
                           t.deadline ASC, t.priority DESC, t.updated_at DESC, t.id DESC';
 
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($params);
+        return $this->fetchTasks($sql, $params);
+    }
 
-        $tasks = [];
-        while (($row = $stmt->fetch()) !== false) {
-            if (is_array($row)) {
-                $tasks[] = $this->hydrate($row);
-            }
+    /** @return list<TaskRecord> */
+    public function listCalendarForUser(
+        int $userId,
+        string $rangeStart,
+        string $rangeEnd,
+        string $mode = 'deadlines_only',
+        ?int $statusId = null,
+        ?int $typeId = null,
+        ?int $customerId = null,
+        ?int $priority = null,
+    ): array {
+        if (!in_array($mode, ['deadlines_only', 'no_deadlines', 'all'], true)) {
+            throw new DomainException('Unsupported calendar mode.');
         }
-        return $tasks;
+        if ($priority !== null) {
+            $this->assertPriority($priority);
+        }
+
+        $sql = 'SELECT t.id, t.created_by, t.title, t.description, t.deadline, t.status_id, t.type_id,
+                       t.priority, t.customer_id, t.created_at, t.updated_at
+                FROM tasks t
+                WHERE t.created_by = :user_id AND ';
+        $params = [
+            'user_id' => $userId,
+            'range_start' => $rangeStart,
+            'range_end' => $rangeEnd,
+        ];
+
+        if ($mode === 'deadlines_only') {
+            $sql .= '(t.deadline >= :range_start AND t.deadline < :range_end)';
+        } elseif ($mode === 'no_deadlines') {
+            $sql .= '(t.deadline IS NULL AND t.created_at >= :range_start AND t.created_at < :range_end)';
+        } else {
+            $sql .= '((t.deadline IS NOT NULL AND t.deadline >= :range_start AND t.deadline < :range_end)
+                     OR (t.deadline IS NULL AND t.created_at >= :range_start AND t.created_at < :range_end))';
+        }
+
+        if ($statusId !== null) {
+            $sql .= ' AND t.status_id = :status_id';
+            $params['status_id'] = $statusId;
+        }
+        if ($typeId !== null) {
+            $sql .= ' AND t.type_id = :type_id';
+            $params['type_id'] = $typeId;
+        }
+        if ($customerId !== null) {
+            $sql .= ' AND t.customer_id = :customer_id';
+            $params['customer_id'] = $customerId;
+        }
+        if ($priority !== null) {
+            $sql .= ' AND t.priority = :priority';
+            $params['priority'] = $priority;
+        }
+
+        $sql .= ' ORDER BY COALESCE(t.deadline, t.created_at) ASC, t.priority DESC, t.id ASC';
+        return $this->fetchTasks($sql, $params);
     }
 
     public function createForUser(
@@ -211,23 +256,13 @@ final class TaskRepository
 
     public function deleteForUser(int $userId, int $taskId): bool
     {
-        $stmt = $this->db->prepare(
-            'DELETE FROM tasks WHERE id = :task_id AND created_by = :user_id'
-        );
-        $stmt->execute([
-            'task_id' => $taskId,
-            'user_id' => $userId,
-        ]);
-
+        $stmt = $this->db->prepare('DELETE FROM tasks WHERE id = :task_id AND created_by = :user_id');
+        $stmt->execute(['task_id' => $taskId, 'user_id' => $userId]);
         return $stmt->rowCount() === 1;
     }
 
-    private function assertOwnedMetadata(
-        int $userId,
-        int $statusId,
-        ?int $typeId,
-        ?int $customerId,
-    ): void {
+    private function assertOwnedMetadata(int $userId, int $statusId, ?int $typeId, ?int $customerId): void
+    {
         if (!$this->ownedReferenceExists('statuses', $userId, $statusId)) {
             throw new DomainException('Selected status does not belong to the current user.');
         }
@@ -245,9 +280,7 @@ final class TaskRepository
             throw new DomainException('Unsupported task metadata reference.');
         }
 
-        $stmt = $this->db->prepare(
-            "SELECT 1 FROM {$table} WHERE id = :id AND user_id = :user_id LIMIT 1"
-        );
+        $stmt = $this->db->prepare("SELECT 1 FROM {$table} WHERE id = :id AND user_id = :user_id LIMIT 1");
         $stmt->execute(['id' => $id, 'user_id' => $userId]);
         return $stmt->fetchColumn() !== false;
     }
@@ -277,8 +310,24 @@ final class TaskRepository
     }
 
     /**
-     * @param array<string, mixed> $row
+     * @param array<string, mixed> $params
+     * @return list<TaskRecord>
      */
+    private function fetchTasks(string $sql, array $params): array
+    {
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+
+        $tasks = [];
+        while (($row = $stmt->fetch()) !== false) {
+            if (is_array($row)) {
+                $tasks[] = $this->hydrate($row);
+            }
+        }
+        return $tasks;
+    }
+
+    /** @param array<string, mixed> $row */
     private function hydrate(array $row): TaskRecord
     {
         return new TaskRecord(
