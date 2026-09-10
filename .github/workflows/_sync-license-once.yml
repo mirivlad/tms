@@ -1,0 +1,43 @@
+name: Sync canonical license once
+
+on:
+  push:
+    branches: [chore/preview-release]
+    paths:
+      - .github/license-sync.trigger
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: chore/preview-release
+
+      - name: Fetch canonical SPDX AGPL-3.0-or-later text
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location \
+            https://raw.githubusercontent.com/spdx/license-list-data/main/text/AGPL-3.0-or-later.txt \
+            --output LICENSE
+          grep -q '^GNU AFFERO GENERAL PUBLIC LICENSE$' LICENSE
+          grep -q '^Version 3, 19 November 2007$' LICENSE
+          test "$(wc -c < LICENSE)" -gt 30000
+
+      - name: Commit canonical license
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add LICENSE
+          if git diff --cached --quiet; then
+            echo 'LICENSE already canonical.'
+            exit 0
+          fi
+          git commit -m 'chore: install canonical AGPLv3 license text'
+          git push origin HEAD:chore/preview-release
