@@ -31,14 +31,16 @@ final class SessionManager
 
     public function isAuthenticated(): bool
     {
-        return ($_SESSION['logged_in'] ?? false) === true
-            && isset($_SESSION['user_id'])
-            && is_int($_SESSION['user_id']);
+        $loggedIn = $_SESSION['logged_in'] ?? false;
+        $userId = $_SESSION['user_id'] ?? null;
+
+        return $loggedIn === true && is_int($userId);
     }
 
     public function currentUserId(): ?int
     {
-        return $this->isAuthenticated() ? $_SESSION['user_id'] : null;
+        $userId = $_SESSION['user_id'] ?? null;
+        return $this->isAuthenticated() && is_int($userId) ? $userId : null;
     }
 
     public function currentUsername(): ?string
