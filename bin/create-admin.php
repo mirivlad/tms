@@ -3,6 +3,9 @@
 declare(strict_types=1);
 
 use Dotenv\Dotenv;
+use Tms\Application\UserBootstrapService;
+use Tms\Domain\Status\StatusRepository;
+use Tms\Domain\TaskType\TaskTypeRepository;
 use Tms\Domain\User\UserRepository;
 use Tms\Infrastructure\Database;
 
@@ -69,6 +72,9 @@ if (strlen($password) < 12) {
     exit(2);
 }
 
+$db = null;
+$createdUserId = null;
+
 try {
     $db = (new Database([
         'host' => $required('DB_HOST'),
@@ -78,14 +84,29 @@ try {
         'password' => $required('DB_PASS'),
     ]))->connect();
 
-    $id = (new UserRepository($db))->createAdmin(
+    $createdUserId = (new UserRepository($db))->createAdmin(
         $username,
         $email,
         password_hash($password, PASSWORD_DEFAULT),
     );
 
-    fwrite(STDOUT, "Administrator created with ID {$id}.\n");
+    (new UserBootstrapService(
+        new StatusRepository($db),
+        new TaskTypeRepository($db),
+    ))->ensureDefaults($createdUserId);
+
+    fwrite(STDOUT, "Administrator created with ID {$createdUserId}.\n");
 } catch (Throwable $exception) {
+    if ($db instanceof PDO && $createdUserId !== null) {
+        try {
+            $cleanup = $db->prepare('DELETE FROM users WHERE id = :id');
+            $cleanup->execute(['id' => $createdUserId]);
+        } catch (Throwable) {
+            // Preserve the original bootstrap error. A partially created account
+            // can be inspected manually if cleanup itself also fails.
+        }
+    }
+
     fwrite(STDERR, "Unable to create administrator: {$exception->getMessage()}\n");
     exit(1);
 }

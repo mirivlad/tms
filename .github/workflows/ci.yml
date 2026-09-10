@@ -62,6 +62,29 @@ jobs:
             -e TMS_ADMIN_PASSWORD=ci-admin-password-12345 \
             app php bin/create-admin.php ciadmin ciadmin@example.invalid
 
+      - name: Verify task defaults and database ownership guard
+        run: |
+          db() {
+            docker compose exec -T db mariadb -N -utms -p"$DB_PASS" tms -e "$1"
+          }
+
+          admin_id=$(db "SELECT id FROM users WHERE username = 'ciadmin' LIMIT 1")
+          test -n "$admin_id"
+          test "$(db "SELECT COUNT(*) FROM statuses WHERE user_id = $admin_id")" = "3"
+          test "$(db "SELECT COUNT(*) FROM task_types WHERE user_id = $admin_id")" = "1"
+          test "$(db "SELECT COUNT(*) FROM statuses WHERE user_id = $admin_id AND is_default = 1")" = "1"
+          test "$(db "SELECT COUNT(*) FROM statuses WHERE user_id = $admin_id AND is_completion = 1")" = "1"
+
+          db "INSERT INTO users (username, email, password_hash, role, is_active, approved_at) VALUES ('other', 'other@example.invalid', 'not-used', 'user', 1, UTC_TIMESTAMP())"
+          other_id=$(db "SELECT id FROM users WHERE username = 'other' LIMIT 1")
+          db "INSERT INTO statuses (user_id, name, color, sort_order) VALUES ($other_id, 'Foreign', '#111111', 1)"
+          foreign_status=$(db "SELECT id FROM statuses WHERE user_id = $other_id AND name = 'Foreign' LIMIT 1")
+
+          if db "INSERT INTO tasks (created_by, title, description, status_id) VALUES ($admin_id, 'Must fail', '', $foreign_status)"; then
+            echo "Cross-user task/status foreign key unexpectedly accepted." >&2
+            exit 1
+          fi
+
       - name: Exercise login and persistent login
         run: |
           curl --fail --silent --cookie-jar /tmp/tms-cookies \
