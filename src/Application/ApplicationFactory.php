@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tms\Application;
 
 use DateInterval;
-use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use RuntimeException;
@@ -31,7 +30,7 @@ use Tms\Security\SessionManager;
 final class ApplicationFactory
 {
     /**
-     * @return App<ContainerInterface|null>
+     * @return App<null>
      */
     public function create(): App
     {
