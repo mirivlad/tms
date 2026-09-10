@@ -1,0 +1,32 @@
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Composer dependencies
+/vendor/
+
+# Runtime data
+/var/cache/
+/var/log/
+/var/sessions/
+/public/uploads/
+/storage/
+
+# Test / analysis output
+.phpunit.result.cache
+.phpunit.cache/
+.phpstan.cache/
+coverage/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local containers / overrides
+docker-compose.override.yml
+
+# Keep dependency locks reproducible
+!composer.lock
