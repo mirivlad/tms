@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Tms\Application;
 
 use DateInterval;
-use PDO;
+use Psr\Container\ContainerInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use RuntimeException;
@@ -30,6 +30,9 @@ use Tms\Security\SessionManager;
 
 final class ApplicationFactory
 {
+    /**
+     * @return App<ContainerInterface|null>
+     */
     public function create(): App
     {
         $debug = $this->boolEnv('APP_DEBUG', false);
