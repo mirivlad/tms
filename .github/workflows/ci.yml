@@ -85,8 +85,12 @@ jobs:
             exit 1
           fi
 
-      - name: Exercise login and persistent login
+      - name: Exercise authenticated task workflow
         run: |
+          db() {
+            docker compose exec -T db mariadb -N -utms -p"$DB_PASS" tms -e "$1"
+          }
+
           curl --fail --silent --cookie-jar /tmp/tms-cookies \
             http://127.0.0.1:18080/login > /tmp/login.html
 
@@ -103,13 +107,60 @@ jobs:
           test "$status" = "302"
 
           curl --fail --silent --cookie /tmp/tms-cookies \
-            http://127.0.0.1:18080/dashboard | grep -q 'TMS is running'
+            http://127.0.0.1:18080/dashboard | grep -q 'Task overview'
+
+          curl --fail --silent --cookie /tmp/tms-cookies \
+            http://127.0.0.1:18080/tasks/new > /tmp/task-form.html
+          task_csrf=$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' /tmp/task-form.html | head -n1)
+          default_status=$(sed -n 's/.*<option value="\([0-9][0-9]*\)" selected>.*/\1/p' /tmp/task-form.html | head -n1)
+          test -n "$task_csrf"
+          test -n "$default_status"
+
+          create_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            --cookie /tmp/tms-cookies \
+            --data-urlencode "_csrf=$task_csrf" \
+            --data-urlencode "title=CI urgent task" \
+            --data-urlencode "description=Created through the real web form" \
+            --data-urlencode "status_id=$default_status" \
+            --data-urlencode "priority=urgent" \
+            --data-urlencode "customer=CI Customer" \
+            http://127.0.0.1:18080/tasks)
+          test "$create_status" = "302"
+
+          curl --fail --silent --cookie /tmp/tms-cookies \
+            http://127.0.0.1:18080/tasks | grep -q 'CI urgent task'
+          curl --fail --silent --cookie /tmp/tms-cookies \
+            http://127.0.0.1:18080/board | grep -q 'CI urgent task'
+
+          admin_id=$(db "SELECT id FROM users WHERE username = 'ciadmin' LIMIT 1")
+          task_id=$(db "SELECT id FROM tasks WHERE created_by = $admin_id AND title = 'CI urgent task' LIMIT 1")
+          test -n "$task_id"
+          test "$(db "SELECT COUNT(*) FROM customers WHERE user_id = $admin_id AND name = 'CI Customer'")" = "1"
+
+          in_progress=$(db "SELECT id FROM statuses WHERE user_id = $admin_id AND name = 'In progress' LIMIT 1")
+          move_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            --cookie /tmp/tms-cookies \
+            --data-urlencode "_csrf=$task_csrf" \
+            --data-urlencode "status_id=$in_progress" \
+            http://127.0.0.1:18080/tasks/$task_id/status)
+          test "$move_status" = "302"
+          test "$(db "SELECT status_id FROM tasks WHERE id = $task_id")" = "$in_progress"
+
+          foreign_status=$(db "SELECT s.id FROM statuses s JOIN users u ON u.id=s.user_id WHERE u.username='other' AND s.name='Foreign' LIMIT 1")
+          rejected=$(curl --silent --output /tmp/rejected.html --write-out '%{http_code}' \
+            --cookie /tmp/tms-cookies \
+            --data-urlencode "_csrf=$task_csrf" \
+            --data-urlencode "title=Foreign status attack" \
+            --data-urlencode "status_id=$foreign_status" \
+            --data-urlencode "priority=medium" \
+            http://127.0.0.1:18080/tasks)
+          test "$rejected" = "422"
+          test "$(db "SELECT COUNT(*) FROM tasks WHERE title='Foreign status attack'")" = "0"
 
           remember=$(awk '$6 == "tms_remember" { print $7 }' /tmp/tms-cookies | tail -n1)
           test -n "$remember"
-
           curl --fail --silent --header "Cookie: tms_remember=$remember" \
-            http://127.0.0.1:18080/dashboard | grep -q 'TMS is running'
+            http://127.0.0.1:18080/dashboard | grep -q 'Task overview'
 
       - name: Show stack state on failure
         if: failure()

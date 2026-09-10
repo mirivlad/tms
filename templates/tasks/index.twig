@@ -1,0 +1,120 @@
+{% extends "app_layout.twig" %}
+
+{% block title %}Tasks · TMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <p class="eyebrow">Tasks</p>
+        <h1>All tasks</h1>
+        <p class="muted">Search, filter and edit your tasks.</p>
+    </div>
+    <a class="button-link" href="/tasks/new">New task</a>
+</div>
+
+<section class="content-card filters-card">
+    <form class="filters" method="get" action="/tasks">
+        <label>
+            Search
+            <input type="search" name="q" value="{{ filters.q }}" placeholder="Title or description">
+        </label>
+        <label>
+            Status
+            <select name="status_id">
+                <option value="">All statuses</option>
+                {% for id, status in status_map %}
+                    <option value="{{ id }}" {{ filters.status_id == id ? 'selected' : '' }}>{{ status.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Type
+            <select name="type_id">
+                <option value="">All types</option>
+                {% for id, type in type_map %}
+                    <option value="{{ id }}" {{ filters.type_id == id ? 'selected' : '' }}>{{ type.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            Priority
+            <select name="priority">
+                <option value="">All priorities</option>
+                <option value="urgent" {{ filters.priority == 'urgent' ? 'selected' : '' }}>Urgent</option>
+                <option value="high" {{ filters.priority == 'high' ? 'selected' : '' }}>High</option>
+                <option value="medium" {{ filters.priority == 'medium' ? 'selected' : '' }}>Medium</option>
+                <option value="low" {{ filters.priority == 'low' ? 'selected' : '' }}>Low</option>
+            </select>
+        </label>
+        <label>
+            Customer
+            <select name="customer_id">
+                <option value="">All customers</option>
+                {% for id, customer in customer_map %}
+                    <option value="{{ id }}" {{ filters.customer_id == id ? 'selected' : '' }}>{{ customer.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="checkbox-inline">
+            <input type="checkbox" name="overdue" value="1" {{ filters.overdue ? 'checked' : '' }}>
+            Overdue only
+        </label>
+        <div class="filter-actions">
+            <button type="submit">Apply</button>
+            <a class="text-link" href="/tasks">Reset</a>
+        </div>
+    </form>
+</section>
+
+<section class="content-card task-table-card">
+    {% if tasks is empty %}
+        <div class="empty-state">
+            <strong>No tasks match this view.</strong>
+            <span>Change the filters or create a new task.</span>
+        </div>
+    {% else %}
+        <div class="table-wrap">
+            <table class="task-table">
+                <thead>
+                    <tr>
+                        <th>Task</th>
+                        <th>Status</th>
+                        <th>Type</th>
+                        <th>Priority</th>
+                        <th>Customer</th>
+                        <th>Deadline</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for task in tasks %}
+                    <tr>
+                        <td>
+                            <a class="task-title" href="/tasks/{{ task.id }}/edit">{{ task.title }}</a>
+                            {% if task.description %}<div class="muted task-preview">{{ task.description }}</div>{% endif %}
+                        </td>
+                        <td>
+                            <span class="status-pill">
+                                <span class="status-dot" style="--status-color: {{ status_map[task.statusId].color|default('#6b7280') }}"></span>
+                                {{ status_map[task.statusId].name|default('—') }}
+                            </span>
+                        </td>
+                        <td>{{ type_map[task.typeId].name|default('—') }}</td>
+                        <td><span class="priority priority-{{ task.priority }}">{{ priority_labels[task.priority]|default('Medium') }}</span></td>
+                        <td>{{ customer_map[task.customerId].name|default('—') }}</td>
+                        <td class="nowrap">{{ task.deadline ? task.deadline|date('Y-m-d H:i') : '—' }}</td>
+                        <td class="row-actions">
+                            <a class="text-link" href="/tasks/{{ task.id }}/edit">Edit</a>
+                            <form method="post" action="/tasks/{{ task.id }}/delete" onsubmit="return confirm('Delete this task?')">
+                                <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                                <button class="danger-link" type="submit">Delete</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}
