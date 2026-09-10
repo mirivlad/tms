@@ -1,0 +1,48 @@
+name: Release config
+
+on:
+  pull_request:
+    paths:
+      - VERSION
+      - Dockerfile
+      - compose.portainer.yaml
+      - README.md
+      - .github/workflows/preview-release.yml
+      - .github/workflows/release-config.yml
+  push:
+    branches: [main]
+    paths:
+      - VERSION
+      - Dockerfile
+      - compose.portainer.yaml
+      - README.md
+      - .github/workflows/preview-release.yml
+      - .github/workflows/release-config.yml
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    env:
+      APP_URL: https://tms.example.invalid
+      DB_PASS: release-config-validation-password
+      SESSION_SECURE: "true"
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate Portainer Compose
+        run: docker compose -f compose.portainer.yaml config --quiet
+
+      - name: Check image/version consistency
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(tr -d '[:space:]' < VERSION)"
+          expected="ghcr.io/mirivlad/tms:v${version}"
+          rendered="$(docker compose -f compose.portainer.yaml config)"
+          grep -Fq "image: ${expected}" <<< "$rendered" || {
+            echo "compose.portainer.yaml must default to ${expected}" >&2
+            exit 1
+          }
