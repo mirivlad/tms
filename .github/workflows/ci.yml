@@ -21,6 +21,7 @@ jobs:
         with:
           php-version: ${{ matrix.php }}
           coverage: none
+          extensions: pdo_sqlite
           tools: composer:v2
       - run: composer validate --strict
       - run: composer install --no-interaction --prefer-dist
