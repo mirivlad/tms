@@ -48,7 +48,10 @@ final class ApplicationFactory
         ]))->connect();
 
         $app = SlimAppFactory::create();
-        $twig = Twig::create(dirname(__DIR__, 2) . '/templates', ['cache' => false]);
+        $twig = Twig::create(dirname(__DIR__, 2) . '/templates', [
+            'cache' => false,
+            'autoescape' => 'html',
+        ]);
 
         $users = new UserRepository($db);
         $sessions = new SessionManager(new NativeSessionIdRegenerator());
