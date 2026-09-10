@@ -1,0 +1,50 @@
+services:
+  db:
+    image: mariadb:11.4
+    restart: unless-stopped
+    environment:
+      MARIADB_DATABASE: ${DB_NAME:-tms}
+      MARIADB_USER: ${DB_USER:-tms}
+      MARIADB_PASSWORD: ${DB_PASS:?Set DB_PASS to a strong database password}
+      MARIADB_RANDOM_ROOT_PASSWORD: "yes"
+    volumes:
+      - tms-db:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  app:
+    image: ${TMS_IMAGE:-ghcr.io/mirivlad/tms:v0.1.0-preview.1}
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${TMS_PORT:-8080}:80"
+    environment:
+      APP_ENV: production
+      APP_DEBUG: ${APP_DEBUG:-false}
+      APP_URL: ${APP_URL:?Set APP_URL to the browser-visible TMS URL}
+      APP_TIMEZONE: ${APP_TIMEZONE:-UTC}
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-tms}
+      DB_USER: ${DB_USER:-tms}
+      DB_PASS: ${DB_PASS:?Set DB_PASS to a strong database password}
+      SESSION_NAME: ${SESSION_NAME:-tms_session}
+      SESSION_SECURE: ${SESSION_SECURE:?Set SESSION_SECURE=true for HTTPS or false only for direct HTTP}
+      SESSION_SAMESITE: ${SESSION_SAMESITE:-Lax}
+      REMEMBER_COOKIE_NAME: ${REMEMBER_COOKIE_NAME:-tms_remember}
+      REMEMBER_DAYS: ${REMEMBER_DAYS:-30}
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1/health') === false ? 1 : 0);"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+volumes:
+  tms-db:
