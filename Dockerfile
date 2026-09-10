@@ -11,6 +11,9 @@ RUN composer install \
 
 FROM php:8.3-apache
 
+LABEL org.opencontainers.image.source="https://github.com/mirivlad/tms"
+LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
+
 RUN docker-php-ext-install pdo_mysql opcache \
     && a2enmod headers
 
