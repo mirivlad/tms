@@ -77,7 +77,6 @@ final class StatusRepository
                 $this->clearCompletion($userId);
             }
 
-            $order = $this->nextSortOrder($userId);
             $stmt = $this->db->prepare(
                 'INSERT INTO statuses (
                     user_id, name, description, color, sort_order,
@@ -92,7 +91,7 @@ final class StatusRepository
                 'name' => $name,
                 'description' => trim($description),
                 'color' => $this->normalizeColor($color),
-                'sort_order' => $order,
+                'sort_order' => $this->nextSortOrder($userId),
                 'is_default' => $isDefault ? 1 : 0,
                 'is_completion' => $isCompletion ? 1 : 0,
                 'show_on_board' => $showOnBoard ? 1 : 0,
@@ -115,8 +114,6 @@ final class StatusRepository
         string $name,
         string $description,
         string $color,
-        bool $isDefault,
-        bool $isCompletion,
         bool $showOnBoard,
     ): bool {
         $name = trim($name);
@@ -124,51 +121,38 @@ final class StatusRepository
             throw new DomainException('Status name cannot be empty.');
         }
 
-        $this->db->beginTransaction();
-        try {
-            if ($this->findForUser($userId, $statusId) === null) {
-                $this->db->rollBack();
-                return false;
-            }
-
-            if ($isDefault) {
-                $this->clearDefault($userId);
-            }
-            if ($isCompletion) {
-                $this->clearCompletion($userId);
-            }
-
-            $stmt = $this->db->prepare(
-                'UPDATE statuses
-                 SET name = :name,
-                     description = :description,
-                     color = :color,
-                     is_default = :is_default,
-                     is_completion = :is_completion,
-                     show_on_board = :show_on_board,
-                     updated_at = CURRENT_TIMESTAMP
-                 WHERE id = :id AND user_id = :user_id'
-            );
-            $stmt->execute([
-                'name' => $name,
-                'description' => trim($description),
-                'color' => $this->normalizeColor($color),
-                'is_default' => $isDefault ? 1 : 0,
-                'is_completion' => $isCompletion ? 1 : 0,
-                'show_on_board' => $showOnBoard ? 1 : 0,
-                'id' => $statusId,
-                'user_id' => $userId,
-            ]);
-
-            $changed = $stmt->rowCount() === 1;
-            $this->db->commit();
-            return $changed;
-        } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
-            throw $error;
+        if ($this->findForUser($userId, $statusId) === null) {
+            return false;
         }
+
+        $stmt = $this->db->prepare(
+            'UPDATE statuses
+             SET name = :name,
+                 description = :description,
+                 color = :color,
+                 show_on_board = :show_on_board,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = :id AND user_id = :user_id'
+        );
+        $stmt->execute([
+            'name' => $name,
+            'description' => trim($description),
+            'color' => $this->normalizeColor($color),
+            'show_on_board' => $showOnBoard ? 1 : 0,
+            'id' => $statusId,
+            'user_id' => $userId,
+        ]);
+        return true;
+    }
+
+    public function setDefaultForUser(int $userId, int $statusId): bool
+    {
+        return $this->setExclusiveFlag($userId, $statusId, 'is_default');
+    }
+
+    public function setCompletionForUser(int $userId, int $statusId): bool
+    {
+        return $this->setExclusiveFlag($userId, $statusId, 'is_completion');
     }
 
     public function deleteForUser(int $userId, int $statusId): bool
@@ -221,6 +205,36 @@ final class StatusRepository
                     'user_id' => $userId,
                 ]);
             }
+            $this->db->commit();
+            return true;
+        } catch (Throwable $error) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $error;
+        }
+    }
+
+    private function setExclusiveFlag(int $userId, int $statusId, string $column): bool
+    {
+        if (!in_array($column, ['is_default', 'is_completion'], true)) {
+            throw new DomainException('Unsupported status role.');
+        }
+        if ($this->findForUser($userId, $statusId) === null) {
+            return false;
+        }
+
+        $this->db->beginTransaction();
+        try {
+            $clear = $this->db->prepare("UPDATE statuses SET {$column} = 0 WHERE user_id = :user_id");
+            $clear->execute(['user_id' => $userId]);
+
+            $set = $this->db->prepare(
+                "UPDATE statuses SET {$column} = 1, updated_at = CURRENT_TIMESTAMP
+                 WHERE id = :id AND user_id = :user_id"
+            );
+            $set->execute(['id' => $statusId, 'user_id' => $userId]);
+
             $this->db->commit();
             return true;
         } catch (Throwable $error) {
