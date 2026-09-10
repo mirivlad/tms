@@ -28,4 +28,24 @@ final class SessionManager
         $_SESSION = [];
         $this->regenerator->regenerate();
     }
+
+    public function isAuthenticated(): bool
+    {
+        $loggedIn = $_SESSION['logged_in'] ?? false;
+        $userId = $_SESSION['user_id'] ?? null;
+
+        return $loggedIn === true && is_int($userId);
+    }
+
+    public function currentUserId(): ?int
+    {
+        $userId = $_SESSION['user_id'] ?? null;
+        return $this->isAuthenticated() && is_int($userId) ? $userId : null;
+    }
+
+    public function currentUsername(): ?string
+    {
+        $username = $_SESSION['username'] ?? null;
+        return $this->isAuthenticated() && is_string($username) ? $username : null;
+    }
 }
