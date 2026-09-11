@@ -44,14 +44,28 @@ final class NotificationRunner
             $end = $start->modify('+1 day');
             $tasks = $this->tasks->dueBetween($settings->userId, $this->sql($start), $this->sql($end));
             if ($tasks !== []) {
-                $this->deliverBatch($settings, 'tomorrow', 'tomorrow:' . $start->format('Y-m-d'), 'Tasks for tomorrow', $tasks, $stats);
+                $this->deliverBatch(
+                    $settings,
+                    'tomorrow',
+                    'tomorrow:' . $start->format('Y-m-d'),
+                    'Tasks for tomorrow',
+                    $tasks,
+                    $stats,
+                );
             }
         }
 
         if ($settings->notifyOverdue && $this->timeReached($now, $settings->overdueTime)) {
             $tasks = $this->tasks->overdue($settings->userId, $this->sql($now));
             if ($tasks !== []) {
-                $this->deliverBatch($settings, 'overdue', 'overdue:' . $now->format('Y-m-d'), 'Overdue tasks', $tasks, $stats);
+                $this->deliverBatch(
+                    $settings,
+                    'overdue',
+                    'overdue:' . $now->format('Y-m-d'),
+                    'Overdue tasks',
+                    $tasks,
+                    $stats,
+                );
             }
         }
 
@@ -59,9 +73,21 @@ final class NotificationRunner
             $tomorrow = $now->modify('tomorrow')->setTime(0, 0);
             $tasks = array_merge(
                 $this->tasks->overdue($settings->userId, $this->sql($now)),
-                $this->tasks->dueBetween($settings->userId, $this->sql($tomorrow), $this->sql($tomorrow->modify('+1 day'))),
+                $this->tasks->dueBetween(
+                    $settings->userId,
+                    $this->sql($tomorrow),
+                    $this->sql($tomorrow->modify('+1 day')),
+                ),
             );
-            $this->deliverBatch($settings, 'digest', 'digest:' . $now->format('Y-m-d'), 'Task digest', $tasks, $stats, true);
+            $this->deliverBatch(
+                $settings,
+                'digest',
+                'digest:' . $now->format('Y-m-d'),
+                'Task digest',
+                $tasks,
+                $stats,
+                true,
+            );
         }
 
         if ($settings->notifyUpcoming) {
@@ -110,18 +136,24 @@ final class NotificationRunner
         $text = $this->renderText($subject, $tasks);
         $html = $this->renderHtml($subject, $tasks);
 
-        if ($settings->emailEnabled) {
+        if ($settings->emailEnabled && !$this->sent->wasSent($settings->userId, 'email', $dedupeKey)) {
             $stats['attempted']++;
-            if (!$this->sent->wasSent($settings->userId, 'email', $dedupeKey)
-                && $this->email->send($settings->deliveryEmail(), $settings->username, $subject, $html, $text)) {
+            if ($this->email->send(
+                $settings->deliveryEmail(),
+                $settings->username,
+                $subject,
+                $html,
+                $text,
+            )) {
                 $this->sent->markSent($settings->userId, 'email', $type, $dedupeKey, $taskId);
                 $stats['sent']++;
             }
         }
-        if ($settings->telegramEnabled && $settings->telegramChatId !== null) {
+        if ($settings->telegramEnabled
+            && $settings->telegramChatId !== null
+            && !$this->sent->wasSent($settings->userId, 'telegram', $dedupeKey)) {
             $stats['attempted']++;
-            if (!$this->sent->wasSent($settings->userId, 'telegram', $dedupeKey)
-                && $this->telegram->send($settings->telegramChatId, $text)) {
+            if ($this->telegram->send($settings->telegramChatId, $text)) {
                 $this->sent->markSent($settings->userId, 'telegram', $type, $dedupeKey, $taskId);
                 $stats['sent']++;
             }
@@ -143,7 +175,8 @@ final class NotificationRunner
             $lines[] = 'No matching tasks.';
         }
         foreach ($tasks as $task) {
-            $lines[] = '- ' . $task['title'] . ' — ' . $task['deadline'] . ' — ' . rtrim($this->appUrl, '/') . '/tasks/' . $task['id'] . '/edit';
+            $lines[] = '- ' . $task['title'] . ' — ' . $task['deadline'] . ' — '
+                . rtrim($this->appUrl, '/') . '/tasks/' . $task['id'] . '/edit';
         }
         return implode("\n", $lines);
     }
