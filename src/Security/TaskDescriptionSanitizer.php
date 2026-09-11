@@ -68,7 +68,9 @@ final class TaskDescriptionSanitizer
         try {
             $document = new DOMDocument('1.0', 'UTF-8');
             $loaded = $document->loadHTML(
-                '<!doctype html><html><body><div id="tms-description-root">' . $html . '</div></body></html>',
+                '<?xml encoding="UTF-8"><!doctype html><html><body><div id="tms-description-root">'
+                    . $html
+                    . '</div></body></html>',
                 LIBXML_NONET | LIBXML_NOERROR | LIBXML_NOWARNING,
             );
             if ($loaded === false) {
@@ -165,7 +167,11 @@ final class TaskDescriptionSanitizer
             return false;
         }
 
-        $decoded = html_entity_decode($href, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $decoded = trim(html_entity_decode($href, ENT_QUOTES | ENT_HTML5, 'UTF-8'));
+        if ($decoded === '' || preg_match('/[\x00-\x1F\x7F]/', $decoded) === 1) {
+            return false;
+        }
+
         $scheme = parse_url($decoded, PHP_URL_SCHEME);
         if (!is_string($scheme)) {
             return false;
