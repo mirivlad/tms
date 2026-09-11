@@ -71,6 +71,11 @@ final class TaskCustomFieldValueRepository
             throw new DomainException('Task is unavailable.');
         }
 
+        $fieldIds = array_values(array_map('intval', array_keys($values)));
+        if (!$this->fieldsBelongToUser($userId, $fieldIds)) {
+            throw new DomainException('Custom field is unavailable.');
+        }
+
         $this->db->beginTransaction();
         try {
             $delete = $this->db->prepare(
@@ -114,5 +119,26 @@ final class TaskCustomFieldValueRepository
         );
         $stmt->execute(['id' => $taskId, 'user_id' => $userId]);
         return $stmt->fetchColumn() !== false;
+    }
+
+    /** @param list<int> $fieldIds */
+    private function fieldsBelongToUser(int $userId, array $fieldIds): bool
+    {
+        $fieldIds = array_values(array_unique(array_filter(
+            $fieldIds,
+            static fn (int $id): bool => $id > 0,
+        )));
+        if ($fieldIds === []) {
+            return true;
+        }
+
+        $placeholders = implode(',', array_fill(0, count($fieldIds), '?'));
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM custom_fields
+             WHERE user_id = ? AND id IN ({$placeholders})"
+        );
+        $stmt->execute([$userId, ...$fieldIds]);
+
+        return (int) $stmt->fetchColumn() === count($fieldIds);
     }
 }
