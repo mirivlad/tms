@@ -46,7 +46,13 @@ final class NotificationAdminController
         $password = (string) ($body['password'] ?? '');
         if ($password !== '') {
             if ($this->secretBox === null) {
-                return $this->render($request, $response, null, $this->translator->trans('notifications.secret_required'), 503);
+                return $this->render(
+                    $request,
+                    $response,
+                    null,
+                    $this->translator->trans('notifications.secret_required'),
+                    503,
+                );
             }
             $ciphertext = $this->secretBox->encrypt($password);
         }
@@ -78,7 +84,13 @@ final class NotificationAdminController
             '<p>TMS SMTP transport is configured correctly.</p>',
             'TMS SMTP transport is configured correctly.',
         )) {
-            return $this->render($request, $response, null, $this->translator->trans('notifications.smtp_test_failed'), 502);
+            return $this->render(
+                $request,
+                $response,
+                null,
+                $this->translator->trans('notifications.smtp_test_failed'),
+                502,
+            );
         }
         $_SESSION['_notification_admin_flash'] = $this->translator->trans('notifications.smtp_test_sent');
         return $this->redirect($response);
@@ -87,10 +99,22 @@ final class NotificationAdminController
     public function setupTelegramWebhook(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         if ($this->botToken === '' || $this->webhookSecret === '') {
-            return $this->render($request, $response, null, $this->translator->trans('notifications.telegram_deployment_incomplete'), 503);
+            return $this->render(
+                $request,
+                $response,
+                null,
+                $this->translator->trans('notifications.telegram_deployment_incomplete'),
+                503,
+            );
         }
         if (!$this->telegram->setWebhook(rtrim($this->appUrl, '/') . '/telegram/webhook', $this->webhookSecret)) {
-            return $this->render($request, $response, null, $this->translator->trans('notifications.telegram_webhook_failed'), 502);
+            return $this->render(
+                $request,
+                $response,
+                null,
+                $this->translator->trans('notifications.telegram_webhook_failed'),
+                502,
+            );
         }
         $_SESSION['_notification_admin_flash'] = $this->translator->trans('notifications.telegram_webhook_set');
         return $this->redirect($response);
@@ -105,9 +129,13 @@ final class NotificationAdminController
     ): ResponseInterface {
         $flash = $_SESSION['_notification_admin_flash'] ?? null;
         unset($_SESSION['_notification_admin_flash']);
+        $smtp = $this->smtp->get();
+
         return $this->view->render($response, 'notifications/admin.twig', [
-            'smtp' => $this->smtp->get(),
-            'smtp_has_password' => ($this->smtp->get()?->passwordCiphertext ?? '') !== '',
+            'smtp' => $smtp,
+            'smtp_has_password' => $smtp !== null
+                && $smtp->passwordCiphertext !== null
+                && $smtp->passwordCiphertext !== '',
             'secret_configured' => $this->secretBox !== null,
             'telegram_configured' => $this->botToken !== '' && $this->webhookSecret !== '',
             'csrf_token' => $this->csrfToken($request),
