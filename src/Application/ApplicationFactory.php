@@ -22,9 +22,11 @@ use Tms\Domain\TaskType\TaskTypeRepository;
 use Tms\Domain\User\UserRepository;
 use Tms\Http\Controller\AuthController;
 use Tms\Http\Controller\CalendarController;
+use Tms\Http\Controller\CustomerSearchController;
 use Tms\Http\Controller\DashboardController;
 use Tms\Http\Controller\LocaleController;
 use Tms\Http\Controller\MetadataController;
+use Tms\Http\Controller\QuickTaskController;
 use Tms\Http\Controller\StatusDefaultsController;
 use Tms\Http\Controller\TaskController;
 use Tms\Http\Controller\TaskStatusController;
@@ -32,6 +34,7 @@ use Tms\Http\CookiePolicy;
 use Tms\Http\Middleware\CsrfMiddleware;
 use Tms\Http\Middleware\PersistentLoginMiddleware;
 use Tms\Http\Middleware\RequireAuthMiddleware;
+use Tms\Http\Middleware\SanitizeTaskDescriptionMiddleware;
 use Tms\I18n\Translator;
 use Tms\Infrastructure\Database;
 use Tms\Infrastructure\NativeSessionIdRegenerator;
@@ -39,6 +42,7 @@ use Tms\Security\PasswordAuthenticator;
 use Tms\Security\PersistentLoginService;
 use Tms\Security\RememberTokenRepository;
 use Tms\Security\SessionManager;
+use Tms\Security\TaskDescriptionSanitizer;
 use Twig\TwigFunction;
 
 final class ApplicationFactory
@@ -74,7 +78,13 @@ final class ApplicationFactory
             'cache' => false,
             'autoescape' => 'html',
         ]);
+
+        $descriptionSanitizer = new TaskDescriptionSanitizer();
         $twig->getEnvironment()->addFunction(new TwigFunction('t', [$translator, 'trans']));
+        $twig->getEnvironment()->addFunction(new TwigFunction(
+            'sanitize_task_html',
+            [$descriptionSanitizer, 'sanitize'],
+        ));
         $twig->getEnvironment()->addGlobal('locale', $translator->locale());
 
         $users = new UserRepository($db);
@@ -109,6 +119,14 @@ final class ApplicationFactory
             $customers,
             $translator,
         );
+        $quickTaskController = new QuickTaskController(
+            $sessions,
+            $tasks,
+            $statuses,
+            $descriptionSanitizer,
+            $translator,
+        );
+        $customerSearchController = new CustomerSearchController($sessions, $customers);
         $taskStatusController = new TaskStatusController($sessions, $tasks, $statuses, $translator);
         $calendarController = new CalendarController(
             $twig,
@@ -130,6 +148,7 @@ final class ApplicationFactory
         );
         $statusDefaultsController = new StatusDefaultsController($sessions, $userBootstrap);
         $requireAuth = new RequireAuthMiddleware($sessions);
+        $sanitizeTaskDescription = new SanitizeTaskDescriptionMiddleware($descriptionSanitizer);
 
         $app->get('/', static function (
             ServerRequestInterface $request,
@@ -170,11 +189,17 @@ final class ApplicationFactory
         $app->get('/dashboard', [$dashboardController, 'show'])->add($requireAuth);
         $app->get('/tasks', [$taskController, 'index'])->add($requireAuth);
         $app->get('/tasks/new', [$taskController, 'new'])->add($requireAuth);
-        $app->post('/tasks', [$taskController, 'create'])->add($requireAuth);
+        $app->post('/tasks', [$taskController, 'create'])
+            ->add($sanitizeTaskDescription)
+            ->add($requireAuth);
+        $app->post('/tasks/quick-add', [$quickTaskController, 'create'])->add($requireAuth);
         $app->get('/tasks/{id:[0-9]+}/edit', [$taskController, 'edit'])->add($requireAuth);
-        $app->post('/tasks/{id:[0-9]+}', [$taskController, 'update'])->add($requireAuth);
+        $app->post('/tasks/{id:[0-9]+}', [$taskController, 'update'])
+            ->add($sanitizeTaskDescription)
+            ->add($requireAuth);
         $app->post('/tasks/{id:[0-9]+}/delete', [$taskController, 'delete'])->add($requireAuth);
         $app->post('/tasks/{id:[0-9]+}/status', [$taskStatusController, 'move'])->add($requireAuth);
+        $app->get('/api/customers/search', [$customerSearchController, 'search'])->add($requireAuth);
         $app->get('/board', [$taskController, 'board'])->add($requireAuth);
         $app->get('/calendar', [$calendarController, 'show'])->add($requireAuth);
 
