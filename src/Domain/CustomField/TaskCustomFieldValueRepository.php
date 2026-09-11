@@ -71,7 +71,7 @@ final class TaskCustomFieldValueRepository
             throw new DomainException('Task is unavailable.');
         }
 
-        $fieldIds = array_values(array_map('intval', array_keys($values)));
+        $fieldIds = array_map('intval', array_keys($values));
         if (!$this->fieldsBelongToUser($userId, $fieldIds)) {
             throw new DomainException('Custom field is unavailable.');
         }
