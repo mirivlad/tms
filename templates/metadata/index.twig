@@ -1,6 +1,7 @@
 {% extends 'app_layout.twig' %}
 
 {% block title %}{{ t('metadata.page_title') }} · TMS{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/assets/metadata.css">{% endblock %}
 
 {% block content %}
 <header class="page-header">
@@ -10,10 +11,6 @@
         <p class="muted">{{ t('metadata.subtitle') }}</p>
     </div>
 </header>
-
-{% if error %}
-    <p class="alert" role="alert">{{ error }}</p>
-{% endif %}
 
 <nav class="metadata-tabs" aria-label="{{ t('metadata.sections_aria') }}">
     <a href="#statuses">{{ t('metadata.statuses.title') }}</a>
