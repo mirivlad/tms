@@ -147,9 +147,7 @@ final class CustomFieldController
         return $this->redirect($response);
     }
 
-    /**
-     * @param list<CustomFieldRecord> $records
-     */
+    /** @param list<CustomFieldRecord> $records */
     private function moveRecord(array $records, int $fieldId, string $direction): bool
     {
         $ids = array_map(static fn (CustomFieldRecord $field): int => $field->id, $records);
@@ -208,7 +206,7 @@ final class CustomFieldController
     {
         $raw = is_string($body['options'] ?? null) ? (string) $body['options'] : '';
         $lines = preg_split('/\R/u', $raw) ?: [];
-        return array_values(array_map('trim', $lines));
+        return array_map('trim', $lines);
     }
 
     private function domainMessage(DomainException $error): string
