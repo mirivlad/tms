@@ -110,3 +110,5 @@ printf '%s' "$quick_description" | grep -q '&lt;script&gt;alert(7)&lt;/script&gt
 curl --fail --silent --cookie "$cookies" "$base_url/dashboard" > /tmp/quick-dashboard-after.html
 grep -q 'Task added.' /tmp/quick-dashboard-after.html
 grep -q "/tasks/$quick_id/edit" /tmp/quick-dashboard-after.html
+
+bash tests/smoke/attachments.sh

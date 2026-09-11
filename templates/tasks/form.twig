@@ -146,6 +146,53 @@
         </div>
     </form>
 </section>
+
+{% if task %}
+    {% set attachments = task_attachments(task.id) %}
+    <section class="content-card attachment-card">
+        <div class="attachment-heading">
+            <div>
+                <h2>{{ t('attachments.title') }}</h2>
+                <p class="muted">{{ t('attachments.help', {'size': attachment_max_mib, 'extensions': attachment_allowed_extensions|join(', ')}) }}</p>
+            </div>
+        </div>
+
+        <form class="attachment-upload" method="post" action="/tasks/{{ task.id }}/attachments" enctype="multipart/form-data">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <label>
+                {{ t('attachments.choose') }}
+                <input type="file" name="attachments[]" multiple required>
+            </label>
+            <button type="submit">{{ t('attachments.upload') }}</button>
+        </form>
+
+        {% if attachments is empty %}
+            <p class="muted attachment-empty">{{ t('attachments.empty') }}</p>
+        {% else %}
+            <div class="attachment-list">
+                {% for attachment in attachments %}
+                    <div class="attachment-row">
+                        <div class="attachment-details">
+                            <a class="text-link attachment-name" href="/tasks/{{ task.id }}/attachments/{{ attachment.id }}">{{ attachment.originalName }}</a>
+                            <span class="muted attachment-meta">
+                                {% if attachment.fileSize >= 1048576 %}
+                                    {{ (attachment.fileSize / 1048576)|number_format(1, '.', ' ') }} MiB
+                                {% else %}
+                                    {{ (attachment.fileSize / 1024)|number_format(1, '.', ' ') }} KiB
+                                {% endif %}
+                                · {{ attachment.createdAt }}
+                            </span>
+                        </div>
+                        <form method="post" action="/tasks/{{ task.id }}/attachments/{{ attachment.id }}/delete" onsubmit="return confirm('{{ t('attachments.delete_confirm')|e('js') }}')">
+                            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                            <button type="submit" class="secondary compact">{{ t('attachments.delete') }}</button>
+                        </form>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </section>
+{% endif %}
 {% endblock %}
 
 {% block scripts %}<script src="/assets/task-form.js" defer></script>{% endblock %}

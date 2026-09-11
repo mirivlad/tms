@@ -15,6 +15,8 @@ use Slim\Factory\AppFactory as SlimAppFactory;
 use Slim\Views\Twig;
 use Slim\Views\TwigMiddleware;
 use Throwable;
+use Tms\Domain\Attachment\AttachmentPolicy;
+use Tms\Domain\Attachment\AttachmentRepository;
 use Tms\Domain\Customer\CustomerRepository;
 use Tms\Domain\CustomField\CustomFieldRepository;
 use Tms\Domain\CustomField\CustomFieldValueCodec;
@@ -23,6 +25,7 @@ use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRepository;
 use Tms\Domain\TaskType\TaskTypeRepository;
 use Tms\Domain\User\UserRepository;
+use Tms\Http\Controller\AttachmentController;
 use Tms\Http\Controller\AuthController;
 use Tms\Http\Controller\CalendarController;
 use Tms\Http\Controller\CustomerSearchController;
@@ -33,6 +36,7 @@ use Tms\Http\Controller\MetadataController;
 use Tms\Http\Controller\QuickTaskController;
 use Tms\Http\Controller\StatusDefaultsController;
 use Tms\Http\Controller\TaskController;
+use Tms\Http\Controller\TaskDeleteController;
 use Tms\Http\Controller\TaskStatusController;
 use Tms\Http\CookiePolicy;
 use Tms\Http\Middleware\CsrfMiddleware;
@@ -40,6 +44,7 @@ use Tms\Http\Middleware\PersistentLoginMiddleware;
 use Tms\Http\Middleware\RequireAuthMiddleware;
 use Tms\Http\Middleware\SanitizeTaskDescriptionMiddleware;
 use Tms\I18n\Translator;
+use Tms\Infrastructure\AttachmentStorage;
 use Tms\Infrastructure\Database;
 use Tms\Infrastructure\NativeSessionIdRegenerator;
 use Tms\Security\PasswordAuthenticator;
@@ -60,6 +65,11 @@ final class ApplicationFactory
         $rememberCookieName = $this->env('REMEMBER_COOKIE_NAME', 'tms_remember');
         $rememberDays = max(1, (int) $this->env('REMEMBER_DAYS', '30'));
         $rememberLifetime = new DateInterval('P' . $rememberDays . 'D');
+        $attachmentMaxBytes = $this->positiveIntEnv('ATTACHMENT_MAX_BYTES', 10_485_760);
+        $attachmentStoragePath = $this->env(
+            'ATTACHMENT_STORAGE_PATH',
+            dirname(__DIR__, 2) . '/var/storage/attachments',
+        );
 
         $this->startSession($secureCookies, $sameSite);
 
@@ -103,12 +113,31 @@ final class ApplicationFactory
         $customFields = new CustomFieldRepository($db);
         $customValues = new TaskCustomFieldValueRepository($db);
         $tasks = new TaskRepository($db);
+        $attachments = new AttachmentRepository($db);
+        $attachmentPolicy = new AttachmentPolicy($attachmentMaxBytes);
+        $attachmentStorage = new AttachmentStorage(
+            $attachmentStoragePath,
+            dirname(__DIR__, 2) . '/public',
+        );
         $sessions = new SessionManager(new NativeSessionIdRegenerator());
         $passwordAuthenticator = new PasswordAuthenticator($users);
         $rememberTokens = new RememberTokenRepository($db);
         $persistentLogin = new PersistentLoginService($rememberTokens, $rememberLifetime);
         $cookiePolicy = new CookiePolicy($secureCookies, $sameSite);
         $userBootstrap = new UserBootstrapService($statuses, $taskTypes, $translator);
+
+        $twig->getEnvironment()->addFunction(new TwigFunction(
+            'task_attachments',
+            static function (int $taskId) use ($sessions, $attachments): array {
+                $userId = $sessions->currentUserId();
+                return $userId === null ? [] : $attachments->listForTask($userId, $taskId);
+            },
+        ));
+        $twig->getEnvironment()->addGlobal('attachment_allowed_extensions', $attachmentPolicy->allowedExtensions());
+        $twig->getEnvironment()->addGlobal(
+            'attachment_max_mib',
+            rtrim(rtrim(number_format($attachmentPolicy->maxBytes() / 1_048_576, 1, '.', ''), '0'), '.'),
+        );
 
         $authController = new AuthController(
             $twig,
@@ -131,6 +160,20 @@ final class ApplicationFactory
             $customFields,
             $customValues,
             $customValueCodec,
+            $translator,
+        );
+        $taskDeleteController = new TaskDeleteController(
+            $sessions,
+            $tasks,
+            $attachments,
+            $attachmentStorage,
+        );
+        $attachmentController = new AttachmentController(
+            $sessions,
+            $tasks,
+            $attachments,
+            $attachmentPolicy,
+            $attachmentStorage,
             $translator,
         );
         $quickTaskController = new QuickTaskController(
@@ -217,8 +260,17 @@ final class ApplicationFactory
         $app->post('/tasks/{id:[0-9]+}', [$taskController, 'update'])
             ->add($sanitizeTaskDescription)
             ->add($requireAuth);
-        $app->post('/tasks/{id:[0-9]+}/delete', [$taskController, 'delete'])->add($requireAuth);
+        $app->post('/tasks/{id:[0-9]+}/delete', [$taskDeleteController, 'delete'])->add($requireAuth);
         $app->post('/tasks/{id:[0-9]+}/status', [$taskStatusController, 'move'])->add($requireAuth);
+        $app->post('/tasks/{taskId:[0-9]+}/attachments', [$attachmentController, 'upload'])->add($requireAuth);
+        $app->get(
+            '/tasks/{taskId:[0-9]+}/attachments/{attachmentId:[0-9]+}',
+            [$attachmentController, 'download'],
+        )->add($requireAuth);
+        $app->post(
+            '/tasks/{taskId:[0-9]+}/attachments/{attachmentId:[0-9]+}/delete',
+            [$attachmentController, 'delete'],
+        )->add($requireAuth);
         $app->get('/api/customers/search', [$customerSearchController, 'search'])->add($requireAuth);
         $app->get('/board', [$taskController, 'board'])->add($requireAuth);
         $app->get('/calendar', [$calendarController, 'show'])->add($requireAuth);
@@ -323,6 +375,15 @@ final class ApplicationFactory
             throw new RuntimeException(sprintf('Required environment variable %s is not set.', $name));
         }
         return $value;
+    }
+
+    private function positiveIntEnv(string $name, int $default): int
+    {
+        $raw = $this->env($name, (string) $default);
+        if (!ctype_digit($raw) || (int) $raw < 1) {
+            throw new RuntimeException(sprintf('%s must be a positive integer.', $name));
+        }
+        return (int) $raw;
     }
 
     private function env(string $name, string $default): string
