@@ -24,6 +24,7 @@ use Tms\Http\Controller\AuthController;
 use Tms\Http\Controller\CalendarController;
 use Tms\Http\Controller\DashboardController;
 use Tms\Http\Controller\LocaleController;
+use Tms\Http\Controller\MetadataController;
 use Tms\Http\Controller\TaskController;
 use Tms\Http\Controller\TaskStatusController;
 use Tms\Http\CookiePolicy;
@@ -117,6 +118,14 @@ final class ApplicationFactory
             $translator,
         );
         $localeController = new LocaleController($translator);
+        $metadataController = new MetadataController(
+            $twig,
+            $sessions,
+            $statuses,
+            $taskTypes,
+            $customers,
+            $translator,
+        );
         $requireAuth = new RequireAuthMiddleware($sessions);
 
         $app->get('/', static function (
@@ -165,6 +174,21 @@ final class ApplicationFactory
         $app->post('/tasks/{id:[0-9]+}/status', [$taskStatusController, 'move'])->add($requireAuth);
         $app->get('/board', [$taskController, 'board'])->add($requireAuth);
         $app->get('/calendar', [$calendarController, 'show'])->add($requireAuth);
+
+        $app->get('/metadata', [$metadataController, 'index'])->add($requireAuth);
+        $app->post('/metadata/statuses', [$metadataController, 'createStatus'])->add($requireAuth);
+        $app->post('/metadata/statuses/{id:[0-9]+}', [$metadataController, 'updateStatus'])->add($requireAuth);
+        $app->post('/metadata/statuses/{id:[0-9]+}/default', [$metadataController, 'setDefaultStatus'])->add($requireAuth);
+        $app->post('/metadata/statuses/{id:[0-9]+}/completion', [$metadataController, 'setCompletionStatus'])->add($requireAuth);
+        $app->post('/metadata/statuses/{id:[0-9]+}/move', [$metadataController, 'moveStatus'])->add($requireAuth);
+        $app->post('/metadata/statuses/{id:[0-9]+}/delete', [$metadataController, 'deleteStatus'])->add($requireAuth);
+        $app->post('/metadata/types', [$metadataController, 'createType'])->add($requireAuth);
+        $app->post('/metadata/types/{id:[0-9]+}', [$metadataController, 'updateType'])->add($requireAuth);
+        $app->post('/metadata/types/{id:[0-9]+}/move', [$metadataController, 'moveType'])->add($requireAuth);
+        $app->post('/metadata/types/{id:[0-9]+}/delete', [$metadataController, 'deleteType'])->add($requireAuth);
+        $app->post('/metadata/customers', [$metadataController, 'createCustomer'])->add($requireAuth);
+        $app->post('/metadata/customers/{id:[0-9]+}', [$metadataController, 'updateCustomer'])->add($requireAuth);
+        $app->post('/metadata/customers/{id:[0-9]+}/delete', [$metadataController, 'deleteCustomer'])->add($requireAuth);
 
         // Slim middleware is executed in reverse registration order. CSRF is
         // registered first so body parsing and persistent-login restoration run
