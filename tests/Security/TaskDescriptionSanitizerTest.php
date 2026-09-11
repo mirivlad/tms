@@ -31,6 +31,15 @@ final class TaskDescriptionSanitizerTest extends TestCase
         self::assertStringContainsString('rel="noopener noreferrer"', $result);
     }
 
+    public function testPreservesUtf8Content(): void
+    {
+        $result = $this->sanitizer->sanitize(
+            '<p>Привет, <strong>мир</strong> — задача №42</p>',
+        );
+
+        self::assertSame('<p>Привет, <strong>мир</strong> — задача №42</p>', $result);
+    }
+
     public function testDropsExecutableElementsAndEventHandlers(): void
     {
         $html = '<p onclick="alert(1)">safe<script>alert(2)</script>'
@@ -58,6 +67,15 @@ final class TaskDescriptionSanitizerTest extends TestCase
         self::assertStringContainsString('<a>bad</a>', $result);
         self::assertStringContainsString('<a>also bad</a>', $result);
         self::assertStringContainsString('href="mailto:test@example.com"', $result);
+    }
+
+    public function testRejectsEncodedControlCharactersInLinks(): void
+    {
+        $result = $this->sanitizer->sanitize(
+            '<a href="java&#x0A;script:alert(1)">bad</a>',
+        );
+
+        self::assertSame('<a>bad</a>', $result);
     }
 
     public function testUnknownPresentationWrappersAreUnwrapped(): void
