@@ -98,6 +98,7 @@ final class CustomFieldRepository
         $name = $this->normalizeName($name);
         $type = $this->normalizeType($type);
         $options = $this->normalizeOptions($type, $options);
+        $valueContractChanged = $existing->type !== $type || $existing->options !== $options;
 
         $this->db->beginTransaction();
         try {
@@ -119,7 +120,7 @@ final class CustomFieldRepository
                 'user_id' => $userId,
             ]);
 
-            if ($existing->type !== $type) {
+            if ($valueContractChanged) {
                 $clear = $this->db->prepare(
                     'DELETE FROM task_custom_field_values WHERE field_id = :field_id AND user_id = :user_id'
                 );
