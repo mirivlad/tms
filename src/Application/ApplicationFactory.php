@@ -25,6 +25,7 @@ use Tms\Http\Controller\CalendarController;
 use Tms\Http\Controller\DashboardController;
 use Tms\Http\Controller\LocaleController;
 use Tms\Http\Controller\MetadataController;
+use Tms\Http\Controller\StatusDefaultsController;
 use Tms\Http\Controller\TaskController;
 use Tms\Http\Controller\TaskStatusController;
 use Tms\Http\CookiePolicy;
@@ -86,6 +87,7 @@ final class ApplicationFactory
         $rememberTokens = new RememberTokenRepository($db);
         $persistentLogin = new PersistentLoginService($rememberTokens, $rememberLifetime);
         $cookiePolicy = new CookiePolicy($secureCookies, $sameSite);
+        $userBootstrap = new UserBootstrapService($statuses, $taskTypes, $translator);
 
         $authController = new AuthController(
             $twig,
@@ -126,6 +128,7 @@ final class ApplicationFactory
             $customers,
             $translator,
         );
+        $statusDefaultsController = new StatusDefaultsController($sessions, $userBootstrap);
         $requireAuth = new RequireAuthMiddleware($sessions);
 
         $app->get('/', static function (
@@ -177,6 +180,7 @@ final class ApplicationFactory
 
         $app->get('/metadata', [$metadataController, 'index'])->add($requireAuth);
         $app->post('/metadata/statuses', [$metadataController, 'createStatus'])->add($requireAuth);
+        $app->post('/metadata/statuses/restore-defaults', [$statusDefaultsController, 'restore'])->add($requireAuth);
         $app->post('/metadata/statuses/{id:[0-9]+}', [$metadataController, 'updateStatus'])->add($requireAuth);
         $app->post('/metadata/statuses/{id:[0-9]+}/default', [$metadataController, 'setDefaultStatus'])->add($requireAuth);
         $app->post('/metadata/statuses/{id:[0-9]+}/completion', [$metadataController, 'setCompletionStatus'])->add($requireAuth);
