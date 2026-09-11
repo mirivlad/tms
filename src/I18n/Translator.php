@@ -90,14 +90,41 @@ final class Translator
             return $this->catalogs[$locale];
         }
 
-        $file = rtrim($this->catalogDirectory, '/\\') . DIRECTORY_SEPARATOR . $locale . '.php';
-        if (!is_file($file)) {
+        $root = rtrim($this->catalogDirectory, '/\\');
+        $baseFile = $root . DIRECTORY_SEPARATOR . $locale . '.php';
+        if (!is_file($baseFile)) {
             throw new RuntimeException('Translation catalog not found for locale: ' . $locale);
         }
 
+        $catalog = $this->loadCatalogFile($baseFile, $locale);
+        $fragmentDirectory = $root . DIRECTORY_SEPARATOR . $locale;
+        if (is_dir($fragmentDirectory)) {
+            $fragmentFiles = glob($fragmentDirectory . DIRECTORY_SEPARATOR . '*.php') ?: [];
+            sort($fragmentFiles, SORT_STRING);
+            foreach ($fragmentFiles as $fragmentFile) {
+                foreach ($this->loadCatalogFile($fragmentFile, $locale) as $key => $value) {
+                    if (array_key_exists($key, $catalog)) {
+                        throw new RuntimeException(sprintf(
+                            'Duplicate translation key "%s" in locale %s.',
+                            $key,
+                            $locale,
+                        ));
+                    }
+                    $catalog[$key] = $value;
+                }
+            }
+        }
+
+        $this->catalogs[$locale] = $catalog;
+        return $catalog;
+    }
+
+    /** @return array<string, string> */
+    private function loadCatalogFile(string $file, string $locale): array
+    {
         $catalog = require $file;
         if (!is_array($catalog)) {
-            throw new RuntimeException('Translation catalog must return an array: ' . $locale);
+            throw new RuntimeException('Translation catalog must return an array: ' . $file);
         }
 
         $validated = [];
@@ -105,10 +132,12 @@ final class Translator
             if (!is_string($key) || !is_string($value)) {
                 throw new RuntimeException('Translation catalog entries must be string => string: ' . $locale);
             }
+            if (trim($value) === '') {
+                throw new RuntimeException('Translation catalog values cannot be empty: ' . $key);
+            }
             $validated[$key] = $value;
         }
 
-        $this->catalogs[$locale] = $validated;
         return $validated;
     }
 }
