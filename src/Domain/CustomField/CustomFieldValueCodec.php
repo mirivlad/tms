@@ -121,7 +121,7 @@ final class CustomFieldValueCodec
         return json_encode($selected, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
     }
 
-    private function missing(CustomFieldRecord $field): ?string
+    private function missing(CustomFieldRecord $field): null
     {
         if ($field->isRequired) {
             throw new DomainException('A required custom field is empty.');
