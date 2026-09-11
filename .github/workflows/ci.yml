@@ -230,6 +230,9 @@ jobs:
       - name: Exercise rich task form parity
         run: bash tests/smoke/task-form-parity.sh
 
+      - name: Exercise custom field workflow
+        run: bash tests/smoke/custom-fields.sh
+
       - name: Exercise metadata administration
         run: bash tests/smoke/metadata.sh
 
