@@ -1,0 +1,239 @@
+{% extends 'app_layout.twig' %}
+
+{% block title %}{{ t('metadata.page_title') }} · TMS{% endblock %}
+
+{% block content %}
+<header class="page-header">
+    <div>
+        <p class="eyebrow">{{ t('metadata.eyebrow') }}</p>
+        <h1>{{ t('metadata.title') }}</h1>
+        <p class="muted">{{ t('metadata.subtitle') }}</p>
+    </div>
+</header>
+
+{% if error %}
+    <p class="alert" role="alert">{{ error }}</p>
+{% endif %}
+
+<nav class="metadata-tabs" aria-label="{{ t('metadata.sections_aria') }}">
+    <a href="#statuses">{{ t('metadata.statuses.title') }}</a>
+    <a href="#types">{{ t('metadata.types.title') }}</a>
+    <a href="#customers">{{ t('metadata.customers.title') }}</a>
+</nav>
+
+<section class="content-card metadata-section" id="statuses">
+    <div class="section-heading">
+        <div>
+            <h2>{{ t('metadata.statuses.title') }}</h2>
+            <p class="muted">{{ t('metadata.statuses.help') }}</p>
+        </div>
+    </div>
+
+    {% if error and error_section == 'statuses' %}
+        <p class="alert" role="alert">{{ error }}</p>
+    {% endif %}
+
+    <form class="metadata-create status-create" method="post" action="/metadata/statuses">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label>
+            <span>{{ t('metadata.name') }}</span>
+            <input type="text" name="name" maxlength="96" required>
+        </label>
+        <label>
+            <span>{{ t('metadata.description') }}</span>
+            <input type="text" name="description" maxlength="512">
+        </label>
+        <label class="color-field">
+            <span>{{ t('metadata.color') }}</span>
+            <input type="color" name="color" value="#6b7280">
+        </label>
+        <label class="checkbox-inline compact-check">
+            <input type="checkbox" name="show_on_board" value="1" checked>
+            <span>{{ t('metadata.show_on_board') }}</span>
+        </label>
+        <label class="checkbox-inline compact-check">
+            <input type="checkbox" name="is_default" value="1">
+            <span>{{ t('metadata.default_status') }}</span>
+        </label>
+        <label class="checkbox-inline compact-check">
+            <input type="checkbox" name="is_completion" value="1">
+            <span>{{ t('metadata.completion_status') }}</span>
+        </label>
+        <button type="submit">{{ t('metadata.statuses.add') }}</button>
+    </form>
+
+    <div class="metadata-list">
+        {% for status in statuses %}
+            <article class="metadata-item">
+                <div class="metadata-item-heading">
+                    <span class="status-dot" style="--status-color: {{ status.color }}"></span>
+                    <strong>{{ status.name }}</strong>
+                    <div class="metadata-badges">
+                        {% if status.isDefault %}<span class="metadata-badge">{{ t('metadata.badge.default') }}</span>{% endif %}
+                        {% if status.isCompletion %}<span class="metadata-badge">{{ t('metadata.badge.completion') }}</span>{% endif %}
+                        {% if status.showOnBoard %}<span class="metadata-badge">{{ t('metadata.badge.board') }}</span>{% endif %}
+                    </div>
+                </div>
+
+                <form class="metadata-edit status-edit" method="post" action="/metadata/statuses/{{ status.id }}">
+                    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                    <label>
+                        <span>{{ t('metadata.name') }}</span>
+                        <input type="text" name="name" maxlength="96" value="{{ status.name }}" required>
+                    </label>
+                    <label>
+                        <span>{{ t('metadata.description') }}</span>
+                        <input type="text" name="description" maxlength="512" value="{{ status.description }}">
+                    </label>
+                    <label class="color-field">
+                        <span>{{ t('metadata.color') }}</span>
+                        <input type="color" name="color" value="{{ status.color }}">
+                    </label>
+                    <label class="checkbox-inline compact-check">
+                        <input type="checkbox" name="show_on_board" value="1" {{ status.showOnBoard ? 'checked' : '' }}>
+                        <span>{{ t('metadata.show_on_board') }}</span>
+                    </label>
+                    <button class="secondary compact" type="submit">{{ t('common.save') }}</button>
+                </form>
+
+                <div class="metadata-actions">
+                    <form method="post" action="/metadata/statuses/{{ status.id }}/move">
+                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                        <input type="hidden" name="direction" value="up">
+                        <button class="secondary compact" type="submit" title="{{ t('common.move_up') }}" aria-label="{{ t('common.move_up') }}">↑</button>
+                    </form>
+                    <form method="post" action="/metadata/statuses/{{ status.id }}/move">
+                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                        <input type="hidden" name="direction" value="down">
+                        <button class="secondary compact" type="submit" title="{{ t('common.move_down') }}" aria-label="{{ t('common.move_down') }}">↓</button>
+                    </form>
+                    {% if not status.isDefault %}
+                        <form method="post" action="/metadata/statuses/{{ status.id }}/default">
+                            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                            <button class="secondary compact" type="submit">{{ t('metadata.make_default') }}</button>
+                        </form>
+                    {% endif %}
+                    {% if not status.isCompletion %}
+                        <form method="post" action="/metadata/statuses/{{ status.id }}/completion">
+                            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                            <button class="secondary compact" type="submit">{{ t('metadata.make_completion') }}</button>
+                        </form>
+                    {% endif %}
+                    <form method="post" action="/metadata/statuses/{{ status.id }}/delete" onsubmit="return confirm('{{ t('metadata.statuses.delete_confirm')|e('js') }}')">
+                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                        <button class="danger-link compact" type="submit">{{ t('common.delete') }}</button>
+                    </form>
+                </div>
+            </article>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="content-card metadata-section" id="types">
+    <div class="section-heading">
+        <div>
+            <h2>{{ t('metadata.types.title') }}</h2>
+            <p class="muted">{{ t('metadata.types.help') }}</p>
+        </div>
+    </div>
+
+    {% if error and error_section == 'types' %}
+        <p class="alert" role="alert">{{ error }}</p>
+    {% endif %}
+
+    <form class="metadata-create type-create" method="post" action="/metadata/types">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label>
+            <span>{{ t('metadata.name') }}</span>
+            <input type="text" name="name" maxlength="96" required>
+        </label>
+        <label>
+            <span>{{ t('metadata.description') }}</span>
+            <input type="text" name="description" maxlength="512">
+        </label>
+        <button type="submit">{{ t('metadata.types.add') }}</button>
+    </form>
+
+    <div class="metadata-list">
+        {% for type in task_types %}
+            <article class="metadata-item">
+                <form class="metadata-edit type-edit" method="post" action="/metadata/types/{{ type.id }}">
+                    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                    <label>
+                        <span>{{ t('metadata.name') }}</span>
+                        <input type="text" name="name" maxlength="96" value="{{ type.name }}" required>
+                    </label>
+                    <label>
+                        <span>{{ t('metadata.description') }}</span>
+                        <input type="text" name="description" maxlength="512" value="{{ type.description }}">
+                    </label>
+                    <button class="secondary compact" type="submit">{{ t('common.save') }}</button>
+                </form>
+                <div class="metadata-actions">
+                    <form method="post" action="/metadata/types/{{ type.id }}/move">
+                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                        <input type="hidden" name="direction" value="up">
+                        <button class="secondary compact" type="submit" title="{{ t('common.move_up') }}" aria-label="{{ t('common.move_up') }}">↑</button>
+                    </form>
+                    <form method="post" action="/metadata/types/{{ type.id }}/move">
+                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                        <input type="hidden" name="direction" value="down">
+                        <button class="secondary compact" type="submit" title="{{ t('common.move_down') }}" aria-label="{{ t('common.move_down') }}">↓</button>
+                    </form>
+                    <form method="post" action="/metadata/types/{{ type.id }}/delete" onsubmit="return confirm('{{ t('metadata.types.delete_confirm')|e('js') }}')">
+                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                        <button class="danger-link compact" type="submit">{{ t('common.delete') }}</button>
+                    </form>
+                </div>
+            </article>
+        {% else %}
+            <p class="muted">{{ t('metadata.types.empty') }}</p>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="content-card metadata-section" id="customers">
+    <div class="section-heading">
+        <div>
+            <h2>{{ t('metadata.customers.title') }}</h2>
+            <p class="muted">{{ t('metadata.customers.help') }}</p>
+        </div>
+    </div>
+
+    {% if error and error_section == 'customers' %}
+        <p class="alert" role="alert">{{ error }}</p>
+    {% endif %}
+
+    <form class="metadata-create customer-create" method="post" action="/metadata/customers">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label>
+            <span>{{ t('metadata.name') }}</span>
+            <input type="text" name="name" maxlength="255" required>
+        </label>
+        <button type="submit">{{ t('metadata.customers.add') }}</button>
+    </form>
+
+    <div class="metadata-list compact-list">
+        {% for customer in customers %}
+            <article class="metadata-item customer-item">
+                <form class="metadata-edit customer-edit" method="post" action="/metadata/customers/{{ customer.id }}">
+                    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                    <label>
+                        <span>{{ t('metadata.name') }}</span>
+                        <input type="text" name="name" maxlength="255" value="{{ customer.name }}" required>
+                    </label>
+                    <button class="secondary compact" type="submit">{{ t('common.save') }}</button>
+                </form>
+                <div class="metadata-actions">
+                    <form method="post" action="/metadata/customers/{{ customer.id }}/delete" onsubmit="return confirm('{{ t('metadata.customers.delete_confirm')|e('js') }}')">
+                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                        <button class="danger-link compact" type="submit">{{ t('common.delete') }}</button>
+                    </form>
+                </div>
+            </article>
+        {% else %}
+            <p class="muted">{{ t('metadata.customers.empty') }}</p>
+        {% endfor %}
+    </div>
+</section>
+{% endblock %}
