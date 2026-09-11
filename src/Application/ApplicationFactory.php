@@ -16,6 +16,9 @@ use Slim\Views\Twig;
 use Slim\Views\TwigMiddleware;
 use Throwable;
 use Tms\Domain\Customer\CustomerRepository;
+use Tms\Domain\CustomField\CustomFieldRepository;
+use Tms\Domain\CustomField\CustomFieldValueCodec;
+use Tms\Domain\CustomField\TaskCustomFieldValueRepository;
 use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRepository;
 use Tms\Domain\TaskType\TaskTypeRepository;
@@ -23,6 +26,7 @@ use Tms\Domain\User\UserRepository;
 use Tms\Http\Controller\AuthController;
 use Tms\Http\Controller\CalendarController;
 use Tms\Http\Controller\CustomerSearchController;
+use Tms\Http\Controller\CustomFieldController;
 use Tms\Http\Controller\DashboardController;
 use Tms\Http\Controller\LocaleController;
 use Tms\Http\Controller\MetadataController;
@@ -80,10 +84,15 @@ final class ApplicationFactory
         ]);
 
         $descriptionSanitizer = new TaskDescriptionSanitizer();
+        $customValueCodec = new CustomFieldValueCodec();
         $twig->getEnvironment()->addFunction(new TwigFunction('t', [$translator, 'trans']));
         $twig->getEnvironment()->addFunction(new TwigFunction(
             'sanitize_task_html',
             [$descriptionSanitizer, 'sanitize'],
+        ));
+        $twig->getEnvironment()->addFunction(new TwigFunction(
+            'custom_field_display',
+            [$customValueCodec, 'display'],
         ));
         $twig->getEnvironment()->addGlobal('locale', $translator->locale());
 
@@ -91,6 +100,8 @@ final class ApplicationFactory
         $statuses = new StatusRepository($db);
         $taskTypes = new TaskTypeRepository($db);
         $customers = new CustomerRepository($db);
+        $customFields = new CustomFieldRepository($db);
+        $customValues = new TaskCustomFieldValueRepository($db);
         $tasks = new TaskRepository($db);
         $sessions = new SessionManager(new NativeSessionIdRegenerator());
         $passwordAuthenticator = new PasswordAuthenticator($users);
@@ -117,6 +128,9 @@ final class ApplicationFactory
             $statuses,
             $taskTypes,
             $customers,
+            $customFields,
+            $customValues,
+            $customValueCodec,
             $translator,
         );
         $quickTaskController = new QuickTaskController(
@@ -144,6 +158,12 @@ final class ApplicationFactory
             $statuses,
             $taskTypes,
             $customers,
+            $translator,
+        );
+        $customFieldController = new CustomFieldController(
+            $twig,
+            $sessions,
+            $customFields,
             $translator,
         );
         $statusDefaultsController = new StatusDefaultsController($sessions, $userBootstrap);
@@ -218,6 +238,12 @@ final class ApplicationFactory
         $app->post('/metadata/customers', [$metadataController, 'createCustomer'])->add($requireAuth);
         $app->post('/metadata/customers/{id:[0-9]+}', [$metadataController, 'updateCustomer'])->add($requireAuth);
         $app->post('/metadata/customers/{id:[0-9]+}/delete', [$metadataController, 'deleteCustomer'])->add($requireAuth);
+
+        $app->get('/custom-fields', [$customFieldController, 'index'])->add($requireAuth);
+        $app->post('/custom-fields', [$customFieldController, 'create'])->add($requireAuth);
+        $app->post('/custom-fields/{id:[0-9]+}', [$customFieldController, 'update'])->add($requireAuth);
+        $app->post('/custom-fields/{id:[0-9]+}/move', [$customFieldController, 'move'])->add($requireAuth);
+        $app->post('/custom-fields/{id:[0-9]+}/delete', [$customFieldController, 'delete'])->add($requireAuth);
 
         // Slim middleware is executed in reverse registration order. CSRF is
         // registered first so body parsing and persistent-login restoration run
