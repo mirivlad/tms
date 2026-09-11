@@ -24,6 +24,10 @@
             <h2>{{ t('metadata.statuses.title') }}</h2>
             <p class="muted">{{ t('metadata.statuses.help') }}</p>
         </div>
+        <form method="post" action="/metadata/statuses/restore-defaults">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <button class="secondary compact" type="submit">{{ t('metadata.statuses.restore') }}</button>
+        </form>
     </div>
 
     {% if error and error_section == 'statuses' %}
