@@ -75,7 +75,11 @@ final class TaskDescriptionSanitizer
                 return '';
             }
 
-            $root = (new DOMXPath($document))->query('//*[@id="tms-description-root"]')?->item(0);
+            $nodes = (new DOMXPath($document))->query('//*[@id="tms-description-root"]');
+            if ($nodes === false) {
+                return '';
+            }
+            $root = $nodes->item(0);
             if (!$root instanceof DOMElement) {
                 return '';
             }
