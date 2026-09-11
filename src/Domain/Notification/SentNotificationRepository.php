@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tms\Domain\Notification;
 
 use PDO;
+use PDOException;
 
 final class SentNotificationRepository
 {
@@ -34,17 +35,26 @@ final class SentNotificationRepository
         ?int $taskId = null,
     ): bool {
         $stmt = $this->db->prepare(
-            'INSERT IGNORE INTO sent_notifications
+            'INSERT INTO sent_notifications
                 (user_id, task_id, channel, notification_type, dedupe_key, sent_at)
              VALUES (:user_id, :task_id, :channel, :notification_type, :dedupe_key, CURRENT_TIMESTAMP)'
         );
-        $stmt->execute([
-            'user_id' => $userId,
-            'task_id' => $taskId,
-            'channel' => $channel,
-            'notification_type' => $type,
-            'dedupe_key' => hash('sha256', $dedupeKey),
-        ]);
+
+        try {
+            $stmt->execute([
+                'user_id' => $userId,
+                'task_id' => $taskId,
+                'channel' => $channel,
+                'notification_type' => $type,
+                'dedupe_key' => hash('sha256', $dedupeKey),
+            ]);
+        } catch (PDOException $error) {
+            if ($error->getCode() === '23000') {
+                return false;
+            }
+            throw $error;
+        }
+
         return $stmt->rowCount() === 1;
     }
 }
