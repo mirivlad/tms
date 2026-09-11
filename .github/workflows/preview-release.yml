@@ -5,8 +5,6 @@ on:
     branches: [main]
     paths:
       - VERSION
-      - compose.portainer.yaml
-      - .github/workflows/preview-release.yml
   workflow_dispatch:
 
 permissions:
@@ -32,6 +30,20 @@ jobs:
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=v$version" >> "$GITHUB_OUTPUT"
 
+      - name: Refuse to overwrite an existing release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; refusing to overwrite its image tag." >&2
+            exit 1
+          fi
+
+      - uses: docker/setup-qemu-action@v3
+
       - uses: docker/setup-buildx-action@v3
 
       - name: Log in to GHCR
@@ -46,7 +58,7 @@ jobs:
         with:
           context: .
           push: true
-          platforms: linux/amd64
+          platforms: linux/amd64,linux/arm64
           tags: |
             ghcr.io/${{ github.repository }}:${{ steps.version.outputs.tag }}
             ghcr.io/${{ github.repository }}:preview
@@ -55,13 +67,16 @@ jobs:
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
             org.opencontainers.image.revision=${{ github.sha }}
 
-      - name: Verify anonymous image pull
+      - name: Verify public multi-arch manifest and anonymous pull
         env:
           IMAGE: ghcr.io/${{ github.repository }}:${{ steps.version.outputs.tag }}
         shell: bash
         run: |
           set -euo pipefail
           docker logout ghcr.io
+          manifest="$(docker buildx imagetools inspect "$IMAGE")"
+          grep -Fq 'linux/amd64' <<< "$manifest"
+          grep -Fq 'linux/arm64' <<< "$manifest"
           docker pull "$IMAGE"
 
       - name: Create GitHub prerelease
@@ -74,32 +89,28 @@ jobs:
           notes=$(cat <<'EOF'
           Public TMS preview intended for self-hosted feature-parity and UI evaluation.
 
-          Included in this preview:
+          Included in current previews:
           - secure login, logout and rotating persistent login;
           - owner-isolated task storage and metadata;
           - Russian and English UI catalogs with a runtime language switch;
-          - `APP_LOCALE` deployment default and locale-aware new-user metadata defaults;
-          - dashboard and task list with filtering;
-          - task create/edit/delete flow;
-          - Kanban board with progressive drag-and-drop;
-          - calendar with deadline/no-deadline/all modes;
+          - dashboard, task list, Kanban board and calendar;
+          - rich-text task descriptions with server-side sanitization;
+          - quick-add and owner-scoped customer autocomplete;
+          - status, task-type and customer administration;
+          - owner-scoped custom fields with all six donor field types;
           - MariaDB migrations and first-admin CLI bootstrap;
           - Docker Compose and an image-based Portainer Stack.
 
-          This is intentionally a prerelease, not the stable v0.1.0. Donor feature parity work continues with metadata administration, richer task editing, custom fields, attachments, notifications and user/admin flows.
+          This is intentionally a prerelease, not the stable v0.1.0. Donor feature parity work continues with attachments, notifications and user/admin flows.
 
           Container image:
           `ghcr.io/mirivlad/tms:${TAG}`
           EOF
           )
 
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release $TAG already exists; leaving it unchanged."
-          else
-            printf '%s\n' "$notes" | sed "s/\${TAG}/$TAG/g" > /tmp/release-notes.md
-            gh release create "$TAG" \
-              --target "$GITHUB_SHA" \
-              --prerelease \
-              --title "TMS $TAG" \
-              --notes-file /tmp/release-notes.md
-          fi
+          printf '%s\n' "$notes" | sed "s/\${TAG}/$TAG/g" > /tmp/release-notes.md
+          gh release create "$TAG" \
+            --target "$GITHUB_SHA" \
+            --prerelease \
+            --title "TMS $TAG" \
+            --notes-file /tmp/release-notes.md
