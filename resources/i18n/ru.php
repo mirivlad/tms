@@ -161,6 +161,7 @@ return [
     'metadata.statuses.title' => 'Статусы',
     'metadata.statuses.help' => 'Порядок определяет колонки доски и списки выбора статуса. Статус по умолчанию и завершающий статус уникальны для каждого пользователя.',
     'metadata.statuses.add' => 'Добавить статус',
+    'metadata.statuses.restore' => 'Восстановить недостающие стандартные',
     'metadata.statuses.delete_confirm' => 'Удалить этот статус?',
     'metadata.types.title' => 'Типы задач',
     'metadata.types.help' => 'Дополнительная пользовательская классификация задач.',
