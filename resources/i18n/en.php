@@ -161,6 +161,7 @@ return [
     'metadata.statuses.title' => 'Statuses',
     'metadata.statuses.help' => 'Order controls board columns and status selectors. Default and completion roles are unique per user.',
     'metadata.statuses.add' => 'Add status',
+    'metadata.statuses.restore' => 'Restore missing defaults',
     'metadata.statuses.delete_confirm' => 'Delete this status?',
     'metadata.types.title' => 'Task types',
     'metadata.types.help' => 'Use task types as an additional owner-scoped classification.',
