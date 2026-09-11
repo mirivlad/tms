@@ -91,7 +91,7 @@
                     <tr>
                         <td>
                             <a class="task-title" href="/tasks/{{ task.id }}/edit">{{ task.title }}</a>
-                            {% if task.description %}<div class="muted task-preview">{{ task.description }}</div>{% endif %}
+                            {% if task.description %}<div class="muted task-preview">{{ task.description|striptags }}</div>{% endif %}
                         </td>
                         <td>
                             <span class="status-pill">

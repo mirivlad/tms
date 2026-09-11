@@ -1,6 +1,7 @@
 {% extends "app_layout.twig" %}
 
 {% block title %}{{ task ? t('task_form.edit_title') : t('task_form.new_title') }} · TMS{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/assets/task-form.css">{% endblock %}
 
 {% block content %}
 <div class="page-header">
@@ -15,7 +16,7 @@
 <section class="content-card form-card">
     {% if error %}<div class="alert">{{ error }}</div>{% endif %}
 
-    <form class="task-form" method="post" action="{{ task ? '/tasks/' ~ task.id : '/tasks' }}">
+    <form class="task-form" method="post" action="{{ task ? '/tasks/' ~ task.id : '/tasks' }}" data-task-form>
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
 
         <label class="field-wide">
@@ -23,11 +24,23 @@
             <input type="text" name="title" maxlength="255" required autofocus value="{{ form.title|default('') }}">
         </label>
 
-        <label class="field-wide">
-            {{ t('task_form.description') }}
-            <textarea name="description" rows="8" placeholder="{{ t('task_form.description_placeholder') }}">{{ form.description|default('') }}</textarea>
+        <div class="field-wide form-field rich-editor" data-rich-editor data-link-prompt="{{ t('task_form.rich_link_prompt') }}">
+            <label for="task-description-source">{{ t('task_form.description') }}</label>
+            <div class="rich-toolbar" role="toolbar" aria-label="{{ t('task_form.rich_toolbar_aria') }}">
+                <button type="button" class="secondary compact" data-command="bold" title="{{ t('task_form.rich_bold') }}"><strong>B</strong></button>
+                <button type="button" class="secondary compact" data-command="italic" title="{{ t('task_form.rich_italic') }}"><em>I</em></button>
+                <button type="button" class="secondary compact" data-command="underline" title="{{ t('task_form.rich_underline') }}"><u>U</u></button>
+                <button type="button" class="secondary compact" data-command="insertUnorderedList" title="{{ t('task_form.rich_bullets') }}">• {{ t('task_form.rich_list_short') }}</button>
+                <button type="button" class="secondary compact" data-command="insertOrderedList" title="{{ t('task_form.rich_numbered') }}">1. {{ t('task_form.rich_list_short') }}</button>
+                <button type="button" class="secondary compact" data-command="formatBlock" data-value="blockquote" title="{{ t('task_form.rich_quote') }}">❯</button>
+                <button type="button" class="secondary compact" data-command="createLink" title="{{ t('task_form.rich_link') }}">{{ t('task_form.rich_link_short') }}</button>
+                <button type="button" class="secondary compact" data-command="unlink" title="{{ t('task_form.rich_unlink') }}">× {{ t('task_form.rich_link_short') }}</button>
+                <button type="button" class="secondary compact" data-command="removeFormat" title="{{ t('task_form.rich_clear') }}">{{ t('task_form.rich_clear_short') }}</button>
+            </div>
+            <textarea id="task-description-source" class="rich-source" name="description" rows="8" placeholder="{{ t('task_form.description_placeholder') }}">{{ sanitize_task_html(form.description|default('')) }}</textarea>
+            <div class="rich-surface" contenteditable="true" role="textbox" aria-multiline="true" aria-label="{{ t('task_form.description') }}" data-placeholder="{{ t('task_form.description_placeholder') }}" hidden></div>
             <span class="field-help">{{ t('task_form.description_help') }}</span>
-        </label>
+        </div>
 
         <label>
             {{ t('task_form.status') }}
@@ -63,14 +76,15 @@
             <input type="datetime-local" name="deadline" value="{{ form.deadline|default('') }}">
         </label>
 
-        <label class="field-wide">
-            {{ t('task_form.customer') }}
-            <input type="text" name="customer" maxlength="255" list="customer-list" autocomplete="off" value="{{ form.customer|default('') }}" placeholder="{{ t('task_form.customer_placeholder') }}">
-            <datalist id="customer-list">
-                {% for customer in customers %}<option value="{{ customer.name }}"></option>{% endfor %}
-            </datalist>
+        <div class="field-wide form-field customer-autocomplete">
+            <label for="task-customer">{{ t('task_form.customer') }}</label>
+            <input id="task-customer" type="text" name="customer" maxlength="255" autocomplete="off"
+                   value="{{ form.customer|default('') }}" placeholder="{{ t('task_form.customer_placeholder') }}"
+                   data-customer-autocomplete data-search-url="/api/customers/search"
+                   aria-autocomplete="list" aria-controls="customer-suggestions" aria-expanded="false">
+            <div id="customer-suggestions" class="autocomplete-results" role="listbox" hidden></div>
             <span class="field-help">{{ t('task_form.customer_help') }}</span>
-        </label>
+        </div>
 
         <div class="form-actions field-wide">
             <button type="submit">{{ task ? t('task_form.save_changes') : t('task_form.create_task') }}</button>
@@ -79,3 +93,5 @@
     </form>
 </section>
 {% endblock %}
+
+{% block scripts %}<script src="/assets/task-form.js" defer></script>{% endblock %}

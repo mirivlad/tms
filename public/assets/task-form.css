@@ -1,0 +1,120 @@
+.form-field {
+    display: grid;
+    gap: 7px;
+}
+
+.rich-editor {
+    min-width: 0;
+}
+
+.rich-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    padding: 8px;
+    border: 1px solid #303844;
+    border-bottom: 0;
+    border-radius: 9px 9px 0 0;
+    background: #12171d;
+}
+
+.rich-toolbar button {
+    min-width: 36px;
+    min-height: 32px;
+}
+
+.rich-source,
+.rich-surface {
+    width: 100%;
+    min-height: 220px;
+    box-sizing: border-box;
+}
+
+.rich-surface {
+    overflow: auto;
+    padding: 12px 13px;
+    border: 1px solid #394452;
+    border-radius: 0 0 9px 9px;
+    background: #101419;
+    line-height: 1.55;
+    outline: none;
+}
+
+.rich-surface:focus {
+    border-color: #64748b;
+    box-shadow: 0 0 0 2px rgba(100, 116, 139, .18);
+}
+
+.rich-surface:empty::before {
+    content: attr(data-placeholder);
+    color: #718096;
+    pointer-events: none;
+}
+
+.rich-surface blockquote {
+    margin: 10px 0;
+    padding-left: 12px;
+    border-left: 3px solid #526071;
+}
+
+.rich-surface pre,
+.rich-surface code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.rich-surface pre {
+    overflow-x: auto;
+    padding: 10px;
+    border-radius: 7px;
+    background: #0b0f13;
+}
+
+.customer-autocomplete {
+    position: relative;
+}
+
+.autocomplete-results {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% - 26px);
+    left: 0;
+    right: 0;
+    max-height: 240px;
+    overflow-y: auto;
+    border: 1px solid #394452;
+    border-radius: 9px;
+    background: #151b22;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .28);
+}
+
+.autocomplete-option {
+    display: block;
+    width: 100%;
+    padding: 10px 12px;
+    border: 0;
+    border-bottom: 1px solid #252d36;
+    border-radius: 0;
+    background: transparent;
+    color: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.autocomplete-option:last-child {
+    border-bottom: 0;
+}
+
+.autocomplete-option:hover,
+.autocomplete-option.active {
+    background: #202934;
+}
+
+@media (max-width: 680px) {
+    .rich-toolbar {
+        gap: 4px;
+    }
+
+    .rich-toolbar button {
+        padding-inline: 8px;
+    }
+}

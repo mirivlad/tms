@@ -5,6 +5,7 @@
     "license": "AGPL-3.0-or-later",
     "require": {
         "php": "^8.2",
+        "ext-dom": "*",
         "ext-pdo": "*",
         "slim/slim": "^4.0",
         "slim/psr7": "^1.8",

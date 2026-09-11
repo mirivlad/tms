@@ -40,8 +40,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Validate board JavaScript
-        run: node --check public/assets/board.js
+      - name: Validate browser JavaScript
+        run: |
+          node --check public/assets/board.js
+          node --check public/assets/task-form.js
 
       - name: Validate Compose configuration
         run: docker compose config --quiet
@@ -224,6 +226,9 @@ jobs:
           test -n "$remember"
           curl --fail --silent --header "Cookie: tms_remember=$remember" \
             http://127.0.0.1:18080/dashboard | grep -q 'Task overview'
+
+      - name: Exercise rich task form parity
+        run: bash tests/smoke/task-form-parity.sh
 
       - name: Exercise metadata administration
         run: bash tests/smoke/metadata.sh

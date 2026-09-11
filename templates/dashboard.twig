@@ -31,7 +31,45 @@
     </a>
 </section>
 
-<section class="content-card">
+<section class="content-card" id="quick-add">
+    <div class="section-heading">
+        <div>
+            <h2>{{ t('quick_add.title') }}</h2>
+            <p class="muted">{{ t('quick_add.help') }}</p>
+        </div>
+    </div>
+
+    {% if quick_add_notice %}
+        <div class="{{ quick_add_notice.kind == 'error' ? 'alert' : 'muted' }}" role="status">
+            {{ quick_add_notice.message }}
+            {% if quick_add_notice.task_id|default(null) %}
+                · <a href="/tasks/{{ quick_add_notice.task_id }}/edit">{{ t('quick_add.open_task') }}</a>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <form class="task-form" method="post" action="/tasks/quick-add">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label>
+            {{ t('task_form.title') }}
+            <input type="text" name="title" maxlength="255" required placeholder="{{ t('quick_add.title_placeholder') }}">
+        </label>
+        <label>
+            {{ t('task_form.deadline') }}
+            <input type="datetime-local" name="deadline">
+        </label>
+        <label class="field-wide">
+            {{ t('task_form.description') }}
+            <textarea name="description" rows="2" maxlength="10000" placeholder="{{ t('quick_add.description_placeholder') }}"></textarea>
+        </label>
+        <div class="form-actions field-wide">
+            <button type="submit">{{ t('quick_add.submit') }}</button>
+            <span class="field-help">{{ t('quick_add.defaults_help') }}</span>
+        </div>
+    </form>
+</section>
+
+<section class="content-card" style="margin-top: 18px;">
     <div class="section-heading">
         <div>
             <h2>{{ t('dashboard.next_tasks') }}</h2>
