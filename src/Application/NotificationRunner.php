@@ -9,6 +9,7 @@ use Tms\Domain\Notification\NotificationSettingsRecord;
 use Tms\Domain\Notification\NotificationSettingsRepository;
 use Tms\Domain\Notification\NotificationTaskRepository;
 use Tms\Domain\Notification\SentNotificationRepository;
+use Tms\I18n\Translator;
 use Tms\Infrastructure\EmailSender;
 use Tms\Infrastructure\TelegramSender;
 
@@ -21,6 +22,7 @@ final class NotificationRunner
         private readonly EmailSender $email,
         private readonly TelegramSender $telegram,
         private readonly string $appUrl,
+        private readonly Translator $translator,
     ) {
     }
 
@@ -48,7 +50,7 @@ final class NotificationRunner
                     $settings,
                     'tomorrow',
                     'tomorrow:' . $start->format('Y-m-d'),
-                    'Tasks for tomorrow',
+                    $this->translator->trans('notifications.message.tomorrow'),
                     $tasks,
                     $stats,
                 );
@@ -62,7 +64,7 @@ final class NotificationRunner
                     $settings,
                     'overdue',
                     'overdue:' . $now->format('Y-m-d'),
-                    'Overdue tasks',
+                    $this->translator->trans('notifications.message.overdue'),
                     $tasks,
                     $stats,
                 );
@@ -83,7 +85,7 @@ final class NotificationRunner
                 $settings,
                 'digest',
                 'digest:' . $now->format('Y-m-d'),
-                'Task digest',
+                $this->translator->trans('notifications.message.digest'),
                 $tasks,
                 $stats,
                 true,
@@ -105,7 +107,7 @@ final class NotificationRunner
                         $settings,
                         'upcoming',
                         $key,
-                        'Upcoming task',
+                        $this->translator->trans('notifications.message.upcoming'),
                         [$task],
                         $stats,
                         false,
@@ -172,7 +174,7 @@ final class NotificationRunner
     {
         $lines = [$heading];
         if ($tasks === []) {
-            $lines[] = 'No matching tasks.';
+            $lines[] = $this->translator->trans('notifications.message.none');
         }
         foreach ($tasks as $task) {
             $lines[] = '- ' . $task['title'] . ' — ' . $task['deadline'] . ' — '
@@ -186,7 +188,11 @@ final class NotificationRunner
     {
         $html = '<h3>' . htmlspecialchars($heading, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</h3>';
         if ($tasks === []) {
-            return $html . '<p>No matching tasks.</p>';
+            return $html . '<p>' . htmlspecialchars(
+                $this->translator->trans('notifications.message.none'),
+                ENT_QUOTES | ENT_SUBSTITUTE,
+                'UTF-8',
+            ) . '</p>';
         }
         $html .= '<ul>';
         foreach ($tasks as $task) {
