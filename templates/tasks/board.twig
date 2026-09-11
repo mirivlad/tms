@@ -32,7 +32,7 @@
                             {% if task.deadline %}<span class="muted small">{{ task.deadline|date('Y-m-d H:i') }}</span>{% endif %}
                         </div>
                         <a class="task-card-title" href="/tasks/{{ task.id }}/edit">{{ task.title }}</a>
-                        {% if task.description %}<p class="task-card-description">{{ task.description }}</p>{% endif %}
+                        {% if task.description %}<p class="task-card-description">{{ task.description|striptags }}</p>{% endif %}
                         <div class="task-card-meta">
                             {% if type_map[task.typeId] is defined %}<span>{{ type_map[task.typeId].name }}</span>{% endif %}
                             {% if customer_map[task.customerId] is defined %}<span>{{ customer_map[task.customerId].name }}</span>{% endif %}
