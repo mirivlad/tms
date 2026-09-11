@@ -1,0 +1,69 @@
+name: Edge image
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out tested revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+
+      - name: Resolve immutable edge tag
+        id: image
+        shell: bash
+        run: |
+          set -euo pipefail
+          sha='${{ github.event.workflow_run.head_sha }}'
+          test -n "$sha"
+          echo "sha_tag=sha-${sha:0:12}" >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-qemu-action@v3
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and publish tested multi-arch image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ghcr.io/${{ github.repository }}:edge
+            ghcr.io/${{ github.repository }}:${{ steps.image.outputs.sha_tag }}
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.version=edge
+            org.opencontainers.image.revision=${{ github.event.workflow_run.head_sha }}
+
+      - name: Verify public multi-arch manifest and anonymous pull
+        env:
+          IMAGE: ghcr.io/${{ github.repository }}:edge
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker logout ghcr.io
+          manifest="$(docker buildx imagetools inspect "$IMAGE")"
+          grep -Fq 'linux/amd64' <<< "$manifest"
+          grep -Fq 'linux/arm64' <<< "$manifest"
+          docker pull "$IMAGE"
