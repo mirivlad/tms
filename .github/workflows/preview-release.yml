@@ -72,11 +72,13 @@ jobs:
         run: |
           set -euo pipefail
           notes=$(cat <<'EOF'
-          Public TMS preview intended for self-hosted UI/UX evaluation.
+          Public TMS preview intended for self-hosted feature-parity and UI evaluation.
 
           Included in this preview:
           - secure login, logout and rotating persistent login;
           - owner-isolated task storage and metadata;
+          - Russian and English UI catalogs with a runtime language switch;
+          - `APP_LOCALE` deployment default and locale-aware new-user metadata defaults;
           - dashboard and task list with filtering;
           - task create/edit/delete flow;
           - Kanban board with progressive drag-and-drop;
@@ -84,7 +86,7 @@ jobs:
           - MariaDB migrations and first-admin CLI bootstrap;
           - Docker Compose and an image-based Portainer Stack.
 
-          This is intentionally a prerelease, not the stable v0.1.0. Custom fields, attachments, notification integrations, settings UI and other donor functionality are still being migrated.
+          This is intentionally a prerelease, not the stable v0.1.0. Donor feature parity work continues with metadata administration, richer task editing, custom fields, attachments, notifications and user/admin flows.
 
           Container image:
           `ghcr.io/mirivlad/tms:${TAG}`
