@@ -72,6 +72,22 @@ textarea { resize: vertical; min-height: 110px; }
 .main-nav .nav-primary { background: #222a34; color: #eef5ff; }
 .topbar-actions { display: flex; align-items: center; gap: 14px; }
 .topbar-actions form { display: block; }
+.locale-switch { align-items: center; gap: 2px; color: #657386; }
+.topbar-actions form.locale-switch, .auth-card form.locale-switch { display: flex; }
+.locale-switch button.locale-choice {
+    min-width: auto;
+    padding: 2px 4px;
+    border: 0;
+    border-radius: 4px;
+    background: transparent;
+    color: var(--muted);
+    font-size: .78rem;
+    font-weight: 600;
+}
+.locale-switch button.locale-choice:hover,
+.locale-switch button.locale-choice.active { color: var(--text); background: transparent; }
+.locale-switch button.locale-choice.active { font-weight: 800; }
+.auth-locale-switch { justify-content: flex-end; margin: 0 0 14px; }
 .page { width: min(1480px, 100%); margin: 0 auto; padding: 30px 24px 48px; }
 .page-header { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
 .page-header p:last-child { margin-bottom: 0; }
