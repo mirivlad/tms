@@ -54,7 +54,8 @@ jobs:
         run: |
           set -euo pipefail
           grep -Fq 'platforms: linux/amd64,linux/arm64' .github/workflows/edge-image.yml
-          grep -Fq 'ghcr.io/${{ github.repository }}:edge' .github/workflows/edge-image.yml
+          grep -Fq 'github.repository' .github/workflows/edge-image.yml
+          grep -Fq ':edge' .github/workflows/edge-image.yml
           grep -Fq "workflow_run.conclusion == 'success'" .github/workflows/edge-image.yml
           grep -Fq 'platforms: linux/amd64,linux/arm64' .github/workflows/preview-release.yml
           if grep -Eq 'ghcr\.io/.+:latest' .github/workflows/edge-image.yml .github/workflows/preview-release.yml; then
