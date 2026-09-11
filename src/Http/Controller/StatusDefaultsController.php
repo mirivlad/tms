@@ -24,11 +24,7 @@ final class StatusDefaultsController
             return $response->withHeader('Location', '/login')->withStatus(302);
         }
 
-        $created = $this->bootstrap->restoreMissingStatuses($userId);
-        $_SESSION['metadata_notice'] = $created > 0
-            ? ['key' => 'metadata.statuses.restore_created', 'count' => $created]
-            : ['key' => 'metadata.statuses.restore_none', 'count' => 0];
-
+        $this->bootstrap->restoreMissingStatuses($userId);
         return $response->withHeader('Location', '/metadata#statuses')->withStatus(302);
     }
 }
