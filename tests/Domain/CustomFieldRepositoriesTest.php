@@ -7,6 +7,7 @@ namespace Tms\Tests\Domain;
 use DomainException;
 use PDO;
 use PHPUnit\Framework\TestCase;
+use Tms\Domain\CustomField\CustomFieldRecord;
 use Tms\Domain\CustomField\CustomFieldRepository;
 use Tms\Domain\CustomField\TaskCustomFieldValueRepository;
 
@@ -36,7 +37,7 @@ final class CustomFieldRepositoriesTest extends TestCase
         $foreignId = $this->fields->createForUser(2, 'Secret', 'text', [], false);
 
         self::assertSame([$ownId], array_map(
-            static fn ($field): int => $field->id,
+            static fn (CustomFieldRecord $field): int => $field->id,
             $this->fields->listForUser(1),
         ));
         self::assertNotNull($this->fields->findForUser(1, $ownId));
@@ -87,6 +88,22 @@ final class CustomFieldRepositoriesTest extends TestCase
         self::assertSame([], $this->values->listForTask(1, 10));
     }
 
+    public function testChangingSelectOptionsClearsValuesThatMayHaveBecomeInvalid(): void
+    {
+        $fieldId = $this->fields->createForUser(1, 'Environment', 'select', ['Prod', 'Stage'], false);
+        $this->values->replaceForTask(1, 10, [$fieldId => 'Stage']);
+
+        self::assertTrue($this->fields->updateForUser(
+            1,
+            $fieldId,
+            'Environment',
+            'select',
+            ['Prod'],
+            false,
+        ));
+        self::assertSame([], $this->values->listForTask(1, 10));
+    }
+
     public function testReorderingCannotIncludeAnotherUsersField(): void
     {
         $first = $this->fields->createForUser(1, 'First', 'text', [], false);
@@ -97,7 +114,10 @@ final class CustomFieldRepositoriesTest extends TestCase
         self::assertTrue($this->fields->reorderForUser(1, [$second, $first]));
         self::assertSame(
             [$second, $first],
-            array_map(static fn ($field): int => $field->id, $this->fields->listForUser(1)),
+            array_map(
+                static fn (CustomFieldRecord $field): int => $field->id,
+                $this->fields->listForUser(1),
+            ),
         );
     }
 
