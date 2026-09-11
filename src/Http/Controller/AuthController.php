@@ -59,7 +59,12 @@ final class AuthController
             ])->withStatus(401);
         }
 
+        // Authentication deliberately clears attacker-controlled pre-login session
+        // state. The locale is the one benign preference explicitly restored after
+        // the session id is rotated.
+        $locale = $this->translator->locale();
         $this->sessions->establish($user);
+        $this->translator->setLocale($locale);
 
         $existingCookie = $_COOKIE[$this->rememberCookieName] ?? null;
         if (is_string($existingCookie) && $existingCookie !== '') {
@@ -89,7 +94,9 @@ final class AuthController
         }
 
         setcookie($this->rememberCookieName, '', $this->cookiePolicy->expired());
+        $locale = $this->translator->locale();
         $this->sessions->clear();
+        $this->translator->setLocale($locale);
 
         return $response->withHeader('Location', '/login')->withStatus(302);
     }
