@@ -1,5 +1,9 @@
 -- Task attachments are private application data. The database records only a
 -- random storage key; original client filenames are never filesystem paths.
+-- The composite task key lets MariaDB enforce owner identity at the FK layer.
+
+ALTER TABLE tasks
+    ADD UNIQUE KEY uq_tasks_id_owner (id, created_by);
 
 CREATE TABLE attachments (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,

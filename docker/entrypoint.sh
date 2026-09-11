@@ -1,6 +1,11 @@
 #!/bin/sh
 set -eu
 
+attachment_storage="${ATTACHMENT_STORAGE_PATH:-/var/www/html/var/storage/attachments}"
+mkdir -p "$attachment_storage"
+chown www-data:www-data "$attachment_storage"
+chmod 0700 "$attachment_storage"
+
 attempt=1
 max_attempts=30
 

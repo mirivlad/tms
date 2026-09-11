@@ -41,6 +41,10 @@ services:
       SESSION_SAMESITE: ${SESSION_SAMESITE:-Lax}
       REMEMBER_COOKIE_NAME: ${REMEMBER_COOKIE_NAME:-tms_remember}
       REMEMBER_DAYS: ${REMEMBER_DAYS:-30}
+      ATTACHMENT_STORAGE_PATH: ${ATTACHMENT_STORAGE_PATH:-/var/www/html/var/storage/attachments}
+      ATTACHMENT_MAX_BYTES: ${ATTACHMENT_MAX_BYTES:-10485760}
+    volumes:
+      - tms-attachments:/var/www/html/var/storage/attachments
     healthcheck:
       test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1/health') === false ? 1 : 0);"]
       interval: 30s
@@ -50,3 +54,4 @@ services:
 
 volumes:
   tms-db:
+  tms-attachments:

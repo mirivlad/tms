@@ -109,6 +109,60 @@
     background: #202934;
 }
 
+.attachment-card {
+    margin-top: 18px;
+}
+
+.attachment-heading h2 {
+    margin: 0 0 4px;
+}
+
+.attachment-upload {
+    display: flex;
+    align-items: end;
+    gap: 12px;
+    margin-top: 16px;
+}
+
+.attachment-upload label {
+    flex: 1;
+}
+
+.attachment-list {
+    display: grid;
+    gap: 8px;
+    margin-top: 18px;
+}
+
+.attachment-empty {
+    margin: 18px 0 0;
+}
+
+.attachment-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 11px 12px;
+    border: 1px solid #303844;
+    border-radius: 9px;
+    background: #12171d;
+}
+
+.attachment-details {
+    min-width: 0;
+    display: grid;
+    gap: 3px;
+}
+
+.attachment-name {
+    overflow-wrap: anywhere;
+}
+
+.attachment-meta {
+    font-size: .86rem;
+}
+
 @media (max-width: 680px) {
     .rich-toolbar {
         gap: 4px;
@@ -116,5 +170,17 @@
 
     .rich-toolbar button {
         padding-inline: 8px;
+    }
+
+    .attachment-upload,
+    .attachment-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .attachment-row form,
+    .attachment-row button,
+    .attachment-upload button {
+        width: 100%;
     }
 }
