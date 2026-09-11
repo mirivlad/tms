@@ -7,6 +7,7 @@ on:
       - Dockerfile
       - compose.portainer.yaml
       - README.md
+      - .github/workflows/edge-image.yml
       - .github/workflows/preview-release.yml
       - .github/workflows/release-config.yml
   push:
@@ -16,6 +17,7 @@ on:
       - Dockerfile
       - compose.portainer.yaml
       - README.md
+      - .github/workflows/edge-image.yml
       - .github/workflows/preview-release.yml
       - .github/workflows/release-config.yml
 
@@ -46,3 +48,16 @@ jobs:
             echo "compose.portainer.yaml must default to ${expected}" >&2
             exit 1
           }
+
+      - name: Check publishing policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'platforms: linux/amd64,linux/arm64' .github/workflows/edge-image.yml
+          grep -Fq 'ghcr.io/${{ github.repository }}:edge' .github/workflows/edge-image.yml
+          grep -Fq 'github.event.workflow_run.conclusion == '\''success'\''' .github/workflows/edge-image.yml
+          grep -Fq 'platforms: linux/amd64,linux/arm64' .github/workflows/preview-release.yml
+          if grep -Eq 'ghcr\.io/.+:latest' .github/workflows/edge-image.yml .github/workflows/preview-release.yml; then
+            echo 'latest must not be published before the stable release.' >&2
+            exit 1
+          fi
