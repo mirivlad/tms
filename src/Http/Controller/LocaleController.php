@@ -42,7 +42,7 @@ final class LocaleController
         }
 
         $path = $parts['path'] ?? '/';
-        if (!is_string($path) || $path === '' || !str_starts_with($path, '/') || str_starts_with($path, '//')) {
+        if ($path === '' || !str_starts_with($path, '/') || str_starts_with($path, '//')) {
             return '/';
         }
 
