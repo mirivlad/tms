@@ -225,6 +225,9 @@ jobs:
           curl --fail --silent --header "Cookie: tms_remember=$remember" \
             http://127.0.0.1:18080/dashboard | grep -q 'Task overview'
 
+      - name: Exercise metadata administration
+        run: bash tests/smoke/metadata.sh
+
       - name: Show stack state on failure
         if: failure()
         run: |
