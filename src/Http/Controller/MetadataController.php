@@ -60,8 +60,8 @@ final class MetadataController
                 $this->checked($data, 'is_completion'),
                 $this->checked($data, 'show_on_board'),
             );
-        } catch (PDOException) {
-            return $this->error($request, $response, 'validation.metadata_duplicate_name', 'statuses');
+        } catch (PDOException $exception) {
+            return $this->duplicateOrRethrow($exception, $request, $response, 'statuses');
         }
 
         return $this->redirect($response, 'statuses');
@@ -102,8 +102,8 @@ final class MetadataController
                 $color,
                 $this->checked($data, 'show_on_board'),
             );
-        } catch (PDOException) {
-            return $this->error($request, $response, 'validation.metadata_duplicate_name', 'statuses');
+        } catch (PDOException $exception) {
+            return $this->duplicateOrRethrow($exception, $request, $response, 'statuses');
         }
 
         return $this->redirect($response, 'statuses');
@@ -187,8 +187,8 @@ final class MetadataController
 
         try {
             $this->taskTypes->createForUser($this->userId(), $name, $description);
-        } catch (PDOException) {
-            return $this->error($request, $response, 'validation.metadata_duplicate_name', 'types');
+        } catch (PDOException $exception) {
+            return $this->duplicateOrRethrow($exception, $request, $response, 'types');
         }
 
         return $this->redirect($response, 'types');
@@ -217,8 +217,8 @@ final class MetadataController
 
         try {
             $this->taskTypes->updateForUser($this->userId(), $typeId, $name, $description);
-        } catch (PDOException) {
-            return $this->error($request, $response, 'validation.metadata_duplicate_name', 'types');
+        } catch (PDOException $exception) {
+            return $this->duplicateOrRethrow($exception, $request, $response, 'types');
         }
 
         return $this->redirect($response, 'types');
@@ -274,8 +274,8 @@ final class MetadataController
 
         try {
             $this->customers->createForUser($this->userId(), $name);
-        } catch (PDOException) {
-            return $this->error($request, $response, 'validation.metadata_duplicate_name', 'customers');
+        } catch (PDOException $exception) {
+            return $this->duplicateOrRethrow($exception, $request, $response, 'customers');
         }
 
         return $this->redirect($response, 'customers');
@@ -303,8 +303,8 @@ final class MetadataController
 
         try {
             $this->customers->updateForUser($this->userId(), $customerId, $name);
-        } catch (PDOException) {
-            return $this->error($request, $response, 'validation.metadata_duplicate_name', 'customers');
+        } catch (PDOException $exception) {
+            return $this->duplicateOrRethrow($exception, $request, $response, 'customers');
         }
 
         return $this->redirect($response, 'customers');
@@ -327,9 +327,7 @@ final class MetadataController
         return $this->redirect($response, 'customers');
     }
 
-    /**
-     * @param list<StatusRecord> $records
-     */
+    /** @param list<StatusRecord> $records */
     private function moveStatusRecord(array $records, int $statusId, string $direction): bool
     {
         $ids = array_map(static fn (StatusRecord $record): int => $record->id, $records);
@@ -347,9 +345,7 @@ final class MetadataController
         return $this->statuses->reorderForUser($this->userId(), $ids);
     }
 
-    /**
-     * @param list<TaskTypeRecord> $records
-     */
+    /** @param list<TaskTypeRecord> $records */
     private function moveTypeRecord(array $records, int $typeId, string $direction): bool
     {
         $ids = array_map(static fn (TaskTypeRecord $record): int => $record->id, $records);
@@ -379,7 +375,7 @@ final class MetadataController
             'username' => $this->sessions->currentUsername() ?? '',
             'statuses' => $this->statuses->listForUser($this->userId()),
             'task_types' => $this->taskTypes->listForUser($this->userId()),
-            'customers' => $this->customers->listForUser($this->userId(), 500),
+            'customers' => $this->customers->listAllForUser($this->userId()),
             'error' => $error,
             'error_section' => $section,
         ])->withStatus($status);
@@ -399,6 +395,34 @@ final class MetadataController
             $section,
             $status,
         );
+    }
+
+    private function duplicateOrRethrow(
+        PDOException $exception,
+        ServerRequestInterface $request,
+        ResponseInterface $response,
+        string $section,
+    ): ResponseInterface {
+        if (!$this->isDuplicateConstraint($exception)) {
+            throw $exception;
+        }
+
+        return $this->error($request, $response, 'validation.metadata_duplicate_name', $section);
+    }
+
+    private function isDuplicateConstraint(PDOException $exception): bool
+    {
+        $driverCode = is_array($exception->errorInfo)
+            ? (int) ($exception->errorInfo[1] ?? 0)
+            : 0;
+
+        if ($driverCode === 1062) {
+            return true;
+        }
+
+        $message = strtolower($exception->getMessage());
+        return (string) $exception->getCode() === '23000'
+            && (str_contains($message, 'unique') || str_contains($message, 'duplicate'));
     }
 
     private function redirect(ResponseInterface $response, string $section): ResponseInterface
