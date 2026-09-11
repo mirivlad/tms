@@ -59,10 +59,11 @@ services:
     image: *tms-image
     restart: unless-stopped
     depends_on:
-      db:
+      app:
         condition: service_healthy
     environment:
       <<: *app-environment
+      TMS_SKIP_MIGRATIONS: "true"
       NOTIFICATION_INTERVAL_SECONDS: ${NOTIFICATION_INTERVAL_SECONDS:-60}
     command: ["sh", "-c", "while true; do php /var/www/html/bin/notify.php; sleep $${NOTIFICATION_INTERVAL_SECONDS:-60}; done"]
 
