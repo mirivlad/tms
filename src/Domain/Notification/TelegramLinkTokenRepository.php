@@ -7,6 +7,7 @@ namespace Tms\Domain\Notification;
 use DateInterval;
 use DateTimeImmutable;
 use PDO;
+use Throwable;
 
 final class TelegramLinkTokenRepository
 {
@@ -21,18 +22,27 @@ final class TelegramLinkTokenRepository
         $hash = hash('sha256', $verifier);
         $expiresAt = $now->add($ttl)->format('Y-m-d H:i:s');
 
-        $stmt = $this->db->prepare(
-            'INSERT INTO telegram_link_tokens (selector, user_id, verifier_hash, expires_at, consumed_at)
-             VALUES (:selector, :user_id, :verifier_hash, :expires_at, NULL)
-             ON DUPLICATE KEY UPDATE selector = VALUES(selector), verifier_hash = VALUES(verifier_hash),
-                 expires_at = VALUES(expires_at), consumed_at = NULL, created_at = CURRENT_TIMESTAMP'
-        );
-        $stmt->execute([
-            'selector' => $selector,
-            'user_id' => $userId,
-            'verifier_hash' => $hash,
-            'expires_at' => $expiresAt,
-        ]);
+        $this->db->beginTransaction();
+        try {
+            $delete = $this->db->prepare('DELETE FROM telegram_link_tokens WHERE user_id = :user_id');
+            $delete->execute(['user_id' => $userId]);
+            $insert = $this->db->prepare(
+                'INSERT INTO telegram_link_tokens (selector, user_id, verifier_hash, expires_at, consumed_at)
+                 VALUES (:selector, :user_id, :verifier_hash, :expires_at, NULL)'
+            );
+            $insert->execute([
+                'selector' => $selector,
+                'user_id' => $userId,
+                'verifier_hash' => $hash,
+                'expires_at' => $expiresAt,
+            ]);
+            $this->db->commit();
+        } catch (Throwable $error) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $error;
+        }
         return $selector . '.' . $verifier;
     }
 

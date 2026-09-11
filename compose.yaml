@@ -25,7 +25,7 @@ services:
         condition: service_healthy
     ports:
       - "${TMS_PORT:-8080}:80"
-    environment:
+    environment: &app-environment
       APP_ENV: production
       APP_DEBUG: ${APP_DEBUG:-false}
       APP_URL: ${APP_URL:?Set APP_URL to the browser-visible TMS URL}
@@ -43,6 +43,10 @@ services:
       REMEMBER_DAYS: ${REMEMBER_DAYS:-30}
       ATTACHMENT_STORAGE_PATH: ${ATTACHMENT_STORAGE_PATH:-/var/www/html/var/storage/attachments}
       ATTACHMENT_MAX_BYTES: ${ATTACHMENT_MAX_BYTES:-10485760}
+      NOTIFICATION_SECRET: ${NOTIFICATION_SECRET:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_NAME: ${TELEGRAM_BOT_NAME:-}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
     volumes:
       - tms-attachments:/var/www/html/var/storage/attachments
     healthcheck:
@@ -51,6 +55,18 @@ services:
       timeout: 5s
       retries: 3
       start_period: 20s
+
+  notifier:
+    build:
+      context: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      <<: *app-environment
+      NOTIFICATION_INTERVAL_SECONDS: ${NOTIFICATION_INTERVAL_SECONDS:-60}
+    command: ["sh", "-c", "while true; do php /var/www/html/bin/notify.php; sleep $${NOTIFICATION_INTERVAL_SECONDS:-60}; done"]
 
 volumes:
   tms-db:

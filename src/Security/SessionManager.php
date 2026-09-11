@@ -48,4 +48,10 @@ final class SessionManager
         $username = $_SESSION['username'] ?? null;
         return $this->isAuthenticated() && is_string($username) ? $username : null;
     }
+
+    public function currentRole(): ?string
+    {
+        $role = $_SESSION['role'] ?? null;
+        return $this->isAuthenticated() && is_string($role) ? $role : null;
+    }
 }
