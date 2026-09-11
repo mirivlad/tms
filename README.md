@@ -6,19 +6,19 @@ TMS is a lightweight, self-hosted task management system for people who want to 
 
 ## Current preview
 
-The current published preview is `v0.1.0-preview.2`.
+The current published preview is `v0.1.0-preview.3`.
 
 Container image:
 
 ```text
-ghcr.io/mirivlad/tms:v0.1.0-preview.2
+ghcr.io/mirivlad/tms:v0.1.0-preview.3
 ```
 
 The `preview` image tag follows the newest preview build. For a deployment you want to keep stable while evaluating it, prefer the versioned tag above.
 
 This is intentionally a prerelease for deployment and UI/UX evaluation, not the final `v0.1.0`.
 
-`v0.1.0-preview.2` supersedes the first preview by applying `APP_TIMEZONE` consistently to PHP and each application database session, so task timestamps, overdue calculations and calendar rendering share the same configured wall-clock timezone.
+`v0.1.0-preview.3` adds the localization foundation: complete Russian and English UI catalogs, a CSRF-protected runtime language switch, `APP_LOCALE`, localized validation/calendar/priority text and locale-aware metadata defaults for newly created users. It retains the timezone consistency fixes from preview.2.
 
 ## Direction
 
@@ -129,7 +129,7 @@ Migrations run automatically on startup, so there is no SQL dump to import. Pers
 To pin another image explicitly, set for example:
 
 ```text
-TMS_IMAGE=ghcr.io/mirivlad/tms:v0.1.0-preview.2
+TMS_IMAGE=ghcr.io/mirivlad/tms:v0.1.0-preview.3
 ```
 
 ## Native development bootstrap
