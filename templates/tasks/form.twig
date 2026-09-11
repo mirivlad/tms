@@ -86,6 +86,60 @@
             <span class="field-help">{{ t('task_form.customer_help') }}</span>
         </div>
 
+        {% if custom_fields is not empty %}
+            <div class="field-wide custom-fields-heading">
+                <h2>{{ t('task_form.custom_fields_title') }}</h2>
+                <p class="muted">{{ t('task_form.custom_fields_help') }}</p>
+            </div>
+
+            {% for field in custom_fields %}
+                {% set value = custom_form_values[field.id]|default(null) %}
+                {% set required_mark = field.isRequired ? ' *' : '' %}
+
+                {% if field.type == 'textarea' %}
+                    <label class="field-wide">
+                        {{ field.name }}{{ required_mark }}
+                        <textarea name="custom_fields[{{ field.id }}]" rows="4" {{ field.isRequired ? 'required' : '' }}>{{ value|default('') }}</textarea>
+                    </label>
+                {% elseif field.type == 'select' %}
+                    <label>
+                        {{ field.name }}{{ required_mark }}
+                        <select name="custom_fields[{{ field.id }}]" {{ field.isRequired ? 'required' : '' }}>
+                            <option value="">{{ t('custom_fields.no_value') }}</option>
+                            {% for option in field.options %}
+                                <option value="{{ option }}" {{ value == option ? 'selected' : '' }}>{{ option }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                {% elseif field.type == 'money' %}
+                    <label>
+                        {{ field.name }}{{ required_mark }}
+                        <input type="text" inputmode="decimal" name="custom_fields[{{ field.id }}]" value="{{ value|default('') }}" placeholder="0.00" {{ field.isRequired ? 'required' : '' }}>
+                    </label>
+                {% elseif field.type == 'checkbox' %}
+                    <label class="checkbox-inline custom-checkbox">
+                        <input type="checkbox" name="custom_fields[{{ field.id }}]" value="1" {{ value ? 'checked' : '' }} {{ field.isRequired ? 'required' : '' }}>
+                        {{ field.name }}{{ required_mark }}
+                    </label>
+                {% elseif field.type == 'checkbox_list' %}
+                    <fieldset class="custom-checkbox-list {{ field.isRequired ? 'is-required' : '' }}">
+                        <legend>{{ field.name }}{{ required_mark }}</legend>
+                        {% for option in field.options %}
+                            <label class="checkbox-inline">
+                                <input type="checkbox" name="custom_fields[{{ field.id }}][]" value="{{ option }}" {{ option in (value|default([])) ? 'checked' : '' }}>
+                                {{ option }}
+                            </label>
+                        {% endfor %}
+                    </fieldset>
+                {% else %}
+                    <label>
+                        {{ field.name }}{{ required_mark }}
+                        <input type="text" name="custom_fields[{{ field.id }}]" maxlength="1000" value="{{ value|default('') }}" {{ field.isRequired ? 'required' : '' }}>
+                    </label>
+                {% endif %}
+            {% endfor %}
+        {% endif %}
+
         <div class="form-actions field-wide">
             <button type="submit">{{ task ? t('task_form.save_changes') : t('task_form.create_task') }}</button>
             <a class="button-link secondary-link" href="/tasks">{{ t('common.cancel') }}</a>

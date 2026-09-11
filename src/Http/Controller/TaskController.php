@@ -10,6 +10,10 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
 use Tms\Domain\Customer\CustomerRepository;
+use Tms\Domain\CustomField\CustomFieldRecord;
+use Tms\Domain\CustomField\CustomFieldRepository;
+use Tms\Domain\CustomField\CustomFieldValueCodec;
+use Tms\Domain\CustomField\TaskCustomFieldValueRepository;
 use Tms\Domain\Status\StatusRecord;
 use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRecord;
@@ -34,6 +38,9 @@ final class TaskController
         private readonly StatusRepository $statuses,
         private readonly TaskTypeRepository $taskTypes,
         private readonly CustomerRepository $customers,
+        private readonly CustomFieldRepository $customFields,
+        private readonly TaskCustomFieldValueRepository $customValues,
+        private readonly CustomFieldValueCodec $customValueCodec,
         private readonly Translator $translator,
     ) {
     }
@@ -60,11 +67,20 @@ final class TaskController
             overdue: $overdue,
         );
 
+        $fields = $this->customFields->listForUser($userId);
+        $customFilters = $this->customFilters($query, $fields);
+        $taskIds = array_map(static fn (TaskRecord $task): int => $task->id, $tasks);
+        $valuesByTask = $this->customValues->listForTasks($userId, $taskIds);
+        $tasks = $this->filterByCustomFields($tasks, $fields, $valuesByTask, $customFilters);
+
         return $this->view->render($response, 'tasks/index.twig', $this->commonViewData($request) + [
             'tasks' => $tasks,
             'status_map' => $this->statusMap($userId),
             'type_map' => $this->typeMap($userId),
             'customer_map' => $this->customerMap($userId),
+            'custom_fields' => $fields,
+            'custom_values' => $valuesByTask,
+            'custom_filters' => $customFilters,
             'filters' => [
                 'status_id' => $statusId,
                 'type_id' => $typeId,
@@ -170,6 +186,7 @@ final class TaskController
             $input = $this->taskInput($body);
             $userId = $this->userId();
             $this->assertMetadataForUser($userId, $input['status_id'], $input['type_id']);
+            $customInput = $this->customInput($body, $this->customFields->listForUser($userId));
             $customerId = $this->resolveCustomer($userId, $input['customer']);
 
             $taskId = $this->tasks->createForUser(
@@ -182,6 +199,7 @@ final class TaskController
                 $input['priority'],
                 $customerId,
             );
+            $this->customValues->replaceForTask($userId, $taskId, $customInput);
 
             return $response->withHeader('Location', '/tasks/' . $taskId . '/edit')->withStatus(302);
         } catch (DomainException $error) {
@@ -203,6 +221,7 @@ final class TaskController
         try {
             $input = $this->taskInput($body);
             $this->assertMetadataForUser($userId, $input['status_id'], $input['type_id']);
+            $customInput = $this->customInput($body, $this->customFields->listForUser($userId));
             $customerId = $this->resolveCustomer($userId, $input['customer']);
 
             $this->tasks->updateForUser(
@@ -216,6 +235,7 @@ final class TaskController
                 $input['priority'],
                 $customerId,
             );
+            $this->customValues->replaceForTask($userId, $taskId, $customInput);
 
             return $response->withHeader('Location', '/tasks')->withStatus(302);
         } catch (DomainException $error) {
@@ -241,9 +261,7 @@ final class TaskController
         return $response->withHeader('Location', '/board')->withStatus(302);
     }
 
-    /**
-     * @param array<string, mixed> $formData
-     */
+    /** @param array<string, mixed> $formData */
     private function renderForm(
         ServerRequestInterface $request,
         ResponseInterface $response,
@@ -253,14 +271,17 @@ final class TaskController
         int $status = 200,
     ): ResponseInterface {
         $userId = $this->userId();
+        $fields = $this->customFields->listForUser($userId);
         $response = $response->withStatus($status);
+
         return $this->view->render($response, 'tasks/form.twig', $this->commonViewData($request) + [
             'task' => $task,
             'form' => $formData,
             'error' => $error,
             'statuses' => $this->statuses->listForUser($userId),
             'types' => $this->taskTypes->listForUser($userId),
-            'customers' => $this->customers->listForUser($userId, 500),
+            'custom_fields' => $fields,
+            'custom_form_values' => $this->customFormValues($formData, $task, $fields),
         ]);
     }
 
@@ -299,6 +320,142 @@ final class TaskController
             'priority' => self::PRIORITIES[$priorityName],
             'customer' => $customer,
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $body
+     * @param list<CustomFieldRecord> $fields
+     * @return array<int, string|null>
+     */
+    private function customInput(array $body, array $fields): array
+    {
+        $submitted = is_array($body['custom_fields'] ?? null) ? $body['custom_fields'] : [];
+        $values = [];
+        foreach ($fields as $field) {
+            $raw = $submitted[$field->id] ?? $submitted[(string) $field->id] ?? null;
+            try {
+                $values[$field->id] = $this->customValueCodec->encode($field, $raw);
+            } catch (DomainException) {
+                throw new DomainException($this->translator->trans(
+                    'validation.custom_field_value_invalid',
+                    ['field' => $field->name],
+                ));
+            }
+        }
+        return $values;
+    }
+
+    /**
+     * @param array<string, mixed> $formData
+     * @param list<CustomFieldRecord> $fields
+     * @return array<int, mixed>
+     */
+    private function customFormValues(array $formData, ?TaskRecord $task, array $fields): array
+    {
+        if (is_array($formData['custom_fields'] ?? null)) {
+            $values = [];
+            foreach ($formData['custom_fields'] as $fieldId => $value) {
+                if (ctype_digit((string) $fieldId)) {
+                    $values[(int) $fieldId] = $value;
+                }
+            }
+            return $values;
+        }
+
+        if ($task === null) {
+            return [];
+        }
+
+        $stored = $this->customValues->listForTask($this->userId(), $task->id);
+        $values = [];
+        foreach ($fields as $field) {
+            $value = $stored[$field->id] ?? null;
+            if ($field->type === 'checkbox') {
+                $values[$field->id] = $value === '1';
+            } elseif ($field->type === 'checkbox_list') {
+                $values[$field->id] = $this->customValueCodec->selectedOptions($field, $value);
+            } else {
+                $values[$field->id] = $value ?? '';
+            }
+        }
+        return $values;
+    }
+
+    /**
+     * @param array<string, mixed> $query
+     * @param list<CustomFieldRecord> $fields
+     * @return array<int, string>
+     */
+    private function customFilters(array $query, array $fields): array
+    {
+        $raw = is_array($query['custom'] ?? null) ? $query['custom'] : [];
+        $owned = [];
+        foreach ($fields as $field) {
+            $owned[$field->id] = true;
+        }
+
+        $filters = [];
+        foreach ($raw as $fieldId => $value) {
+            if (!ctype_digit((string) $fieldId) || !is_scalar($value)) {
+                continue;
+            }
+            $id = (int) $fieldId;
+            $value = trim((string) $value);
+            if ($value !== '' && isset($owned[$id])) {
+                $filters[$id] = $value;
+            }
+        }
+        return $filters;
+    }
+
+    /**
+     * @param list<TaskRecord> $tasks
+     * @param list<CustomFieldRecord> $fields
+     * @param array<int, array<int, string>> $valuesByTask
+     * @param array<int, string> $filters
+     * @return list<TaskRecord>
+     */
+    private function filterByCustomFields(
+        array $tasks,
+        array $fields,
+        array $valuesByTask,
+        array $filters,
+    ): array {
+        if ($filters === []) {
+            return $tasks;
+        }
+
+        $fieldsById = [];
+        foreach ($fields as $field) {
+            $fieldsById[$field->id] = $field;
+        }
+
+        return array_values(array_filter($tasks, function (TaskRecord $task) use ($fieldsById, $valuesByTask, $filters): bool {
+            foreach ($filters as $fieldId => $needle) {
+                $field = $fieldsById[$fieldId] ?? null;
+                if (!$field instanceof CustomFieldRecord) {
+                    return false;
+                }
+                $stored = $valuesByTask[$task->id][$fieldId] ?? null;
+                if (!$this->customValueMatches($field, $stored, $needle)) {
+                    return false;
+                }
+            }
+            return true;
+        }));
+    }
+
+    private function customValueMatches(CustomFieldRecord $field, ?string $stored, string $needle): bool
+    {
+        if ($stored === null) {
+            return false;
+        }
+
+        return match ($field->type) {
+            'text', 'textarea' => mb_stripos($stored, $needle) !== false,
+            'checkbox_list' => in_array($needle, $this->customValueCodec->selectedOptions($field, $stored), true),
+            default => $stored === $needle,
+        };
     }
 
     private function assertMetadataForUser(int $userId, int $statusId, ?int $typeId): void
@@ -383,7 +540,7 @@ final class TaskController
     private function customerMap(int $userId): array
     {
         $map = [];
-        foreach ($this->customers->listForUser($userId, 500) as $customer) {
+        foreach ($this->customers->listAllForUser($userId) as $customer) {
             $map[$customer->id] = $customer;
         }
         return $map;

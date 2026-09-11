@@ -1,0 +1,50 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'nav.custom_fields' => 'Поля',
+    'common.yes' => 'Да',
+    'common.no' => 'Нет',
+
+    'custom_fields.page_title' => 'Дополнительные поля',
+    'custom_fields.eyebrow' => 'Настройка',
+    'custom_fields.title' => 'Дополнительные поля',
+    'custom_fields.subtitle' => 'Добавляйте собственные структурированные поля в форму задачи, фильтры и список задач.',
+    'custom_fields.name' => 'Название',
+    'custom_fields.type' => 'Тип поля',
+    'custom_fields.options' => 'Варианты',
+    'custom_fields.options_placeholder' => 'Один вариант на строку',
+    'custom_fields.options_help' => 'Варианты обязательны только для выпадающего списка и списка флажков. При смене типа поля уже сохранённые значения задач удаляются.',
+    'custom_fields.required' => 'Обязательное',
+    'custom_fields.required_badge' => 'обязательное',
+    'custom_fields.add' => 'Добавить поле',
+    'custom_fields.configured' => 'Настроенные поля',
+    'custom_fields.order_help' => 'Порядок определяет расположение полей в форме и колонок в списке задач.',
+    'custom_fields.empty' => 'Дополнительных полей пока нет.',
+    'custom_fields.empty_help' => 'Добавьте поле выше, если встроенных параметров задачи недостаточно.',
+    'custom_fields.delete_confirm' => 'Удалить это поле и все сохранённые для задач значения?',
+    'custom_fields.no_value' => 'Без значения',
+    'custom_fields.any_value' => 'Любое значение',
+    'custom_fields.filter_placeholder' => 'Значение фильтра',
+    'custom_fields.type.text' => 'Текст',
+    'custom_fields.type.textarea' => 'Многострочный текст',
+    'custom_fields.type.select' => 'Выпадающий список',
+    'custom_fields.type.money' => 'Денежная сумма',
+    'custom_fields.type.checkbox' => 'Флажок',
+    'custom_fields.type.checkbox_list' => 'Список флажков',
+
+    'task_form.custom_fields_title' => 'Дополнительные поля',
+    'task_form.custom_fields_help' => 'Поля, настроенные для вашей учётной записи. Звёздочкой отмечены обязательные значения.',
+
+    'validation.custom_field_duplicate_name' => 'Поле с таким названием уже существует.',
+    'validation.custom_field_not_found' => 'Это дополнительное поле недоступно.',
+    'validation.custom_field_move_invalid' => 'Некорректное изменение порядка дополнительных полей.',
+    'validation.custom_field_name' => 'Название дополнительного поля должно содержать от 1 до 96 символов.',
+    'validation.custom_field_type' => 'Неподдерживаемый тип дополнительного поля.',
+    'validation.custom_field_option_length' => 'Вариант дополнительного поля не может быть длиннее 128 символов.',
+    'validation.custom_field_options_required' => 'Для выпадающего списка и списка флажков нужен хотя бы один вариант.',
+    'validation.custom_field_options_count' => 'Дополнительное поле не может содержать больше 50 вариантов.',
+    'validation.custom_field_invalid' => 'Некорректная настройка дополнительного поля.',
+    'validation.custom_field_value_invalid' => 'Некорректное значение поля «{field}».',
+];
