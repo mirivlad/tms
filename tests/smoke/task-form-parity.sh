@@ -71,7 +71,7 @@ update_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
   --cookie "$cookies" \
   --data-urlencode "_csrf=$csrf" \
   --data-urlencode 'title=CI rich task updated' \
-  --data-urlencode '<description=<p onclick="alert(9)">Edited <em>safe</em></p>' \
+  --data-urlencode 'description=<p onclick="alert(9)">Edited <em>safe</em></p>' \
   --data-urlencode "status_id=$default_status" \
   --data-urlencode 'priority=high' \
   --data-urlencode 'customer=Shared Lookup Own' \
