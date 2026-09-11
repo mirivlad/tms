@@ -55,6 +55,30 @@
                 {% endfor %}
             </select>
         </label>
+
+        {% for field in custom_fields %}
+            {% set filter_value = custom_filters[field.id]|default('') %}
+            <label class="custom-filter">
+                {{ field.name }}
+                {% if field.type == 'select' or field.type == 'checkbox_list' %}
+                    <select name="custom[{{ field.id }}]">
+                        <option value="">{{ t('custom_fields.any_value') }}</option>
+                        {% for option in field.options %}
+                            <option value="{{ option }}" {{ filter_value == option ? 'selected' : '' }}>{{ option }}</option>
+                        {% endfor %}
+                    </select>
+                {% elseif field.type == 'checkbox' %}
+                    <select name="custom[{{ field.id }}]">
+                        <option value="">{{ t('custom_fields.any_value') }}</option>
+                        <option value="1" {{ filter_value == '1' ? 'selected' : '' }}>{{ t('common.yes') }}</option>
+                        <option value="0" {{ filter_value == '0' ? 'selected' : '' }}>{{ t('common.no') }}</option>
+                    </select>
+                {% else %}
+                    <input type="text" name="custom[{{ field.id }}]" value="{{ filter_value }}" placeholder="{{ t('custom_fields.filter_placeholder') }}">
+                {% endif %}
+            </label>
+        {% endfor %}
+
         <label class="checkbox-inline">
             <input type="checkbox" name="overdue" value="1" {{ filters.overdue ? 'checked' : '' }}>
             {{ t('tasks.overdue_only') }}
@@ -82,6 +106,7 @@
                         <th>{{ t('tasks.table.type') }}</th>
                         <th>{{ t('tasks.table.priority') }}</th>
                         <th>{{ t('tasks.table.customer') }}</th>
+                        {% for field in custom_fields %}<th>{{ field.name }}</th>{% endfor %}
                         <th>{{ t('tasks.table.deadline') }}</th>
                         <th></th>
                     </tr>
@@ -102,6 +127,18 @@
                         <td>{{ type_map[task.typeId].name|default('—') }}</td>
                         <td><span class="priority priority-{{ task.priority }}">{{ priority_labels[task.priority]|default(t('priority.medium')) }}</span></td>
                         <td>{{ customer_map[task.customerId].name|default('—') }}</td>
+                        {% for field in custom_fields %}
+                            {% set stored = custom_values[task.id][field.id]|default(null) %}
+                            <td class="custom-value-cell">
+                                {% if stored is null %}
+                                    —
+                                {% elseif field.type == 'checkbox' %}
+                                    {{ stored == '1' ? t('common.yes') : t('common.no') }}
+                                {% else %}
+                                    {{ custom_field_display(field, stored) ?: '—' }}
+                                {% endif %}
+                            </td>
+                        {% endfor %}
                         <td class="nowrap">{{ task.deadline ? task.deadline|date('Y-m-d H:i') : '—' }}</td>
                         <td class="row-actions">
                             <a class="text-link" href="/tasks/{{ task.id }}/edit">{{ t('common.edit') }}</a>
