@@ -57,6 +57,12 @@ final class DashboardController
             }
         }
 
+        $quickAddNotice = $_SESSION['quick_add_notice'] ?? null;
+        unset($_SESSION['quick_add_notice']);
+        if (!is_array($quickAddNotice) || !is_string($quickAddNotice['message'] ?? null)) {
+            $quickAddNotice = null;
+        }
+
         return $this->view->render($response, 'dashboard.twig', [
             'csrf_token' => $this->csrfToken($request),
             'username' => $this->sessions->currentUsername(),
@@ -67,6 +73,7 @@ final class DashboardController
             'next_tasks' => array_slice($tasks, 0, 8),
             'status_map' => $statusMap,
             'priority_labels' => $this->priorityLabels(),
+            'quick_add_notice' => $quickAddNotice,
         ]);
     }
 
