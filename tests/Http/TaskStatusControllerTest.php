@@ -11,6 +11,7 @@ use Slim\Psr7\Factory\ServerRequestFactory;
 use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRepository;
 use Tms\Http\Controller\TaskStatusController;
+use Tms\I18n\Translator;
 use Tms\Security\SessionIdRegenerator;
 use Tms\Security\SessionManager;
 
@@ -70,6 +71,7 @@ final class TaskStatusControllerTest extends TestCase
             $sessions,
             new TaskRepository($this->db),
             new StatusRepository($this->db),
+            new Translator(dirname(__DIR__, 2) . '/resources/i18n', 'en'),
         );
     }
 

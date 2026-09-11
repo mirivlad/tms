@@ -1,49 +1,49 @@
 {% extends "app_layout.twig" %}
 
-{% block title %}Overview · TMS{% endblock %}
+{% block title %}{{ t('dashboard.page_title') }} · TMS{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div>
-        <p class="eyebrow">Overview</p>
-        <h1>Task overview</h1>
-        <p class="muted">A compact view of what needs attention.</p>
+        <p class="eyebrow">{{ t('dashboard.eyebrow') }}</p>
+        <h1>{{ t('dashboard.title') }}</h1>
+        <p class="muted">{{ t('dashboard.subtitle') }}</p>
     </div>
-    <a class="button-link" href="/tasks/new">New task</a>
+    <a class="button-link" href="/tasks/new">{{ t('nav.new_task') }}</a>
 </div>
 
-<section class="stats-grid" aria-label="Task statistics">
+<section class="stats-grid" aria-label="{{ t('dashboard.stats_aria') }}">
     <a class="stat-card" href="/tasks">
         <span class="stat-value">{{ total_tasks }}</span>
-        <span class="stat-label">All tasks</span>
+        <span class="stat-label">{{ t('dashboard.all_tasks') }}</span>
     </a>
     <a class="stat-card" href="/tasks">
         <span class="stat-value">{{ open_tasks }}</span>
-        <span class="stat-label">Open</span>
+        <span class="stat-label">{{ t('dashboard.open') }}</span>
     </a>
     <a class="stat-card" href="/tasks?priority=urgent">
         <span class="stat-value">{{ urgent_tasks }}</span>
-        <span class="stat-label">Urgent</span>
+        <span class="stat-label">{{ t('dashboard.urgent') }}</span>
     </a>
     <a class="stat-card" href="/tasks?overdue=1">
         <span class="stat-value">{{ overdue_tasks }}</span>
-        <span class="stat-label">Overdue</span>
+        <span class="stat-label">{{ t('dashboard.overdue') }}</span>
     </a>
 </section>
 
 <section class="content-card">
     <div class="section-heading">
         <div>
-            <h2>Next tasks</h2>
-            <p class="muted">Nearest deadlines first; tasks without deadlines follow.</p>
+            <h2>{{ t('dashboard.next_tasks') }}</h2>
+            <p class="muted">{{ t('dashboard.next_tasks_help') }}</p>
         </div>
-        <a href="/tasks">View all</a>
+        <a href="/tasks">{{ t('common.view_all') }}</a>
     </div>
 
     {% if next_tasks is empty %}
         <div class="empty-state">
-            <strong>No tasks yet.</strong>
-            <span>Create the first task and TMS is ready to work.</span>
+            <strong>{{ t('dashboard.empty_title') }}</strong>
+            <span>{{ t('dashboard.empty_body') }}</span>
         </div>
     {% else %}
         <div class="task-list compact-list">
@@ -53,10 +53,10 @@
                     <span class="task-row-main">
                         <strong>{{ task.title }}</strong>
                         <span class="muted">
-                            {{ status_map[task.statusId].name|default('No status') }} · {{ priority_labels[task.priority]|default('Medium') }}
+                            {{ status_map[task.statusId].name|default(t('task.no_status')) }} · {{ priority_labels[task.priority]|default(t('priority.medium')) }}
                         </span>
                     </span>
-                    <span class="task-deadline">{{ task.deadline ? task.deadline|date('Y-m-d H:i') : 'No deadline' }}</span>
+                    <span class="task-deadline">{{ task.deadline ? task.deadline|date('Y-m-d H:i') : t('task.no_deadline') }}</span>
                 </a>
             {% endfor %}
         </div>

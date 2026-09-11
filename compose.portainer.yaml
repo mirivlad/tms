@@ -29,6 +29,7 @@ services:
       APP_DEBUG: ${APP_DEBUG:-false}
       APP_URL: ${APP_URL:?Set APP_URL to the browser-visible TMS URL}
       APP_TIMEZONE: ${APP_TIMEZONE:-UTC}
+      APP_LOCALE: ${APP_LOCALE:-en}
       DB_HOST: db
       DB_PORT: 3306
       DB_NAME: ${DB_NAME:-tms}

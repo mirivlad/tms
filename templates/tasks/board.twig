@@ -1,16 +1,16 @@
 {% extends "app_layout.twig" %}
 
-{% block title %}Board · TMS{% endblock %}
+{% block title %}{{ t('board.page_title') }} · TMS{% endblock %}
 {% block styles %}<link rel="stylesheet" href="/assets/board-dnd.css">{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div>
-        <p class="eyebrow">Board</p>
-        <h1>Task board</h1>
-        <p class="muted">Drag cards between columns or use the Move to selector. Completed columns keep only tasks updated during the last seven days.</p>
+        <p class="eyebrow">{{ t('board.eyebrow') }}</p>
+        <h1>{{ t('board.title') }}</h1>
+        <p class="muted">{{ t('board.subtitle') }}</p>
     </div>
-    <a class="button-link" href="/tasks/new">New task</a>
+    <a class="button-link" href="/tasks/new">{{ t('nav.new_task') }}</a>
 </div>
 
 <div class="board" role="list" data-board>
@@ -28,7 +28,7 @@
                 {% for task in tasks_by_status[status.id] %}
                     <article class="task-card" draggable="true" data-task-id="{{ task.id }}">
                         <div class="task-card-topline">
-                            <span class="priority priority-{{ task.priority }}">{{ priority_labels[task.priority]|default('Medium') }}</span>
+                            <span class="priority priority-{{ task.priority }}">{{ priority_labels[task.priority]|default(t('priority.medium')) }}</span>
                             {% if task.deadline %}<span class="muted small">{{ task.deadline|date('Y-m-d H:i') }}</span>{% endif %}
                         </div>
                         <a class="task-card-title" href="/tasks/{{ task.id }}/edit">{{ task.title }}</a>
@@ -40,7 +40,7 @@
                         <form class="move-form" method="post" action="/tasks/{{ task.id }}/status">
                             <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                             <label>
-                                Move to
+                                {{ t('board.move_to') }}
                                 <select name="status_id" onchange="this.form.submit()">
                                     {% for target in statuses %}
                                         <option value="{{ target.id }}" {{ target.id == status.id ? 'selected' : '' }}>{{ target.name }}</option>
@@ -50,7 +50,7 @@
                         </form>
                     </article>
                 {% endfor %}
-                <div class="board-empty" {{ tasks_by_status[status.id] is not empty ? 'hidden' : '' }}>No tasks</div>
+                <div class="board-empty" {{ tasks_by_status[status.id] is not empty ? 'hidden' : '' }}>{{ t('common.no_tasks') }}</div>
             </div>
         </section>
     {% endfor %}

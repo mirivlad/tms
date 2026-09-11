@@ -14,6 +14,7 @@ use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRecord;
 use Tms\Domain\Task\TaskRepository;
 use Tms\Domain\TaskType\TaskTypeRepository;
+use Tms\I18n\Translator;
 use Tms\Security\SessionManager;
 
 final class CalendarController
@@ -32,6 +33,7 @@ final class CalendarController
         private readonly StatusRepository $statuses,
         private readonly TaskTypeRepository $taskTypes,
         private readonly CustomerRepository $customers,
+        private readonly Translator $translator,
     ) {
     }
 
@@ -96,11 +98,13 @@ final class CalendarController
             'priority' => $priorityName,
         ];
 
+        $monthLabel = $this->translator->trans('month.' . $firstDay->format('m')) . ' ' . $firstDay->format('Y');
+
         return $this->view->render($response, 'tasks/calendar.twig', [
             'csrf_token' => $this->csrfToken($request),
             'username' => $this->sessions->currentUsername(),
             'month' => $month,
-            'month_label' => $firstDay->format('F Y'),
+            'month_label' => $monthLabel,
             'previous_query' => $this->monthQuery($firstDay->modify('-1 month'), $filters),
             'next_query' => $this->monthQuery($firstDay->modify('+1 month'), $filters),
             'days' => $days,
@@ -109,7 +113,7 @@ final class CalendarController
             'types' => $this->taskTypes->listForUser($userId),
             'customers' => $this->customers->listForUser($userId, 500),
             'status_map' => $this->statusMap($userId),
-            'priority_labels' => [0 => 'Low', 1 => 'Medium', 2 => 'High', 3 => 'Urgent'],
+            'priority_labels' => $this->priorityLabels(),
         ]);
     }
 
@@ -164,6 +168,17 @@ final class CalendarController
             $map[$status->id] = $status;
         }
         return $map;
+    }
+
+    /** @return array<int, string> */
+    private function priorityLabels(): array
+    {
+        return [
+            0 => $this->translator->trans('priority.low'),
+            1 => $this->translator->trans('priority.medium'),
+            2 => $this->translator->trans('priority.high'),
+            3 => $this->translator->trans('priority.urgent'),
+        ];
     }
 
     private function csrfToken(ServerRequestInterface $request): string

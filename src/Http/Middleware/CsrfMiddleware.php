@@ -9,13 +9,16 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use Tms\I18n\Translator;
 
 final class CsrfMiddleware implements MiddlewareInterface
 {
     private const SESSION_KEY = '_csrf_token';
 
-    public function __construct(private readonly ResponseFactoryInterface $responseFactory)
-    {
+    public function __construct(
+        private readonly ResponseFactoryInterface $responseFactory,
+        private readonly Translator $translator,
+    ) {
     }
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
@@ -24,7 +27,7 @@ final class CsrfMiddleware implements MiddlewareInterface
 
         if ($this->requiresValidation($request) && !$this->isValid($request, $token)) {
             $response = $this->responseFactory->createResponse(403);
-            $response->getBody()->write('Invalid CSRF token.');
+            $response->getBody()->write($this->translator->trans('validation.invalid_csrf'));
 
             return $response;
         }
