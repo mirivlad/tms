@@ -355,7 +355,7 @@ final class TaskController
         if (is_array($formData['custom_fields'] ?? null)) {
             $values = [];
             foreach ($formData['custom_fields'] as $fieldId => $value) {
-                if (is_scalar($fieldId) && ctype_digit((string) $fieldId)) {
+                if (ctype_digit((string) $fieldId)) {
                     $values[(int) $fieldId] = $value;
                 }
             }
@@ -396,7 +396,7 @@ final class TaskController
 
         $filters = [];
         foreach ($raw as $fieldId => $value) {
-            if (!is_scalar($fieldId) || !ctype_digit((string) $fieldId) || !is_scalar($value)) {
+            if (!ctype_digit((string) $fieldId) || !is_scalar($value)) {
                 continue;
             }
             $id = (int) $fieldId;
