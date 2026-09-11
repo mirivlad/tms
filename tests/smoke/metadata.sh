@@ -11,6 +11,7 @@ db() {
 curl --fail --silent --cookie "$cookies" "$base_url/metadata" > /tmp/metadata.html
 grep -q 'Task metadata' /tmp/metadata.html
 grep -q '/assets/metadata.css' /tmp/metadata.html
+grep -q '/metadata/statuses/restore-defaults' /tmp/metadata.html
 csrf=$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' /tmp/metadata.html | head -n1)
 test -n "$csrf"
 admin_id=$(db "SELECT id FROM users WHERE username='ciadmin' LIMIT 1")
@@ -102,7 +103,29 @@ do
   test "$code" = "409"
 done
 
+# Donor parity: restore a missing built-in status template without stealing
+# the user's already configured default/completion roles.
+in_progress_id=$(db "SELECT id FROM statuses WHERE user_id=$admin_id AND name='In progress' LIMIT 1")
+test -n "$in_progress_id"
+curl --fail --silent --output /dev/null --cookie "$cookies" \
+  --data-urlencode "_csrf=$csrf" --data-urlencode 'name=CI Former In Progress' \
+  --data-urlencode 'description=Renamed before restore smoke' \
+  --data-urlencode 'color=#3b82f6' --data-urlencode 'show_on_board=1' \
+  "$base_url/metadata/statuses/$in_progress_id"
+test "$(db "SELECT COUNT(*) FROM statuses WHERE user_id=$admin_id AND name='In progress'")" = "0"
+
+restore_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --cookie "$cookies" --data-urlencode "_csrf=$csrf" \
+  "$base_url/metadata/statuses/restore-defaults")
+test "$restore_status" = "302"
+test "$(db "SELECT COUNT(*) FROM statuses WHERE user_id=$admin_id AND name='In progress'")" = "1"
+test "$(db "SELECT COUNT(*) FROM statuses WHERE user_id=$admin_id AND is_default=1")" = "1"
+test "$(db "SELECT COUNT(*) FROM statuses WHERE user_id=$admin_id AND is_completion=1")" = "1"
+test "$(db "SELECT is_default+is_completion FROM statuses WHERE id=$review_id")" = "2"
+
 curl --fail --silent --cookie "$cookies" "$base_url/metadata" > /tmp/metadata-final.html
 grep -q 'CI Review Updated' /tmp/metadata-final.html
 grep -q 'CI Incident Updated' /tmp/metadata-final.html
 grep -q 'CI Metadata Client Updated' /tmp/metadata-final.html
+grep -q 'CI Former In Progress' /tmp/metadata-final.html
+grep -q 'In progress' /tmp/metadata-final.html
