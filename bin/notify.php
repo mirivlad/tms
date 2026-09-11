@@ -10,6 +10,7 @@ use Tms\Domain\Notification\NotificationSettingsRepository;
 use Tms\Domain\Notification\NotificationTaskRepository;
 use Tms\Domain\Notification\SentNotificationRepository;
 use Tms\Domain\Notification\SmtpSettingsRepository;
+use Tms\I18n\Translator;
 use Tms\Infrastructure\Database;
 use Tms\Infrastructure\SecretBox;
 use Tms\Infrastructure\SmtpEmailSender;
@@ -44,11 +45,15 @@ try {
         'password' => $required('DB_PASS'),
     ]))->connect();
     $offset = (new DateTimeImmutable('now', new DateTimeZone($timezone)))->format('P');
-    $db->exec("SET time_zone = " . $db->quote($offset));
+    $db->exec('SET time_zone = ' . $db->quote($offset));
 
     $secretRaw = $env('NOTIFICATION_SECRET');
     $secretBox = $secretRaw !== '' ? new SecretBox($secretRaw) : null;
     $smtp = new SmtpSettingsRepository($db);
+    $translator = new Translator(
+        dirname(__DIR__) . '/resources/i18n',
+        $env('APP_LOCALE', 'en'),
+    );
     $runner = new NotificationRunner(
         new NotificationSettingsRepository($db),
         new NotificationTaskRepository($db),
@@ -56,9 +61,15 @@ try {
         new SmtpEmailSender($smtp, $secretBox),
         new TelegramBotSender(new Client(), $env('TELEGRAM_BOT_TOKEN')),
         $required('APP_URL'),
+        $translator,
     );
     $stats = $runner->run();
-    fwrite(STDOUT, sprintf("Notification run: users=%d attempted=%d sent=%d\n", $stats['users'], $stats['attempted'], $stats['sent']));
+    fwrite(STDOUT, sprintf(
+        "Notification run: users=%d attempted=%d sent=%d\n",
+        $stats['users'],
+        $stats['attempted'],
+        $stats['sent'],
+    ));
 } catch (Throwable $error) {
     fwrite(STDERR, 'Notification run failed: ' . $error->getMessage() . "\n");
     exit(1);
