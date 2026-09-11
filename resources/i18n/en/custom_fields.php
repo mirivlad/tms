@@ -1,0 +1,50 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'nav.custom_fields' => 'Fields',
+    'common.yes' => 'Yes',
+    'common.no' => 'No',
+
+    'custom_fields.page_title' => 'Custom fields',
+    'custom_fields.eyebrow' => 'Configuration',
+    'custom_fields.title' => 'Custom fields',
+    'custom_fields.subtitle' => 'Add your own structured fields to task forms, filters and task lists.',
+    'custom_fields.name' => 'Name',
+    'custom_fields.type' => 'Field type',
+    'custom_fields.options' => 'Options',
+    'custom_fields.options_placeholder' => "One option per line",
+    'custom_fields.options_help' => 'Options are required only for select and checkbox-list fields. Changing a field type clears its existing task values.',
+    'custom_fields.required' => 'Required',
+    'custom_fields.required_badge' => 'required',
+    'custom_fields.add' => 'Add field',
+    'custom_fields.configured' => 'Configured fields',
+    'custom_fields.order_help' => 'Order controls the task form and task-list columns.',
+    'custom_fields.empty' => 'No custom fields yet.',
+    'custom_fields.empty_help' => 'Add one above when the built-in task fields are not enough.',
+    'custom_fields.delete_confirm' => 'Delete this field and all of its stored task values?',
+    'custom_fields.no_value' => 'No value',
+    'custom_fields.any_value' => 'Any value',
+    'custom_fields.filter_placeholder' => 'Filter value',
+    'custom_fields.type.text' => 'Text',
+    'custom_fields.type.textarea' => 'Multiline text',
+    'custom_fields.type.select' => 'Select',
+    'custom_fields.type.money' => 'Money',
+    'custom_fields.type.checkbox' => 'Checkbox',
+    'custom_fields.type.checkbox_list' => 'Checkbox list',
+
+    'task_form.custom_fields_title' => 'Custom fields',
+    'task_form.custom_fields_help' => 'Additional fields configured for your account. An asterisk marks required values.',
+
+    'validation.custom_field_duplicate_name' => 'A custom field with this name already exists.',
+    'validation.custom_field_not_found' => 'This custom field is unavailable.',
+    'validation.custom_field_move_invalid' => 'Invalid custom-field ordering operation.',
+    'validation.custom_field_name' => 'Custom-field name must contain 1-96 characters.',
+    'validation.custom_field_type' => 'Unsupported custom-field type.',
+    'validation.custom_field_option_length' => 'A custom-field option cannot exceed 128 characters.',
+    'validation.custom_field_options_required' => 'Select and checkbox-list fields require at least one option.',
+    'validation.custom_field_options_count' => 'A custom field cannot contain more than 50 options.',
+    'validation.custom_field_invalid' => 'Invalid custom-field configuration.',
+    'validation.custom_field_value_invalid' => 'Invalid value for custom field: {field}.',
+];
