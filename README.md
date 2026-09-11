@@ -41,6 +41,7 @@ Team collaboration (workspaces, projects, membership, assignees and ACLs) is pla
 - password login/logout with session ID rotation;
 - rotating persistent login tokens stored as selector + verifier hash;
 - CSRF protection for state-changing browser requests;
+- Russian and English interface catalogs with a runtime language switch;
 - overview dashboard;
 - task create/edit/delete;
 - search and filters by status, type, priority, customer and overdue state;
@@ -55,6 +56,12 @@ Team collaboration (workspaces, projects, membership, assignees and ACLs) is pla
 
 The target runtime is PHP 8.2+ with MariaDB/MySQL. The application uses Slim 4, Twig and PDO. Docker/Compose is the recommended deployment path while the project is pre-release.
 
+## Localization
+
+TMS currently ships `en` and `ru` interface catalogs. `APP_LOCALE` selects the deployment default and must be one of those locale codes. Users can switch between RU and EN in the web interface; the selected language is stored in the current session and takes precedence over `APP_LOCALE`.
+
+The deployment locale is also used when TMS creates the initial status/type set for a **new** user. Existing status and task-type names are user-owned database data and are never silently renamed when the interface language changes. They can be renamed explicitly once the metadata administration UI is restored.
+
 ## Docker Compose quick start
 
 Copy the example environment and edit it before starting:
@@ -68,6 +75,7 @@ At minimum, set:
 - `DB_PASS` to a strong random database password;
 - `APP_URL` to the URL users will open in their browser;
 - `APP_TIMEZONE` to the timezone in which users enter and view task dates, for example `Europe/Berlin`;
+- `APP_LOCALE` to `en` or `ru` for the initial interface/default-metadata language;
 - `SESSION_SECURE=true` when the browser reaches TMS over HTTPS;
 - `SESSION_SECURE=false` only when intentionally testing over plain HTTP.
 
@@ -102,12 +110,13 @@ In **Stacks → Add stack**, use the repository stack file or paste the contents
 ```text
 APP_URL=https://tasks.example.com
 APP_TIMEZONE=Europe/Berlin
+APP_LOCALE=ru
 DB_PASS=<strong random database password>
 SESSION_SECURE=true
 TMS_PORT=8080
 ```
 
-`APP_URL` must be the browser-visible URL, not the container hostname. `APP_TIMEZONE` must be a valid PHP/IANA timezone and should match the wall-clock timezone users expect for task deadlines and calendar dates. Point your reverse proxy for the chosen subdomain at `TMS_PORT` on the Docker host.
+`APP_URL` must be the browser-visible URL, not the container hostname. `APP_TIMEZONE` must be a valid PHP/IANA timezone and should match the wall-clock timezone users expect for task deadlines and calendar dates. `APP_LOCALE` is the initial/default UI locale (`en` or `ru`). Point your reverse proxy for the chosen subdomain at `TMS_PORT` on the Docker host.
 
 Deploy the Stack, then open the `app` container console and create the first administrator:
 
@@ -155,7 +164,7 @@ See `SECURITY.md` and `docs/ARCHITECTURE.md` for the invariants applied during m
 
 ## Still being migrated before stable v0.1.0
 
-Custom fields, attachments, user/settings administration, SMTP/email notifications, Telegram notifications and final release hardening are not part of this preview yet.
+Custom fields, attachments, user/settings administration, SMTP/email notifications, Telegram notifications and final release hardening are not part of this preview yet. Donor feature parity is tracked separately so broad UI polish happens only after retained TaskMS functionality has been restored.
 
 ## Repository history
 
