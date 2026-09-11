@@ -32,6 +32,7 @@ jobs:
     env:
       APP_URL: http://127.0.0.1:18080
       APP_TIMEZONE: Asia/Tokyo
+      APP_LOCALE: en
       DB_PASS: ci-database-password-not-a-secret
       SESSION_SECURE: "false"
       TMS_PORT: "18080"
@@ -99,14 +100,31 @@ jobs:
           }
 
           curl --fail --silent --cookie-jar /tmp/tms-cookies \
-            http://127.0.0.1:18080/login > /tmp/login.html
+            http://127.0.0.1:18080/login > /tmp/login-en.html
 
-          csrf=$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' /tmp/login.html | head -n1)
+          grep -q '<html lang="en">' /tmp/login-en.html
+          grep -q '>Sign in<' /tmp/login-en.html
+          csrf=$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' /tmp/login-en.html | head -n1)
           test -n "$csrf"
+
+          locale_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            --cookie /tmp/tms-cookies --cookie-jar /tmp/tms-cookies \
+            --referer http://127.0.0.1:18080/login \
+            --data-urlencode "_csrf=$csrf" \
+            --data-urlencode "locale=ru" \
+            http://127.0.0.1:18080/locale)
+          test "$locale_status" = "302"
+
+          curl --fail --silent --cookie /tmp/tms-cookies \
+            http://127.0.0.1:18080/login > /tmp/login-ru.html
+          grep -q '<html lang="ru">' /tmp/login-ru.html
+          grep -q '>Вход<' /tmp/login-ru.html
+          login_csrf=$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' /tmp/login-ru.html | head -n1)
+          test -n "$login_csrf"
 
           status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
             --cookie /tmp/tms-cookies --cookie-jar /tmp/tms-cookies \
-            --data-urlencode "_csrf=$csrf" \
+            --data-urlencode "_csrf=$login_csrf" \
             --data-urlencode "username=ciadmin" \
             --data-urlencode "password=ci-admin-password-12345" \
             --data-urlencode "remember=1" \
@@ -114,7 +132,24 @@ jobs:
           test "$status" = "302"
 
           curl --fail --silent --cookie /tmp/tms-cookies \
-            http://127.0.0.1:18080/dashboard | grep -q 'Task overview'
+            http://127.0.0.1:18080/dashboard > /tmp/dashboard-ru.html
+          grep -q '<html lang="ru">' /tmp/dashboard-ru.html
+          grep -q 'Обзор задач' /tmp/dashboard-ru.html
+
+          dashboard_csrf=$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' /tmp/dashboard-ru.html | head -n1)
+          test -n "$dashboard_csrf"
+          locale_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+            --cookie /tmp/tms-cookies --cookie-jar /tmp/tms-cookies \
+            --referer http://127.0.0.1:18080/dashboard \
+            --data-urlencode "_csrf=$dashboard_csrf" \
+            --data-urlencode "locale=en" \
+            http://127.0.0.1:18080/locale)
+          test "$locale_status" = "302"
+
+          curl --fail --silent --cookie /tmp/tms-cookies \
+            http://127.0.0.1:18080/dashboard > /tmp/dashboard-en.html
+          grep -q '<html lang="en">' /tmp/dashboard-en.html
+          grep -q 'Task overview' /tmp/dashboard-en.html
 
           curl --fail --silent --cookie /tmp/tms-cookies \
             http://127.0.0.1:18080/tasks/new > /tmp/task-form.html
