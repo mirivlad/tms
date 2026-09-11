@@ -25,13 +25,19 @@ final class CustomerRepository
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
 
-        $records = [];
-        while (($row = $stmt->fetch()) !== false) {
-            if (is_array($row)) {
-                $records[] = $this->hydrate($row);
-            }
-        }
-        return $records;
+        return $this->collect($stmt);
+    }
+
+    /** @return list<CustomerRecord> */
+    public function listAllForUser(int $userId): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT id, user_id, name FROM customers
+             WHERE user_id = :user_id ORDER BY name ASC, id ASC'
+        );
+        $stmt->execute(['user_id' => $userId]);
+
+        return $this->collect($stmt);
     }
 
     public function findForUser(int $userId, int $customerId): ?CustomerRecord
@@ -76,13 +82,7 @@ final class CustomerRepository
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
 
-        $records = [];
-        while (($row = $stmt->fetch()) !== false) {
-            if (is_array($row)) {
-                $records[] = $this->hydrate($row);
-            }
-        }
-        return $records;
+        return $this->collect($stmt);
     }
 
     public function createForUser(int $userId, string $name): int
@@ -146,6 +146,18 @@ final class CustomerRepository
     private function escapeLike(string $value): string
     {
         return str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $value);
+    }
+
+    /** @return list<CustomerRecord> */
+    private function collect(\PDOStatement $stmt): array
+    {
+        $records = [];
+        while (($row = $stmt->fetch()) !== false) {
+            if (is_array($row)) {
+                $records[] = $this->hydrate($row);
+            }
+        }
+        return $records;
     }
 
     /** @param array<string, mixed> $row */
