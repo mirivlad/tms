@@ -11,6 +11,7 @@ use Tms\Application\NotificationRunner;
 use Tms\Domain\Notification\NotificationSettingsRepository;
 use Tms\Domain\Notification\NotificationTaskRepository;
 use Tms\Domain\Notification\SentNotificationRepository;
+use Tms\I18n\Translator;
 use Tms\Infrastructure\EmailSender;
 use Tms\Infrastructure\TelegramSender;
 
@@ -76,6 +77,7 @@ final class NotificationRunnerTest extends TestCase
             $email,
             $telegram,
             'https://tms.example.test',
+            new Translator(dirname(__DIR__, 2) . '/resources/i18n', 'en'),
         );
         $now = new DateTimeImmutable('2026-09-11 10:00:00');
 
