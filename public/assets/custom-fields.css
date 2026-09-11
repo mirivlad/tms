@@ -1,0 +1,54 @@
+.filters {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+
+.custom-fields-heading {
+    border-top: 1px solid #29313b;
+    padding-top: 18px;
+    margin-top: 4px;
+}
+
+.custom-fields-heading h2 {
+    margin-bottom: 4px;
+}
+
+.custom-fields-heading p {
+    margin: 0;
+}
+
+.custom-checkbox {
+    min-height: 42px;
+    align-self: end;
+}
+
+.custom-checkbox-list {
+    min-width: 0;
+    margin: 0;
+    padding: 12px;
+    border: 1px solid #394452;
+    border-radius: 9px;
+    display: grid;
+    gap: 8px;
+}
+
+.custom-checkbox-list legend {
+    padding: 0 5px;
+    color: #cbd5e1;
+    font-size: .88rem;
+}
+
+.custom-checkbox-list .checkbox-inline {
+    min-height: auto;
+}
+
+.custom-value-cell {
+    max-width: 260px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 720px) {
+    .filters {
+        grid-template-columns: 1fr;
+    }
+}
