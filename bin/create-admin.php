@@ -7,6 +7,7 @@ use Tms\Application\UserBootstrapService;
 use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\TaskType\TaskTypeRepository;
 use Tms\Domain\User\UserRepository;
+use Tms\I18n\Translator;
 use Tms\Infrastructure\Database;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
@@ -76,6 +77,11 @@ $db = null;
 $createdUserId = null;
 
 try {
+    $translator = new Translator(
+        dirname(__DIR__) . '/resources/i18n',
+        $env('APP_LOCALE', 'en'),
+    );
+
     $db = (new Database([
         'host' => $required('DB_HOST'),
         'port' => $env('DB_PORT', '3306'),
@@ -93,6 +99,7 @@ try {
     (new UserBootstrapService(
         new StatusRepository($db),
         new TaskTypeRepository($db),
+        $translator,
     ))->ensureDefaults($createdUserId);
 
     fwrite(STDOUT, "Administrator created with ID {$createdUserId}.\n");

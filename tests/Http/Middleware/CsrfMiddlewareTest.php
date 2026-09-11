@@ -12,6 +12,7 @@ use RuntimeException;
 use Slim\Psr7\Factory\ResponseFactory;
 use Slim\Psr7\Factory\ServerRequestFactory;
 use Tms\Http\Middleware\CsrfMiddleware;
+use Tms\I18n\Translator;
 
 final class CsrfMiddlewareTest extends TestCase
 {
@@ -22,7 +23,7 @@ final class CsrfMiddlewareTest extends TestCase
 
     public function testSafeRequestCreatesTokenAndPassesItAsAttribute(): void
     {
-        $middleware = new CsrfMiddleware(new ResponseFactory());
+        $middleware = new CsrfMiddleware(new ResponseFactory(), $this->translator());
         $request = (new ServerRequestFactory())->createServerRequest('GET', '/');
 
         $handler = new class implements RequestHandlerInterface {
@@ -44,7 +45,7 @@ final class CsrfMiddlewareTest extends TestCase
 
     public function testMutationWithoutTokenIsRejected(): void
     {
-        $middleware = new CsrfMiddleware(new ResponseFactory());
+        $middleware = new CsrfMiddleware(new ResponseFactory(), $this->translator());
         $request = (new ServerRequestFactory())->createServerRequest('POST', '/tasks');
 
         $handler = new class implements RequestHandlerInterface {
@@ -57,13 +58,14 @@ final class CsrfMiddlewareTest extends TestCase
         $response = $middleware->process($request, $handler);
 
         self::assertSame(403, $response->getStatusCode());
+        self::assertSame('Invalid CSRF token.', (string) $response->getBody());
     }
 
     public function testMutationWithSessionTokenIsAccepted(): void
     {
         $_SESSION['_csrf_token'] = str_repeat('a', 64);
 
-        $middleware = new CsrfMiddleware(new ResponseFactory());
+        $middleware = new CsrfMiddleware(new ResponseFactory(), $this->translator());
         $request = (new ServerRequestFactory())
             ->createServerRequest('POST', '/tasks')
             ->withParsedBody(['_csrf' => str_repeat('a', 64)]);
@@ -78,5 +80,10 @@ final class CsrfMiddlewareTest extends TestCase
         $response = $middleware->process($request, $handler);
 
         self::assertSame(204, $response->getStatusCode());
+    }
+
+    private function translator(): Translator
+    {
+        return new Translator(dirname(__DIR__, 3) . '/resources/i18n', 'en');
     }
 }

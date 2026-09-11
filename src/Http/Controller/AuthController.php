@@ -11,6 +11,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
 use Tms\Http\CookiePolicy;
+use Tms\I18n\Translator;
 use Tms\Security\PasswordAuthenticator;
 use Tms\Security\PersistentLoginService;
 use Tms\Security\SessionManager;
@@ -25,6 +26,7 @@ final class AuthController
         private readonly CookiePolicy $cookiePolicy,
         private readonly DateInterval $rememberLifetime,
         private readonly string $rememberCookieName,
+        private readonly Translator $translator,
     ) {
     }
 
@@ -53,7 +55,7 @@ final class AuthController
             return $this->view->render($response, 'auth/login.twig', [
                 'csrf_token' => $this->csrfToken($request),
                 'username' => $username,
-                'error' => 'Invalid username or password.',
+                'error' => $this->translator->trans('auth.invalid_credentials'),
             ])->withStatus(401);
         }
 

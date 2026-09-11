@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{ locale }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,18 +10,24 @@
 <body>
 <header class="topbar">
     <a class="brand" href="/dashboard">TMS</a>
-    <nav class="main-nav" aria-label="Main navigation">
-        <a href="/dashboard">Overview</a>
-        <a href="/tasks">Tasks</a>
-        <a href="/board">Board</a>
-        <a href="/calendar">Calendar</a>
-        <a class="nav-primary" href="/tasks/new">New task</a>
+    <nav class="main-nav" aria-label="{{ t('nav.main_aria') }}">
+        <a href="/dashboard">{{ t('nav.overview') }}</a>
+        <a href="/tasks">{{ t('nav.tasks') }}</a>
+        <a href="/board">{{ t('nav.board') }}</a>
+        <a href="/calendar">{{ t('nav.calendar') }}</a>
+        <a class="nav-primary" href="/tasks/new">{{ t('nav.new_task') }}</a>
     </nav>
     <div class="topbar-actions">
+        <form class="locale-switch" method="post" action="/locale" aria-label="{{ t('locale.switch_aria') }}">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <button class="locale-choice {{ locale == 'ru' ? 'active' : '' }}" type="submit" name="locale" value="ru" title="{{ t('locale.ru') }}">RU</button>
+            <span aria-hidden="true">/</span>
+            <button class="locale-choice {{ locale == 'en' ? 'active' : '' }}" type="submit" name="locale" value="en" title="{{ t('locale.en') }}">EN</button>
+        </form>
         <span class="muted">{{ username }}</span>
         <form method="post" action="/logout">
             <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-            <button class="secondary compact" type="submit">Sign out</button>
+            <button class="secondary compact" type="submit">{{ t('nav.sign_out') }}</button>
         </form>
     </div>
 </header>

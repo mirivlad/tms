@@ -10,6 +10,7 @@ use Tms\Application\UserBootstrapService;
 use Tms\Domain\Customer\CustomerRepository;
 use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\TaskType\TaskTypeRepository;
+use Tms\I18n\Translator;
 
 final class TaskMetadataRepositoriesTest extends TestCase
 {
@@ -20,6 +21,7 @@ final class TaskMetadataRepositoriesTest extends TestCase
 
     protected function setUp(): void
     {
+        $_SESSION = [];
         $this->db = new PDO('sqlite::memory:');
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
@@ -83,9 +85,14 @@ final class TaskMetadataRepositoriesTest extends TestCase
         $this->customers = new CustomerRepository($this->db);
     }
 
-    public function testUserBootstrapCreatesNeutralDefaultsExactlyOnce(): void
+    protected function tearDown(): void
     {
-        $bootstrap = new UserBootstrapService($this->statuses, $this->types);
+        $_SESSION = [];
+    }
+
+    public function testUserBootstrapCreatesNeutralEnglishDefaultsExactlyOnce(): void
+    {
+        $bootstrap = new UserBootstrapService($this->statuses, $this->types, $this->translator('en'));
         $bootstrap->ensureDefaults(1);
         $bootstrap->ensureDefaults(1);
 
@@ -98,6 +105,18 @@ final class TaskMetadataRepositoriesTest extends TestCase
         $types = $this->types->listForUser(1);
         self::assertCount(1, $types);
         self::assertSame('General', $types[0]->name);
+    }
+
+    public function testUserBootstrapUsesConfiguredLocaleForNewMetadata(): void
+    {
+        $bootstrap = new UserBootstrapService($this->statuses, $this->types, $this->translator('ru'));
+        $bootstrap->ensureDefaults(2);
+
+        self::assertSame(
+            ['Входящие', 'В работе', 'Готово'],
+            array_map(static fn ($status): string => $status->name, $this->statuses->listForUser(2)),
+        );
+        self::assertSame('Общее', $this->types->listForUser(2)[0]->name);
     }
 
     public function testStatusOperationsNeverCrossUserBoundary(): void
@@ -185,5 +204,10 @@ final class TaskMetadataRepositoriesTest extends TestCase
         self::assertFalse($this->statuses->deleteForUser(1, $status));
         self::assertFalse($this->types->deleteForUser(1, $type));
         self::assertFalse($this->customers->deleteForUser(1, $customer));
+    }
+
+    private function translator(string $locale): Translator
+    {
+        return new Translator(dirname(__DIR__, 2) . '/resources/i18n', $locale);
     }
 }

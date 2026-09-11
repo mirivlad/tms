@@ -1,16 +1,23 @@
 <!doctype html>
-<html lang="en">
+<html lang="{{ locale }}">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Sign in · TMS</title>
+    <title>{{ t('auth.page_title') }} · TMS</title>
     <link rel="stylesheet" href="/assets/app.css">
 </head>
 <body class="auth-page">
 <main class="auth-card">
+    <form class="locale-switch auth-locale-switch" method="post" action="/locale" aria-label="{{ t('locale.switch_aria') }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <button class="locale-choice {{ locale == 'ru' ? 'active' : '' }}" type="submit" name="locale" value="ru" title="{{ t('locale.ru') }}">RU</button>
+        <span aria-hidden="true">/</span>
+        <button class="locale-choice {{ locale == 'en' ? 'active' : '' }}" type="submit" name="locale" value="en" title="{{ t('locale.en') }}">EN</button>
+    </form>
+
     <div class="brand">TMS</div>
-    <h1>Sign in</h1>
-    <p class="muted">Self-hosted task management.</p>
+    <h1>{{ t('auth.title') }}</h1>
+    <p class="muted">{{ t('auth.subtitle') }}</p>
 
     {% if error %}
         <div class="alert" role="alert">{{ error }}</div>
@@ -20,21 +27,21 @@
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
 
         <label>
-            Username
+            {{ t('auth.username') }}
             <input name="username" type="text" value="{{ username|default('') }}" required autofocus autocomplete="username">
         </label>
 
         <label>
-            Password
+            {{ t('auth.password') }}
             <input name="password" type="password" required autocomplete="current-password">
         </label>
 
         <label class="checkbox-row">
             <input name="remember" type="checkbox" value="1">
-            <span>Remember me for 30 days</span>
+            <span>{{ t('auth.remember') }}</span>
         </label>
 
-        <button type="submit">Sign in</button>
+        <button type="submit">{{ t('auth.submit') }}</button>
     </form>
 </main>
 </body>

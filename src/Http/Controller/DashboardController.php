@@ -10,6 +10,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
 use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRepository;
+use Tms\I18n\Translator;
 use Tms\Security\SessionManager;
 
 final class DashboardController
@@ -19,6 +20,7 @@ final class DashboardController
         private readonly SessionManager $sessions,
         private readonly TaskRepository $tasks,
         private readonly StatusRepository $statuses,
+        private readonly Translator $translator,
     ) {
     }
 
@@ -64,8 +66,19 @@ final class DashboardController
             'overdue_tasks' => $overdue,
             'next_tasks' => array_slice($tasks, 0, 8),
             'status_map' => $statusMap,
-            'priority_labels' => [0 => 'Low', 1 => 'Medium', 2 => 'High', 3 => 'Urgent'],
+            'priority_labels' => $this->priorityLabels(),
         ]);
+    }
+
+    /** @return array<int, string> */
+    private function priorityLabels(): array
+    {
+        return [
+            0 => $this->translator->trans('priority.low'),
+            1 => $this->translator->trans('priority.medium'),
+            2 => $this->translator->trans('priority.high'),
+            3 => $this->translator->trans('priority.urgent'),
+        ];
     }
 
     private function csrfToken(ServerRequestInterface $request): string

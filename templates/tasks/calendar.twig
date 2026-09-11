@@ -1,90 +1,90 @@
 {% extends "app_layout.twig" %}
 
-{% block title %}Calendar · TMS{% endblock %}
+{% block title %}{{ t('calendar.page_title') }} · TMS{% endblock %}
 {% block styles %}<link rel="stylesheet" href="/assets/calendar.css">{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div>
-        <p class="eyebrow">Calendar</p>
+        <p class="eyebrow">{{ t('calendar.eyebrow') }}</p>
         <h1>{{ month_label }}</h1>
-        <p class="muted">Deadlines are placed on their due date; tasks without a deadline can be shown on their creation date.</p>
+        <p class="muted">{{ t('calendar.subtitle') }}</p>
     </div>
-    <a class="button-link" href="/tasks/new">New task</a>
+    <a class="button-link" href="/tasks/new">{{ t('nav.new_task') }}</a>
 </div>
 
 <section class="content-card calendar-controls">
     <div class="calendar-month-nav">
-        <a class="button-link secondary-link" href="/calendar?{{ previous_query }}">← Previous</a>
+        <a class="button-link secondary-link" href="/calendar?{{ previous_query }}">← {{ t('calendar.previous') }}</a>
         <form method="get" action="/calendar" class="month-jump">
-            <input type="month" name="month" value="{{ month }}" min="1970-01" max="2100-12" aria-label="Calendar month">
+            <input type="month" name="month" value="{{ month }}" min="1970-01" max="2100-12" aria-label="{{ t('calendar.month_aria') }}">
             <input type="hidden" name="mode" value="{{ filters.mode }}">
             {% if filters.status_id %}<input type="hidden" name="status_id" value="{{ filters.status_id }}">{% endif %}
             {% if filters.type_id %}<input type="hidden" name="type_id" value="{{ filters.type_id }}">{% endif %}
             {% if filters.customer_id %}<input type="hidden" name="customer_id" value="{{ filters.customer_id }}">{% endif %}
             {% if filters.priority %}<input type="hidden" name="priority" value="{{ filters.priority }}">{% endif %}
-            <button type="submit">Go</button>
+            <button type="submit">{{ t('calendar.go') }}</button>
         </form>
-        <a class="button-link secondary-link" href="/calendar?{{ next_query }}">Next →</a>
+        <a class="button-link secondary-link" href="/calendar?{{ next_query }}">{{ t('calendar.next') }} →</a>
     </div>
 
     <form method="get" action="/calendar" class="calendar-filters">
         <input type="hidden" name="month" value="{{ month }}">
         <label>
-            Show
+            {{ t('calendar.show') }}
             <select name="mode">
-                <option value="deadlines_only" {{ filters.mode == 'deadlines_only' ? 'selected' : '' }}>Deadlines</option>
-                <option value="no_deadlines" {{ filters.mode == 'no_deadlines' ? 'selected' : '' }}>No deadline</option>
-                <option value="all" {{ filters.mode == 'all' ? 'selected' : '' }}>All</option>
+                <option value="deadlines_only" {{ filters.mode == 'deadlines_only' ? 'selected' : '' }}>{{ t('calendar.mode.deadlines') }}</option>
+                <option value="no_deadlines" {{ filters.mode == 'no_deadlines' ? 'selected' : '' }}>{{ t('calendar.mode.no_deadline') }}</option>
+                <option value="all" {{ filters.mode == 'all' ? 'selected' : '' }}>{{ t('calendar.mode.all') }}</option>
             </select>
         </label>
         <label>
-            Status
+            {{ t('tasks.status') }}
             <select name="status_id">
-                <option value="">All statuses</option>
+                <option value="">{{ t('tasks.all_statuses') }}</option>
                 {% for status in statuses %}
                     <option value="{{ status.id }}" {{ filters.status_id == status.id ? 'selected' : '' }}>{{ status.name }}</option>
                 {% endfor %}
             </select>
         </label>
         <label>
-            Type
+            {{ t('tasks.type') }}
             <select name="type_id">
-                <option value="">All types</option>
+                <option value="">{{ t('tasks.all_types') }}</option>
                 {% for type in types %}
                     <option value="{{ type.id }}" {{ filters.type_id == type.id ? 'selected' : '' }}>{{ type.name }}</option>
                 {% endfor %}
             </select>
         </label>
         <label>
-            Priority
+            {{ t('tasks.priority') }}
             <select name="priority">
-                <option value="">All priorities</option>
-                <option value="urgent" {{ filters.priority == 'urgent' ? 'selected' : '' }}>Urgent</option>
-                <option value="high" {{ filters.priority == 'high' ? 'selected' : '' }}>High</option>
-                <option value="medium" {{ filters.priority == 'medium' ? 'selected' : '' }}>Medium</option>
-                <option value="low" {{ filters.priority == 'low' ? 'selected' : '' }}>Low</option>
+                <option value="">{{ t('tasks.all_priorities') }}</option>
+                <option value="urgent" {{ filters.priority == 'urgent' ? 'selected' : '' }}>{{ t('priority.urgent') }}</option>
+                <option value="high" {{ filters.priority == 'high' ? 'selected' : '' }}>{{ t('priority.high') }}</option>
+                <option value="medium" {{ filters.priority == 'medium' ? 'selected' : '' }}>{{ t('priority.medium') }}</option>
+                <option value="low" {{ filters.priority == 'low' ? 'selected' : '' }}>{{ t('priority.low') }}</option>
             </select>
         </label>
         <label>
-            Customer
+            {{ t('tasks.customer') }}
             <select name="customer_id">
-                <option value="">All customers</option>
+                <option value="">{{ t('tasks.all_customers') }}</option>
                 {% for customer in customers %}
                     <option value="{{ customer.id }}" {{ filters.customer_id == customer.id ? 'selected' : '' }}>{{ customer.name }}</option>
                 {% endfor %}
             </select>
         </label>
         <div class="filter-actions">
-            <button type="submit">Apply</button>
-            <a class="text-link" href="/calendar?month={{ month }}">Reset</a>
+            <button type="submit">{{ t('common.apply') }}</button>
+            <a class="text-link" href="/calendar?month={{ month }}">{{ t('common.reset') }}</a>
         </div>
     </form>
 </section>
 
-<section class="calendar-shell" aria-label="Calendar for {{ month_label }}">
+<section class="calendar-shell" aria-label="{{ t('calendar.aria', {'month': month_label}) }}">
     <div class="calendar-grid calendar-weekdays" aria-hidden="true">
-        <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div><div>Sun</div>
+        <div>{{ t('calendar.weekday.mon') }}</div><div>{{ t('calendar.weekday.tue') }}</div><div>{{ t('calendar.weekday.wed') }}</div><div>{{ t('calendar.weekday.thu') }}</div><div>{{ t('calendar.weekday.fri') }}</div><div>{{ t('calendar.weekday.sat') }}</div><div>{{ t('calendar.weekday.sun') }}</div>
     </div>
     <div class="calendar-grid calendar-days">
         {% for day in days %}
@@ -99,8 +99,8 @@
                             <span class="calendar-task-text">
                                 <strong>{{ task.title }}</strong>
                                 <small>
-                                    {% if task.deadline %}{{ task.deadline|date('H:i') }}{% else %}created{% endif %}
-                                    · {{ priority_labels[task.priority]|default('Medium') }}
+                                    {% if task.deadline %}{{ task.deadline|date('H:i') }}{% else %}{{ t('calendar.created') }}{% endif %}
+                                    · {{ priority_labels[task.priority]|default(t('priority.medium')) }}
                                 </small>
                             </span>
                         </a>

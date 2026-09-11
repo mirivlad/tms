@@ -23,18 +23,21 @@ use Tms\Domain\User\UserRepository;
 use Tms\Http\Controller\AuthController;
 use Tms\Http\Controller\CalendarController;
 use Tms\Http\Controller\DashboardController;
+use Tms\Http\Controller\LocaleController;
 use Tms\Http\Controller\TaskController;
 use Tms\Http\Controller\TaskStatusController;
 use Tms\Http\CookiePolicy;
 use Tms\Http\Middleware\CsrfMiddleware;
 use Tms\Http\Middleware\PersistentLoginMiddleware;
 use Tms\Http\Middleware\RequireAuthMiddleware;
+use Tms\I18n\Translator;
 use Tms\Infrastructure\Database;
 use Tms\Infrastructure\NativeSessionIdRegenerator;
 use Tms\Security\PasswordAuthenticator;
 use Tms\Security\PersistentLoginService;
 use Tms\Security\RememberTokenRepository;
 use Tms\Security\SessionManager;
+use Twig\TwigFunction;
 
 final class ApplicationFactory
 {
@@ -50,6 +53,11 @@ final class ApplicationFactory
 
         $this->startSession($secureCookies, $sameSite);
 
+        $translator = new Translator(
+            dirname(__DIR__, 2) . '/resources/i18n',
+            $this->env('APP_LOCALE', 'en'),
+        );
+
         $db = (new Database([
             'host' => $this->requiredEnv('DB_HOST'),
             'port' => $this->env('DB_PORT', '3306'),
@@ -64,6 +72,8 @@ final class ApplicationFactory
             'cache' => false,
             'autoescape' => 'html',
         ]);
+        $twig->getEnvironment()->addFunction(new TwigFunction('t', [$translator, 'trans']));
+        $twig->getEnvironment()->addGlobal('locale', $translator->locale());
 
         $users = new UserRepository($db);
         $statuses = new StatusRepository($db);
@@ -84,8 +94,9 @@ final class ApplicationFactory
             $cookiePolicy,
             $rememberLifetime,
             $rememberCookieName,
+            $translator,
         );
-        $dashboardController = new DashboardController($twig, $sessions, $tasks, $statuses);
+        $dashboardController = new DashboardController($twig, $sessions, $tasks, $statuses, $translator);
         $taskController = new TaskController(
             $twig,
             $sessions,
@@ -93,8 +104,9 @@ final class ApplicationFactory
             $statuses,
             $taskTypes,
             $customers,
+            $translator,
         );
-        $taskStatusController = new TaskStatusController($sessions, $tasks, $statuses);
+        $taskStatusController = new TaskStatusController($sessions, $tasks, $statuses, $translator);
         $calendarController = new CalendarController(
             $twig,
             $sessions,
@@ -102,7 +114,9 @@ final class ApplicationFactory
             $statuses,
             $taskTypes,
             $customers,
+            $translator,
         );
+        $localeController = new LocaleController($translator);
         $requireAuth = new RequireAuthMiddleware($sessions);
 
         $app->get('/', static function (
@@ -139,6 +153,7 @@ final class ApplicationFactory
         $app->get('/login', [$authController, 'showLogin']);
         $app->post('/login', [$authController, 'login']);
         $app->post('/logout', [$authController, 'logout'])->add($requireAuth);
+        $app->post('/locale', [$localeController, 'switch']);
 
         $app->get('/dashboard', [$dashboardController, 'show'])->add($requireAuth);
         $app->get('/tasks', [$taskController, 'index'])->add($requireAuth);
@@ -154,7 +169,7 @@ final class ApplicationFactory
         // Slim middleware is executed in reverse registration order. CSRF is
         // registered first so body parsing and persistent-login restoration run
         // before it, while CSRF still wraps all state-changing application routes.
-        $app->add(new CsrfMiddleware($app->getResponseFactory()));
+        $app->add(new CsrfMiddleware($app->getResponseFactory(), $translator));
         $app->add(TwigMiddleware::create($app, $twig));
         $app->add(new PersistentLoginMiddleware(
             $sessions,

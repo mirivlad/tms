@@ -15,6 +15,7 @@ use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRecord;
 use Tms\Domain\Task\TaskRepository;
 use Tms\Domain\TaskType\TaskTypeRepository;
+use Tms\I18n\Translator;
 use Tms\Security\SessionManager;
 
 final class TaskController
@@ -33,6 +34,7 @@ final class TaskController
         private readonly StatusRepository $statuses,
         private readonly TaskTypeRepository $taskTypes,
         private readonly CustomerRepository $customers,
+        private readonly Translator $translator,
     ) {
     }
 
@@ -276,16 +278,16 @@ final class TaskController
         $priorityName = is_string($body['priority'] ?? null) ? (string) $body['priority'] : 'medium';
 
         if (trim($title) === '') {
-            throw new DomainException('Task title is required.');
+            throw new DomainException($this->translator->trans('validation.task_title_required'));
         }
         if ($statusId === null) {
-            throw new DomainException('A task status is required.');
+            throw new DomainException($this->translator->trans('validation.task_status_required'));
         }
         if (!array_key_exists($priorityName, self::PRIORITIES)) {
-            throw new DomainException('Unknown task priority.');
+            throw new DomainException($this->translator->trans('validation.unknown_priority'));
         }
         if ($customer !== '' && mb_strlen($customer) > 255) {
-            throw new DomainException('Customer name cannot exceed 255 characters.');
+            throw new DomainException($this->translator->trans('validation.customer_name_too_long'));
         }
 
         return [
@@ -302,10 +304,10 @@ final class TaskController
     private function assertMetadataForUser(int $userId, int $statusId, ?int $typeId): void
     {
         if ($this->statuses->findForUser($userId, $statusId) === null) {
-            throw new DomainException('Selected status is unavailable.');
+            throw new DomainException($this->translator->trans('validation.selected_status_unavailable'));
         }
         if ($typeId !== null && $this->taskTypes->findForUser($userId, $typeId) === null) {
-            throw new DomainException('Selected task type is unavailable.');
+            throw new DomainException($this->translator->trans('validation.selected_type_unavailable'));
         }
     }
 
@@ -336,7 +338,7 @@ final class TaskController
                 return $date->format('Y-m-d H:i:s');
             }
         }
-        throw new DomainException('Deadline must be a valid date and time.');
+        throw new DomainException($this->translator->trans('validation.deadline_invalid'));
     }
 
     private function deadlineForForm(?string $deadline): string
@@ -390,7 +392,12 @@ final class TaskController
     /** @return array<int, string> */
     private function priorityLabels(): array
     {
-        return [0 => 'Low', 1 => 'Medium', 2 => 'High', 3 => 'Urgent'];
+        return [
+            0 => $this->translator->trans('priority.low'),
+            1 => $this->translator->trans('priority.medium'),
+            2 => $this->translator->trans('priority.high'),
+            3 => $this->translator->trans('priority.urgent'),
+        ];
     }
 
     /** @param array<string, mixed> $query */
@@ -437,7 +444,7 @@ final class TaskController
 
     private function notFound(ResponseInterface $response): ResponseInterface
     {
-        $response->getBody()->write('Task not found.');
+        $response->getBody()->write($this->translator->trans('validation.task_not_found'));
         return $response->withStatus(404)->withHeader('Content-Type', 'text/plain; charset=utf-8');
     }
 }

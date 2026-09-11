@@ -1,15 +1,15 @@
 {% extends "app_layout.twig" %}
 
-{% block title %}{{ task ? 'Edit task' : 'New task' }} · TMS{% endblock %}
+{% block title %}{{ task ? t('task_form.edit_title') : t('task_form.new_title') }} · TMS{% endblock %}
 
 {% block content %}
 <div class="page-header">
     <div>
-        <p class="eyebrow">{{ task ? 'Edit task' : 'New task' }}</p>
-        <h1>{{ task ? task.title : 'Create a task' }}</h1>
-        <p class="muted">Title, status, priority and deadline first; extra capabilities will be layered on later.</p>
+        <p class="eyebrow">{{ task ? t('task_form.edit_title') : t('task_form.new_title') }}</p>
+        <h1>{{ task ? task.title : t('task_form.create_heading') }}</h1>
+        <p class="muted">{{ t('task_form.subtitle') }}</p>
     </div>
-    <a class="text-link" href="/tasks">Back to tasks</a>
+    <a class="text-link" href="/tasks">{{ t('task_form.back') }}</a>
 </div>
 
 <section class="content-card form-card">
@@ -19,18 +19,18 @@
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
 
         <label class="field-wide">
-            Title
+            {{ t('task_form.title') }}
             <input type="text" name="title" maxlength="255" required autofocus value="{{ form.title|default('') }}">
         </label>
 
         <label class="field-wide">
-            Description
-            <textarea name="description" rows="8" placeholder="Notes, context, links…">{{ form.description|default('') }}</textarea>
-            <span class="field-help">Plain text for now. Rich-text formatting will return only after the sanitizer contract is explicit.</span>
+            {{ t('task_form.description') }}
+            <textarea name="description" rows="8" placeholder="{{ t('task_form.description_placeholder') }}">{{ form.description|default('') }}</textarea>
+            <span class="field-help">{{ t('task_form.description_help') }}</span>
         </label>
 
         <label>
-            Status
+            {{ t('task_form.status') }}
             <select name="status_id" required>
                 {% for status in statuses %}
                     <option value="{{ status.id }}" {{ form.status_id == status.id ? 'selected' : '' }}>{{ status.name }}</option>
@@ -39,9 +39,9 @@
         </label>
 
         <label>
-            Type
+            {{ t('task_form.type') }}
             <select name="type_id">
-                <option value="">No type</option>
+                <option value="">{{ t('task_form.no_type') }}</option>
                 {% for type in types %}
                     <option value="{{ type.id }}" {{ form.type_id == type.id ? 'selected' : '' }}>{{ type.name }}</option>
                 {% endfor %}
@@ -49,32 +49,32 @@
         </label>
 
         <label>
-            Priority
+            {{ t('task_form.priority') }}
             <select name="priority">
-                <option value="low" {{ form.priority == 'low' ? 'selected' : '' }}>Low</option>
-                <option value="medium" {{ form.priority == 'medium' ? 'selected' : '' }}>Medium</option>
-                <option value="high" {{ form.priority == 'high' ? 'selected' : '' }}>High</option>
-                <option value="urgent" {{ form.priority == 'urgent' ? 'selected' : '' }}>Urgent</option>
+                <option value="low" {{ form.priority == 'low' ? 'selected' : '' }}>{{ t('priority.low') }}</option>
+                <option value="medium" {{ form.priority == 'medium' ? 'selected' : '' }}>{{ t('priority.medium') }}</option>
+                <option value="high" {{ form.priority == 'high' ? 'selected' : '' }}>{{ t('priority.high') }}</option>
+                <option value="urgent" {{ form.priority == 'urgent' ? 'selected' : '' }}>{{ t('priority.urgent') }}</option>
             </select>
         </label>
 
         <label>
-            Deadline
+            {{ t('task_form.deadline') }}
             <input type="datetime-local" name="deadline" value="{{ form.deadline|default('') }}">
         </label>
 
         <label class="field-wide">
-            Customer
-            <input type="text" name="customer" maxlength="255" list="customer-list" autocomplete="off" value="{{ form.customer|default('') }}" placeholder="Existing or new customer">
+            {{ t('task_form.customer') }}
+            <input type="text" name="customer" maxlength="255" list="customer-list" autocomplete="off" value="{{ form.customer|default('') }}" placeholder="{{ t('task_form.customer_placeholder') }}">
             <datalist id="customer-list">
                 {% for customer in customers %}<option value="{{ customer.name }}"></option>{% endfor %}
             </datalist>
-            <span class="field-help">If the name does not exist yet, TMS creates it automatically when the task is saved.</span>
+            <span class="field-help">{{ t('task_form.customer_help') }}</span>
         </label>
 
         <div class="form-actions field-wide">
-            <button type="submit">{{ task ? 'Save changes' : 'Create task' }}</button>
-            <a class="button-link secondary-link" href="/tasks">Cancel</a>
+            <button type="submit">{{ task ? t('task_form.save_changes') : t('task_form.create_task') }}</button>
+            <a class="button-link secondary-link" href="/tasks">{{ t('common.cancel') }}</a>
         </div>
     </form>
 </section>
