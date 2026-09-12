@@ -1,4 +1,5 @@
 {% extends "app_layout.twig" %}
+{% import "macros/sorting.twig" as sorting %}
 
 {% block title %}{{ t('tasks.page_title') }} · TMS{% endblock %}
 
@@ -101,13 +102,16 @@
             <table class="task-table">
                 <thead>
                     <tr>
-                        <th>{{ t('tasks.table.task') }}</th>
-                        <th>{{ t('tasks.table.status') }}</th>
-                        <th>{{ t('tasks.table.type') }}</th>
-                        <th>{{ t('tasks.table.priority') }}</th>
-                        <th>{{ t('tasks.table.customer') }}</th>
-                        {% for field in custom_fields %}<th>{{ field.name }}</th>{% endfor %}
-                        <th>{{ t('tasks.table.deadline') }}</th>
+                        <th>{{ sorting.head(sort_links.title, t('tasks.table.task')) }}</th>
+                        <th>{{ sorting.head(sort_links.status_name, t('tasks.table.status')) }}</th>
+                        <th>{{ sorting.head(sort_links.type_name, t('tasks.table.type')) }}</th>
+                        <th>{{ sorting.head(sort_links.priority, t('tasks.table.priority')) }}</th>
+                        <th>{{ sorting.head(sort_links.customer, t('tasks.table.customer')) }}</th>
+                        {% for field in custom_fields %}
+                            <th>{{ sorting.head(sort_links['custom_' ~ field.id], field.name) }}</th>
+                        {% endfor %}
+                        <th>{{ sorting.head(sort_links.created_at, t('tasks.table.created')) }}</th>
+                        <th>{{ sorting.head(sort_links.deadline, t('tasks.table.deadline')) }}</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -139,6 +143,7 @@
                                 {% endif %}
                             </td>
                         {% endfor %}
+                        <td class="nowrap">{{ task.createdAt|date('Y-m-d H:i') }}</td>
                         <td class="nowrap">{{ task.deadline ? task.deadline|date('Y-m-d H:i') : '—' }}</td>
                         <td class="row-actions">
                             <a class="text-link" href="/tasks/{{ task.id }}/edit">{{ t('common.edit') }}</a>

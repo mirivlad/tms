@@ -104,6 +104,7 @@ final class ApplicationFactory
 
         $descriptionSanitizer = new TaskDescriptionSanitizer();
         $customValueCodec = new CustomFieldValueCodec();
+        $taskListSorter = new TaskListSorter($customValueCodec);
         $twig->getEnvironment()->addFunction(new TwigFunction('t', [$translator, 'trans']));
         $twig->getEnvironment()->addFunction(new TwigFunction('sanitize_task_html', [$descriptionSanitizer, 'sanitize']));
         $twig->getEnvironment()->addFunction(new TwigFunction('custom_field_display', [$customValueCodec, 'display']));
@@ -146,7 +147,7 @@ final class ApplicationFactory
 
         $authController = new AuthController($twig, $passwordAuthenticator, $sessions, $persistentLogin, $cookiePolicy, $rememberLifetime, $rememberCookieName, $translator);
         $dashboardController = new DashboardController($twig, $sessions, $tasks, $statuses, $translator);
-        $taskController = new TaskController($twig, $sessions, $tasks, $statuses, $taskTypes, $customers, $customFields, $customValues, $customValueCodec, $translator);
+        $taskController = new TaskController($twig, $sessions, $tasks, $statuses, $taskTypes, $customers, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator);
         $taskDeleteController = new TaskDeleteController($sessions, $tasks, $attachments, $attachmentStorage);
         $attachmentController = new AttachmentController($sessions, $tasks, $attachments, $attachmentPolicy, $attachmentStorage, $translator);
         $quickTaskController = new QuickTaskController($sessions, $tasks, $statuses, $descriptionSanitizer, $translator);

@@ -1,0 +1,12 @@
+{% macro head(link, label) %}
+    <a class="task-sort-link{{ link.active ? ' active' : '' }}" href="{{ link.url }}">
+        <span>{{ label }}</span>
+        <span class="task-sort-indicator" aria-hidden="true">
+            {% if link.active %}
+                {{ link.order == 'asc' ? '↑' : '↓' }}
+            {% else %}
+                ↕
+            {% endif %}
+        </span>
+    </a>
+{% endmacro %}

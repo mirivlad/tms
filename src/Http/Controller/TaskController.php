@@ -9,6 +9,8 @@ use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
+use Tms\Application\TaskListSorter;
+use Tms\Domain\Customer\CustomerRecord;
 use Tms\Domain\Customer\CustomerRepository;
 use Tms\Domain\CustomField\CustomFieldRecord;
 use Tms\Domain\CustomField\CustomFieldRepository;
@@ -18,6 +20,7 @@ use Tms\Domain\Status\StatusRecord;
 use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRecord;
 use Tms\Domain\Task\TaskRepository;
+use Tms\Domain\TaskType\TaskTypeRecord;
 use Tms\Domain\TaskType\TaskTypeRepository;
 use Tms\I18n\Translator;
 use Tms\Security\SessionManager;
@@ -41,6 +44,7 @@ final class TaskController
         private readonly CustomFieldRepository $customFields,
         private readonly TaskCustomFieldValueRepository $customValues,
         private readonly CustomFieldValueCodec $customValueCodec,
+        private readonly TaskListSorter $taskListSorter,
         private readonly Translator $translator,
     ) {
     }
@@ -73,22 +77,64 @@ final class TaskController
         $valuesByTask = $this->customValues->listForTasks($userId, $taskIds);
         $tasks = $this->filterByCustomFields($tasks, $fields, $valuesByTask, $customFilters);
 
+        $statusMap = $this->statusMap($userId);
+        $typeMap = $this->typeMap($userId);
+        $customerMap = $this->customerMap($userId);
+        $statusNames = [];
+        foreach ($statusMap as $id => $status) {
+            $statusNames[$id] = $status->name;
+        }
+        $typeNames = [];
+        foreach ($typeMap as $id => $type) {
+            $typeNames[$id] = $type->name;
+        }
+        $customerNames = [];
+        foreach ($customerMap as $id => $customer) {
+            $customerNames[$id] = $customer->name;
+        }
+
+        $sortField = is_string($query['sort'] ?? null) ? trim((string) $query['sort']) : '';
+        $sortOrder = is_string($query['order'] ?? null) && strtolower((string) $query['order']) === 'desc'
+            ? 'desc'
+            : 'asc';
+        if (!$this->taskListSorter->supports($sortField, $fields)) {
+            $sortField = '';
+            $sortOrder = 'asc';
+        }
+        if ($sortField !== '') {
+            $tasks = $this->taskListSorter->sort(
+                $tasks,
+                $sortField,
+                $sortOrder,
+                $statusNames,
+                $typeNames,
+                $customerNames,
+                $fields,
+                $valuesByTask,
+            );
+        }
+
+        $filters = [
+            'status_id' => $statusId,
+            'type_id' => $typeId,
+            'customer_id' => $customerId,
+            'priority' => $priorityName,
+            'q' => $search,
+            'overdue' => $overdue,
+        ];
+
         return $this->view->render($response, 'tasks/index.twig', $this->commonViewData($request) + [
             'tasks' => $tasks,
-            'status_map' => $this->statusMap($userId),
-            'type_map' => $this->typeMap($userId),
-            'customer_map' => $this->customerMap($userId),
+            'status_map' => $statusMap,
+            'type_map' => $typeMap,
+            'customer_map' => $customerMap,
             'custom_fields' => $fields,
             'custom_values' => $valuesByTask,
             'custom_filters' => $customFilters,
-            'filters' => [
-                'status_id' => $statusId,
-                'type_id' => $typeId,
-                'customer_id' => $customerId,
-                'priority' => $priorityName,
-                'q' => $search,
-                'overdue' => $overdue,
-            ],
+            'filters' => $filters,
+            'sort_field' => $sortField,
+            'sort_order' => $sortOrder,
+            'sort_links' => $this->sortLinks($filters, $customFilters, $fields, $sortField, $sortOrder),
             'priority_labels' => $this->priorityLabels(),
         ]);
     }
@@ -526,7 +572,7 @@ final class TaskController
         return $map;
     }
 
-    /** @return array<int, object> */
+    /** @return array<int, TaskTypeRecord> */
     private function typeMap(int $userId): array
     {
         $map = [];
@@ -536,7 +582,7 @@ final class TaskController
         return $map;
     }
 
-    /** @return array<int, object> */
+    /** @return array<int, CustomerRecord> */
     private function customerMap(int $userId): array
     {
         $map = [];
@@ -544,6 +590,57 @@ final class TaskController
             $map[$customer->id] = $customer;
         }
         return $map;
+    }
+
+    /**
+     * @param array{status_id:?int,type_id:?int,customer_id:?int,priority:string,q:string,overdue:bool} $filters
+     * @param array<int, string> $customFilters
+     * @param list<CustomFieldRecord> $fields
+     * @return array<string, array{url:string,active:bool,order:string}>
+     */
+    private function sortLinks(
+        array $filters,
+        array $customFilters,
+        array $fields,
+        string $currentField,
+        string $currentOrder,
+    ): array {
+        $params = [];
+        foreach (['status_id', 'type_id', 'customer_id'] as $key) {
+            if ($filters[$key] !== null) {
+                $params[$key] = $filters[$key];
+            }
+        }
+        if ($filters['priority'] !== '') {
+            $params['priority'] = $filters['priority'];
+        }
+        if (trim($filters['q']) !== '') {
+            $params['q'] = $filters['q'];
+        }
+        if ($filters['overdue']) {
+            $params['overdue'] = '1';
+        }
+        if ($customFilters !== []) {
+            $params['custom'] = $customFilters;
+        }
+
+        $keys = ['title', 'status_name', 'type_name', 'priority', 'customer', 'created_at', 'deadline'];
+        foreach ($fields as $field) {
+            $keys[] = 'custom_' . $field->id;
+        }
+
+        $links = [];
+        foreach ($keys as $key) {
+            $active = $currentField === $key;
+            $nextOrder = $active && $currentOrder === 'asc' ? 'desc' : 'asc';
+            $query = $params + ['sort' => $key, 'order' => $nextOrder];
+            $links[$key] = [
+                'url' => '/tasks?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986),
+                'active' => $active,
+                'order' => $active ? $currentOrder : '',
+            ];
+        }
+        return $links;
     }
 
     /** @return array<int, string> */

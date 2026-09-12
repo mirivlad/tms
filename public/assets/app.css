@@ -174,3 +174,16 @@ textarea { resize: vertical; min-height: 110px; }
     .task-row { grid-template-columns: auto 1fr; }
     .task-deadline { grid-column: 2; }
 }
+
+.task-sort-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    width: 100%;
+    color: inherit;
+}
+.task-sort-link:hover,
+.task-sort-link.active { color: #e9f2fc; }
+.task-sort-indicator { opacity: .45; font-size: .85rem; }
+.task-sort-link.active .task-sort-indicator { opacity: 1; }

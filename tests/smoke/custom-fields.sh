@@ -101,6 +101,28 @@ test "$(db "SELECT value FROM task_custom_field_values WHERE task_id=$custom_tas
 test "$(db "SELECT value FROM task_custom_field_values WHERE task_id=$custom_task AND field_id=$billable_id")" = "1"
 test "$(db "SELECT value FROM task_custom_field_values WHERE task_id=$custom_task AND field_id=$tags_id")" = '["red","blue"]'
 
+low_budget_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --cookie "$cookies" \
+  --data-urlencode "_csrf=$task_csrf" \
+  --data-urlencode 'title=CI low budget task' \
+  --data-urlencode "status_id=$default_status" \
+  --data-urlencode 'priority=medium' \
+  --data-urlencode "custom_fields[$reference_id]=LOW" \
+  --data-urlencode "custom_fields[$environment_id]=Staging" \
+  --data-urlencode "custom_fields[$budget_id]=9.50" \
+  "$base_url/tasks")
+test "$low_budget_status" = "302"
+
+curl --fail --silent --get --cookie "$cookies" \
+  --data-urlencode "sort=custom_$budget_id" \
+  --data-urlencode 'order=asc' \
+  "$base_url/tasks" > /tmp/custom-sort.html
+low_line=$(grep -n 'CI low budget task' /tmp/custom-sort.html | head -n1 | cut -d: -f1)
+high_line=$(grep -n 'CI custom field task' /tmp/custom-sort.html | head -n1 | cut -d: -f1)
+test -n "$low_line"
+test -n "$high_line"
+test "$low_line" -lt "$high_line"
+
 invalid_status=$(curl --silent --output /tmp/invalid-custom.html --write-out '%{http_code}' \
   --cookie "$cookies" \
   --data-urlencode "_csrf=$task_csrf" \
@@ -127,6 +149,16 @@ extra_task=$(db "SELECT id FROM tasks WHERE created_by=$admin_id AND title='Fore
 test -n "$extra_task"
 test "$(db "SELECT COUNT(*) FROM task_custom_field_values WHERE task_id=$extra_task AND field_id=$foreign_field")" = "0"
 
+curl --fail --silent --get --cookie "$cookies" \
+  --data-urlencode "sort=custom_$budget_id" \
+  --data-urlencode 'order=desc' \
+  "$base_url/tasks" > /tmp/custom-sort-desc.html
+high_line=$(grep -n 'CI custom field task' /tmp/custom-sort-desc.html | head -n1 | cut -d: -f1)
+low_line=$(grep -n 'CI low budget task' /tmp/custom-sort-desc.html | head -n1 | cut -d: -f1)
+missing_line=$(grep -n 'Foreign field ignored' /tmp/custom-sort-desc.html | head -n1 | cut -d: -f1)
+test "$high_line" -lt "$low_line"
+test "$low_line" -lt "$missing_line"
+
 if db "INSERT INTO task_custom_field_values (task_id,field_id,user_id,value) VALUES ($custom_task,$foreign_field,$admin_id,'forbidden')"; then
   echo 'Cross-user custom field foreign key unexpectedly accepted.' >&2
   exit 1
@@ -142,6 +174,7 @@ if grep -q 'Foreign field ignored' /tmp/custom-filter.html; then
 fi
 grep -q 'REF-42' /tmp/custom-filter.html
 grep -q 'red, blue' /tmp/custom-filter.html
+grep -q "custom%5B$environment_id%5D=Prod" /tmp/custom-filter.html
 
 curl --fail --silent --cookie "$cookies" "$base_url/tasks/$custom_task/edit" > /tmp/custom-edit.html
 grep -q 'value="REF-42"' /tmp/custom-edit.html
