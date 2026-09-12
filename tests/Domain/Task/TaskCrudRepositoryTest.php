@@ -107,6 +107,28 @@ final class TaskCrudRepositoryTest extends TestCase
         self::assertSame('Acme 100% rollout', $results[0]->title);
     }
 
+    public function testAdvancedFiltersSupportStatusInversionCustomerSubstringAndDateRanges(): void
+    {
+        $matching = $this->tasks->createForUser(1, 'Matching', '', '2026-01-15 12:00:00', 10, 30, 2, 50);
+        $done = $this->tasks->createForUser(1, 'Done in range', '', '2026-01-16 12:00:00', 11, 30, 2, 50);
+        $outside = $this->tasks->createForUser(1, 'Outside deadline', '', '2026-03-01 12:00:00', 10, 30, 2, 50);
+        $this->db->exec("UPDATE tasks SET created_at='2026-01-05 09:00:00' WHERE id IN ($matching,$done,$outside)");
+
+        $results = $this->tasks->listFilteredForUser(
+            1,
+            statusId: 11,
+            statusInvert: true,
+            customerQuery: '100%',
+            deadlineFrom: '2026-01-01',
+            deadlineTo: '2026-01-31',
+            createdFrom: '2026-01-01',
+            createdTo: '2026-01-31',
+        );
+
+        self::assertCount(1, $results);
+        self::assertSame('Matching', $results[0]->title);
+    }
+
     public function testOverdueExcludesCompletionStatus(): void
     {
         $past = '2020-01-01 10:00:00';

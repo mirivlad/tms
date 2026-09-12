@@ -237,6 +237,9 @@ jobs:
       - name: Exercise custom field workflow
         run: bash tests/smoke/custom-fields.sh
 
+      - name: Exercise task-table filters and pagination
+        run: bash tests/smoke/task-table-filters.sh
+
       - name: Exercise metadata administration
         run: bash tests/smoke/metadata.sh
 

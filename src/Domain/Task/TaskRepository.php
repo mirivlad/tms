@@ -40,23 +40,35 @@ final class TaskRepository
     public function listFilteredForUser(
         int $userId,
         ?int $statusId = null,
+        bool $statusInvert = false,
         ?int $typeId = null,
         ?int $customerId = null,
+        string $customerQuery = '',
         ?int $priority = null,
         string $query = '',
         bool $overdue = false,
+        string $deadlineFrom = '',
+        string $deadlineTo = '',
+        string $createdFrom = '',
+        string $createdTo = '',
     ): array {
+        $customerQuery = trim($customerQuery);
         $sql = 'SELECT t.id, t.created_by, t.title, t.description, t.deadline, t.status_id, t.type_id,
                        t.priority, t.customer_id, t.created_at, t.updated_at
                 FROM tasks t';
         if ($overdue) {
             $sql .= ' LEFT JOIN statuses s ON s.id = t.status_id AND s.user_id = t.created_by';
         }
+        if ($customerQuery !== '') {
+            $sql .= ' LEFT JOIN customers c ON c.id = t.customer_id AND c.user_id = t.created_by';
+        }
         $sql .= ' WHERE t.created_by = :user_id';
         $params = ['user_id' => $userId];
 
         if ($statusId !== null) {
-            $sql .= ' AND t.status_id = :status_id';
+            $sql .= $statusInvert
+                ? ' AND (t.status_id IS NULL OR t.status_id != :status_id)'
+                : ' AND t.status_id = :status_id';
             $params['status_id'] = $statusId;
         }
         if ($typeId !== null) {
@@ -66,6 +78,10 @@ final class TaskRepository
         if ($customerId !== null) {
             $sql .= ' AND t.customer_id = :customer_id';
             $params['customer_id'] = $customerId;
+        }
+        if ($customerQuery !== '') {
+            $sql .= " AND c.name LIKE :customer_query ESCAPE '!'";
+            $params['customer_query'] = '%' . $this->escapeLike($customerQuery) . '%';
         }
         if ($priority !== null) {
             $this->assertPriority($priority);
@@ -77,6 +93,23 @@ final class TaskRepository
         if ($query !== '') {
             $sql .= " AND (t.title LIKE :query ESCAPE '!' OR t.description LIKE :query ESCAPE '!')";
             $params['query'] = '%' . $this->escapeLike($query) . '%';
+        }
+
+        if ($deadlineFrom !== '') {
+            $sql .= ' AND DATE(t.deadline) >= :deadline_from';
+            $params['deadline_from'] = $deadlineFrom;
+        }
+        if ($deadlineTo !== '') {
+            $sql .= ' AND DATE(t.deadline) <= :deadline_to';
+            $params['deadline_to'] = $deadlineTo;
+        }
+        if ($createdFrom !== '') {
+            $sql .= ' AND DATE(t.created_at) >= :created_from';
+            $params['created_from'] = $createdFrom;
+        }
+        if ($createdTo !== '') {
+            $sql .= ' AND DATE(t.created_at) <= :created_to';
+            $params['created_to'] = $createdTo;
         }
 
         if ($overdue) {
