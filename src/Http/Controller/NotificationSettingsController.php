@@ -83,7 +83,10 @@ final class NotificationSettingsController
     public function testTelegram(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $settings = $this->settings->getForUser($this->userId());
-        if ($settings->telegramChatId === null || !$this->telegram->send($settings->telegramChatId, 'TMS: Telegram notifications are configured correctly.')) {
+        if ($settings->telegramChatId === null || !$this->telegram->send(
+            $settings->telegramChatId,
+            $this->translator->trans('notifications.telegram_test_message'),
+        )) {
             return $this->render($request, $response, null, $this->translator->trans('notifications.telegram_test_failed'), 502);
         }
         $_SESSION['_notification_flash'] = $this->translator->trans('notifications.telegram_test_sent');
