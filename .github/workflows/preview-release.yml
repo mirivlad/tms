@@ -98,10 +98,13 @@ jobs:
           - quick-add and owner-scoped customer autocomplete;
           - status, task-type and customer administration;
           - owner-scoped custom fields with all six donor field types;
+          - donor-grade task-table filters, custom/standard sorting and 10/25/50/100 pagination;
+          - secure owner-scoped attachments stored outside the public web root;
+          - SMTP/email and Telegram notification settings plus background delivery;
           - MariaDB migrations and first-admin CLI bootstrap;
           - Docker Compose and an image-based Portainer Stack.
 
-          This is intentionally a prerelease, not the stable v0.1.0. Donor feature parity work continues with attachments, notifications and user/admin flows.
+          This is intentionally a prerelease, not the stable v0.1.0. Remaining parity work is focused on user/admin flows, donor bulk actions and the final systematic donor audit before UI polish.
 
           Container image:
           `ghcr.io/mirivlad/tms:${TAG}`
