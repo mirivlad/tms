@@ -39,6 +39,7 @@ use Tms\Http\Controller\LocaleController;
 use Tms\Http\Controller\MetadataController;
 use Tms\Http\Controller\NotificationAdminController;
 use Tms\Http\Controller\NotificationSettingsController;
+use Tms\Http\Controller\PasswordRecoveryController;
 use Tms\Http\Controller\QuickTaskController;
 use Tms\Http\Controller\StatusDefaultsController;
 use Tms\Http\Controller\TaskController;
@@ -59,6 +60,7 @@ use Tms\Infrastructure\SecretBox;
 use Tms\Infrastructure\SmtpEmailSender;
 use Tms\Infrastructure\TelegramBotSender;
 use Tms\Security\PasswordAuthenticator;
+use Tms\Security\PasswordResetTokenRepository;
 use Tms\Security\PersistentLoginService;
 use Tms\Security\RememberTokenRepository;
 use Tms\Security\SessionManager;
@@ -126,11 +128,22 @@ final class ApplicationFactory
         $sessions = new SessionManager(new NativeSessionIdRegenerator());
         $passwordAuthenticator = new PasswordAuthenticator($users);
         $rememberTokens = new RememberTokenRepository($db);
+        $resetTokens = new PasswordResetTokenRepository($db);
         $persistentLogin = new PersistentLoginService($rememberTokens, $rememberLifetime);
         $cookiePolicy = new CookiePolicy($secureCookies, $sameSite);
         $userBootstrap = new UserBootstrapService($statuses, $taskTypes, $translator);
         $telegramSender = new TelegramBotSender(new Client(), $telegramBotToken);
         $emailSender = new SmtpEmailSender($smtpSettings, $notificationSecret);
+        $passwordRecovery = new PasswordRecoveryService(
+            $users,
+            $resetTokens,
+            $rememberTokens,
+            $notificationSettings,
+            $emailSender,
+            $telegramSender,
+            $translator,
+            $appUrl,
+        );
 
         $twig->getEnvironment()->addFunction(new TwigFunction(
             'task_attachments',
@@ -146,6 +159,7 @@ final class ApplicationFactory
         );
 
         $authController = new AuthController($twig, $passwordAuthenticator, $sessions, $persistentLogin, $cookiePolicy, $rememberLifetime, $rememberCookieName, $translator);
+        $passwordRecoveryController = new PasswordRecoveryController($twig, $passwordRecovery, $translator);
         $dashboardController = new DashboardController($twig, $sessions, $tasks, $statuses, $translator);
         $taskController = new TaskController($twig, $sessions, $tasks, $statuses, $taskTypes, $customers, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator);
         $taskDeleteController = new TaskDeleteController($sessions, $tasks, $attachments, $attachmentStorage);
@@ -214,6 +228,10 @@ final class ApplicationFactory
 
         $app->get('/login', [$authController, 'showLogin']);
         $app->post('/login', [$authController, 'login']);
+        $app->get('/forgot-password', [$passwordRecoveryController, 'showForgot']);
+        $app->post('/forgot-password', [$passwordRecoveryController, 'request']);
+        $app->get('/reset-password', [$passwordRecoveryController, 'showReset']);
+        $app->post('/reset-password', [$passwordRecoveryController, 'reset']);
         $app->post('/logout', [$authController, 'logout'])->add($requireAuth);
         $app->post('/locale', [$localeController, 'switch']);
 
