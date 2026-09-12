@@ -81,6 +81,7 @@ return [
     'tasks.table.type' => 'Тип',
     'tasks.table.priority' => 'Приоритет',
     'tasks.table.customer' => 'Заказчик',
+    'tasks.table.created' => 'Создана',
     'tasks.table.deadline' => 'Срок',
     'tasks.delete_confirm' => 'Удалить эту задачу?',
 

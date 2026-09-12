@@ -81,6 +81,7 @@ return [
     'tasks.table.type' => 'Type',
     'tasks.table.priority' => 'Priority',
     'tasks.table.customer' => 'Customer',
+    'tasks.table.created' => 'Created',
     'tasks.table.deadline' => 'Deadline',
     'tasks.delete_confirm' => 'Delete this task?',
 
