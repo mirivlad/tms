@@ -6,10 +6,10 @@ TMS is a lightweight, self-hosted task management system for people who want to 
 
 ## Container channels
 
-The current published preview is `v0.1.0-preview.3`:
+The current published preview is `v0.1.0-preview.4`:
 
 ```text
-ghcr.io/mirivlad/tms:v0.1.0-preview.3
+ghcr.io/mirivlad/tms:v0.1.0-preview.4
 ```
 
 For a deployment you want to keep stable while evaluating it, use a versioned preview tag. `preview` follows the newest published preview release.
@@ -26,7 +26,7 @@ ghcr.io/mirivlad/tms:edge
 
 ## Direction
 
-The first stable public release focuses on a solid personal/self-hosted task manager with multiple isolated users. Status/type/customer administration, richer task editing and custom fields have already been restored. Attachments, notifications and user/admin flows are being migrated next.
+The first stable public release focuses on a solid personal/self-hosted task manager with multiple isolated users. Status/type/customer administration, richer task editing, custom fields, attachments, notifications and donor-grade task-table filtering/sorting/pagination have been restored. User/admin flows and the remaining donor behavior audit are next.
 
 Team collaboration (workspaces, projects, membership, assignees and ACLs) is planned after the secure single-user-scope foundation is complete.
 
@@ -50,11 +50,14 @@ Team collaboration (workspaces, projects, membership, assignees and ACLs) is pla
 - task create/edit/delete;
 - sanitized rich-text descriptions;
 - quick-add task flow and customer autocomplete;
-- search and filters by status, type, priority, customer, overdue state and custom fields;
+- donor-grade task-table filtering: status inversion, type, priority, literal-safe customer substring, overdue state, deadline/created ranges and custom fields;
+- sortable standard/custom columns with active-filter preservation, 10/25/50/100 per-page controls and pagination;
 - user-scoped status, task-type and customer administration;
 - six owner-scoped custom-field types: text, textarea, select, money, checkbox and checkbox list;
 - Kanban board with drag-and-drop and a no-JavaScript select fallback;
 - calendar with deadlines, no-deadline tasks and combined modes;
+- secure attachment upload/download/delete with persistent out-of-webroot storage;
+- SMTP/email and Telegram notifications with a background notifier service;
 - automatic MariaDB migrations;
 - first-administrator CLI bootstrap;
 - Docker Compose and Portainer deployment paths.
@@ -134,7 +137,7 @@ TMS_IMAGE=ghcr.io/mirivlad/tms:edge
 For a reproducible deployment, use a versioned release tag or one of the immutable edge tags instead:
 
 ```text
-TMS_IMAGE=ghcr.io/mirivlad/tms:v0.1.0-preview.3
+TMS_IMAGE=ghcr.io/mirivlad/tms:v0.1.0-preview.4
 # or, after an edge publication:
 TMS_IMAGE=ghcr.io/mirivlad/tms:sha-0123456789ab
 ```
@@ -181,7 +184,7 @@ See `SECURITY.md` and `docs/ARCHITECTURE.md` for the invariants applied during m
 
 ## Still being migrated before stable v0.1.0
 
-Attachments, user/settings administration, SMTP/email notifications, Telegram notifications and final release hardening are not part of the current versioned preview yet. Donor feature parity is tracked separately so broad UI polish happens only after retained TaskMS functionality has been restored.
+User/settings administration, the remaining donor behavior audit, parity verification and final release hardening are still pending before stable v0.1.0. Attachments, notifications, custom fields and the donor task-table filtering/sorting/pagination workflow are already present in this preview. Broad UI polish remains intentionally deferred until retained TaskMS functionality has been fully audited.
 
 ## Repository history
 
