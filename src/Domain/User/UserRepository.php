@@ -32,6 +32,42 @@ final class UserRepository
         return $this->hydrate($row);
     }
 
+    public function findByEmail(string $email): ?UserRecord
+    {
+        $stmt = $this->db->prepare(
+            'SELECT id, username, email, password_hash, role, is_active, approved_at
+             FROM users
+             WHERE email = :email
+             LIMIT 1'
+        );
+        $stmt->execute(['email' => trim($email)]);
+
+        $row = $stmt->fetch();
+        return is_array($row) ? $this->hydrate($row) : null;
+    }
+
+    public function findByIdentifier(string $identifier): ?UserRecord
+    {
+        $identifier = trim($identifier);
+        if ($identifier === '') {
+            return null;
+        }
+
+        $stmt = $this->db->prepare(
+            'SELECT id, username, email, password_hash, role, is_active, approved_at
+             FROM users
+             WHERE username = :username OR email = :email
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'username' => $identifier,
+            'email' => $identifier,
+        ]);
+
+        $row = $stmt->fetch();
+        return is_array($row) ? $this->hydrate($row) : null;
+    }
+
     public function findById(int $userId): ?UserRecord
     {
         $stmt = $this->db->prepare(

@@ -105,6 +105,8 @@ docker compose exec app php bin/create-admin.php admin admin@example.com
 
 The command asks for a password without echoing it. For non-interactive automation, `TMS_ADMIN_PASSWORD` may be supplied only to that command; it does not need to remain in the stack environment.
 
+If an account password is lost, browser recovery uses email and/or a linked Telegram chat when available. A self-hosted administrator can always recover access locally even when neither external service is configured; see [`docs/ACCOUNT_RECOVERY.md`](docs/ACCOUNT_RECOVERY.md).
+
 Open `APP_URL` and sign in.
 
 ### Reverse proxy / HTTPS
