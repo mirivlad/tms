@@ -54,4 +54,54 @@ final class SessionManager
         $role = $_SESSION['role'] ?? null;
         return $this->isAuthenticated() && is_string($role) ? $role : null;
     }
+
+    public function startImpersonation(UserRecord $target): bool
+    {
+        $adminId = $this->currentUserId();
+        if ($adminId === null || $this->currentRole() !== 'admin' || $target->id === $adminId) {
+            return false;
+        }
+        $_SESSION['original_admin_id'] = $adminId;
+        $_SESSION['user_id'] = $target->id;
+        $_SESSION['username'] = $target->username;
+        $_SESSION['role'] = $target->role;
+        $_SESSION['logged_in'] = true;
+        $this->regenerator->regenerate();
+        return true;
+    }
+
+    public function isImpersonating(): bool
+    {
+        return $this->isAuthenticated() && is_int($_SESSION['original_admin_id'] ?? null);
+    }
+
+    public function originalAdminId(): ?int
+    {
+        $id = $_SESSION['original_admin_id'] ?? null;
+        return $this->isImpersonating() && is_int($id) ? $id : null;
+    }
+
+    public function stopImpersonation(UserRecord $admin): bool
+    {
+        $originalId = $this->originalAdminId();
+        if ($originalId === null || $admin->id !== $originalId || $admin->role !== 'admin' || !$admin->isActive) {
+            return false;
+        }
+        unset($_SESSION['original_admin_id']);
+        $_SESSION['user_id'] = $admin->id;
+        $_SESSION['username'] = $admin->username;
+        $_SESSION['role'] = $admin->role;
+        $_SESSION['logged_in'] = true;
+        $this->regenerator->regenerate();
+        return true;
+    }
+
+    public function refreshIdentity(UserRecord $user): void
+    {
+        if ($this->currentUserId() !== $user->id) {
+            return;
+        }
+        $_SESSION['username'] = $user->username;
+        $_SESSION['role'] = $user->role;
+    }
 }

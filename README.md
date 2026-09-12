@@ -2,7 +2,7 @@
 
 TMS is a lightweight, self-hosted task management system for people who want to keep their tasks and data on infrastructure they control.
 
-> **Preview status:** TMS is being reconstructed from a production-tested internal application. Production data, secrets, billing code and deployment-specific artifacts are intentionally not imported. The current preview is runnable; retained donor functionality is being migrated behind stricter authorization and application boundaries.
+> **Preview status:** TMS is prerelease software. The current preview is runnable and focuses on a secure, self-hosted task-management baseline. Stable v0.1.0 will follow after the remaining integration, regression and release-hardening work is complete.
 
 ## Container channels
 
@@ -26,7 +26,7 @@ ghcr.io/mirivlad/tms:edge
 
 ## Direction
 
-The first stable public release focuses on a solid personal/self-hosted task manager with multiple isolated users. Status/type/customer administration, richer task editing, custom fields, attachments, notifications and donor-grade task-table filtering/sorting/pagination have been restored. User/admin flows and the remaining donor behavior audit are next.
+The first stable public release focuses on a solid personal/self-hosted task manager with multiple isolated users. Status/type/customer administration, rich task editing, custom fields, attachments, notifications, dashboard/table/calendar workflows, profile settings, optional registration and user administration are implemented. The remaining work before stable is integration/regression verification, release hardening and the deliberately deferred UI-polish pass.
 
 Team collaboration (workspaces, projects, membership, assignees and ACLs) is planned after the secure single-user-scope foundation is complete.
 
@@ -50,13 +50,20 @@ Team collaboration (workspaces, projects, membership, assignees and ACLs) is pla
 - overview dashboard;
 - task create/edit/delete;
 - sanitized rich-text descriptions;
-- quick-add task flow and customer autocomplete;
-- donor-grade task-table filtering: status inversion, type, priority, literal-safe customer substring, overdue state, deadline/created ranges and custom fields;
+- global quick-add task modal (including Alt/Cmd+N) and customer autocomplete;
+- dashboard counters, status distribution and stale-task view;
+- task quick-view modal backed by an owner-scoped JSON endpoint;
+- bulk task operations for status/type/priority/deadline changes and deletion;
+- advanced task-table filtering: status inversion, type, priority, literal-safe customer substring, overdue state, deadline/created ranges and custom fields;
 - sortable standard/custom columns with active-filter preservation, 10/25/50/100 per-page controls and pagination;
 - user-scoped status, task-type and customer administration;
 - six owner-scoped custom-field types: text, textarea, select, money, checkbox and checkbox list;
 - Kanban board with drag-and-drop and a no-JavaScript select fallback;
-- calendar with deadlines, no-deadline tasks and combined modes;
+- calendar with deadline/no-deadline/combined modes, multi-value status/type/priority filters, inversion and literal-safe customer search;
+- per-user profile settings for username, password, timezone and dark/light/system theme;
+- optional self-registration with hashed single-use email-verification tokens and configurable automatic/manual approval;
+- administrator user management, pending-user approval, manual verification, resend, activation/role editing and impersonation;
+- public first-steps and privacy pages suitable for self-hosted deployments;
 - secure attachment upload/download/delete with persistent out-of-webroot storage;
 - SMTP/email and Telegram notifications with a background notifier service;
 - automatic MariaDB migrations;
@@ -89,6 +96,8 @@ At minimum, set:
 - `APP_LOCALE` to `en` or `ru` for the initial interface/default-metadata language;
 - `SESSION_SECURE=true` when the browser reaches TMS over HTTPS;
 - `SESSION_SECURE=false` only when intentionally testing over plain HTTP.
+- leave `REGISTRATION_ENABLED=false` for a closed installation, or set it to `true` to expose self-registration;
+- set `REGISTRATION_AUTO_APPROVE_AFTER_EMAIL=false` if an administrator must approve verified users before they can sign in.
 
 Then start a locally built stack:
 
@@ -127,9 +136,13 @@ APP_LOCALE=ru
 DB_PASS=<strong random database password>
 SESSION_SECURE=true
 TMS_PORT=8080
+REGISTRATION_ENABLED=false
+REGISTRATION_AUTO_APPROVE_AFTER_EMAIL=true
 ```
 
 `APP_URL` must be the browser-visible URL, not the container hostname. `APP_TIMEZONE` must be a valid PHP/IANA timezone and should match the wall-clock timezone users expect for task deadlines and calendar dates. `APP_LOCALE` is the initial/default UI locale (`en` or `ru`). Point your reverse proxy for the chosen subdomain at `TMS_PORT` on the Docker host.
+
+Registration is disabled by default. When enabled, verification links are built from `APP_URL`, so it must be externally correct. `REGISTRATION_AUTO_APPROVE_AFTER_EMAIL=true` is convenient for open self-registration; set it to `false` when new accounts require explicit approval in **Admin → Pending users**. Email verification requires working SMTP settings in TMS; an administrator can also verify an account manually.
 
 By default the Portainer compose file stays pinned to the current versioned preview. To follow the newest CI-tested `main`, add:
 
@@ -183,15 +196,15 @@ For the built-in PHP server, route fallback behavior is limited; Docker/Apache r
 - explicit Secure/HttpOnly/SameSite cookie policy;
 - production errors do not expose raw PDO connection failures.
 
-See `SECURITY.md` and `docs/ARCHITECTURE.md` for the invariants applied during migration from the internal application.
+See `SECURITY.md`, `docs/ARCHITECTURE.md` and `docs/PROJECT_SCOPE.md` for the release invariants and project boundaries.
 
-## Still being migrated before stable v0.1.0
+## Remaining work before stable v0.1.0
 
-User/settings administration, the remaining donor behavior audit, parity verification and final release hardening are still pending before stable v0.1.0. Attachments, notifications, custom fields and the donor task-table filtering/sorting/pagination workflow are already present in this preview. Broad UI polish remains intentionally deferred until retained TaskMS functionality has been fully audited.
+The core feature set is present: dashboard workflow, quick add/quick view, bulk actions, profile settings, registration/verification, user administration, advanced task/calendar filtering, attachments, notifications and custom fields. Before stable v0.1.0 the remaining work is final feature-completeness review, integration/regression hardening and release cleanup. Broad UI polish remains intentionally deferred until that review is closed.
 
-## Repository history
+## Repository policy
 
-This repository intentionally starts with a clean history. It does **not** preserve the Git history of the internal production repository because that repository contains deployment artifacts and production-derived material that must never become public.
+The repository contains source code, migrations, tests and deployment templates needed to build and operate TMS. Production credentials, user data, uploads, logs, backups and environment-specific secrets must never be committed.
 
 ## License
 

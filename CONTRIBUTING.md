@@ -1,6 +1,6 @@
 # Contributing to TMS
 
-TMS is being reconstructed into a clean open-source codebase. Small, focused changes are preferred over broad rewrites.
+TMS is developed as a clean open-source codebase. Small, focused changes are preferred over broad rewrites.
 
 ## Development rules
 

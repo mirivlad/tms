@@ -1,0 +1,9 @@
+CREATE TABLE user_preferences (
+    user_id BIGINT UNSIGNED NOT NULL,
+    timezone VARCHAR(64) NOT NULL DEFAULT 'UTC',
+    theme VARCHAR(16) NOT NULL DEFAULT 'dark',
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (user_id),
+    CONSTRAINT fk_user_preferences_user
+        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

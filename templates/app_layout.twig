@@ -8,7 +8,7 @@
     <link rel="stylesheet" href="/assets/custom-fields.css">
     {% block styles %}{% endblock %}
 </head>
-<body>
+<body class="theme-{{ current_theme() }}">
 <header class="topbar">
     <a class="brand" href="/dashboard">TMS</a>
     <nav class="main-nav" aria-label="{{ t('nav.main_aria') }}">
@@ -19,7 +19,8 @@
         <a href="/metadata">{{ t('nav.metadata') }}</a>
         <a href="/custom-fields">{{ t('nav.custom_fields') }}</a>
         <a href="/settings/notifications">{{ t('nav.notifications') }}</a>
-        <a class="nav-primary" href="/tasks/new">{{ t('nav.new_task') }}</a>
+        {% if current_role() == 'admin' %}<a href="/admin">{{ t('admin.title') }}</a>{% endif %}
+        <a class="nav-primary" href="/tasks/new" data-quick-add-trigger>{{ t('nav.new_task') }}</a>
     </nav>
     <div class="topbar-actions">
         <form class="locale-switch" method="post" action="/locale" aria-label="{{ t('locale.switch_aria') }}">
@@ -28,11 +29,16 @@
             <span aria-hidden="true">/</span>
             <button class="locale-choice {{ locale == 'en' ? 'active' : '' }}" type="submit" name="locale" value="en" title="{{ t('locale.en') }}">EN</button>
         </form>
-        <span class="muted">{{ username }}</span>
+        <a class="muted profile-link" href="/settings/profile" title="{{ t('nav.profile') }}">{{ username }}</a>
         <form method="post" action="/logout"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="secondary compact" type="submit">{{ t('nav.sign_out') }}</button></form>
     </div>
 </header>
+{% if is_impersonating() %}<div class="impersonation-bar"><span>{{ t('admin.impersonating', {'username': username}) }}</span><form method="post" action="/admin/stop-impersonation"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="secondary compact" type="submit">{{ t('admin.stop_impersonation') }}</button></form></div>{% endif %}
+{% include "quick_add_dialog.twig" %}
+{% include "task_preview_dialog.twig" %}
 <main class="page">{% block content %}{% endblock %}</main>
+<script src="/assets/quick-add.js" defer></script>
+<script src="/assets/task-preview.js" defer></script>
 {% block scripts %}{% endblock %}
 </body>
 </html>

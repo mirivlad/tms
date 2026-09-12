@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="{{ locale }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}TMS{% endblock %}</title>
+    <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body class="public-page">
+<header class="public-topbar">
+    <a class="brand" href="/">TMS</a>
+    <nav class="public-nav">
+        <a href="/first_steps">{{ t('public.first_steps') }}</a>
+        <a href="/privacy">{{ t('public.privacy') }}</a>
+        <a href="/login">{{ t('auth.submit') }}</a>
+    </nav>
+    <form class="locale-switch" method="post" action="/locale" aria-label="{{ t('locale.switch_aria') }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <button class="locale-choice {{ locale == 'ru' ? 'active' : '' }}" type="submit" name="locale" value="ru">RU</button>
+        <span aria-hidden="true">/</span>
+        <button class="locale-choice {{ locale == 'en' ? 'active' : '' }}" type="submit" name="locale" value="en">EN</button>
+    </form>
+</header>
+<main class="public-shell">{% block content %}{% endblock %}</main>
+</body>
+</html>

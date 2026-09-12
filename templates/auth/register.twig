@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="{{ locale }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ t('registration.page_title') }} · TMS</title>
+    <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body class="auth-page">
+<main class="auth-card">
+    <div class="brand">TMS</div>
+    <h1>{{ t('registration.title') }}</h1>
+    <p class="muted">{{ t('registration.subtitle') }}</p>
+    {% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
+    <form method="post" action="/register" autocomplete="on">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label>{{ t('auth.username') }}<input name="username" type="text" value="{{ username|default('') }}" required minlength="3" maxlength="64" pattern="[A-Za-z0-9_-]+" autocomplete="username"></label>
+        <label>{{ t('registration.email') }}<input name="email" type="email" value="{{ email|default('') }}" required autocomplete="email"></label>
+        <label>{{ t('auth.password') }}<input name="password" type="password" required minlength="12" autocomplete="new-password"></label>
+        <label>{{ t('registration.password_confirm') }}<input name="password_confirm" type="password" required minlength="12" autocomplete="new-password"></label>
+        <button type="submit">{{ t('registration.submit') }}</button>
+    </form>
+    <p><a class="text-link" href="/login">{{ t('registration.back_to_login') }}</a></p>
+</main>
+</body>
+</html>

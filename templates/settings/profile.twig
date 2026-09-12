@@ -1,0 +1,35 @@
+{% extends "app_layout.twig" %}
+{% block title %}{{ t('profile.page_title') }} · TMS{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <div>
+        <p class="eyebrow">{{ t('profile.eyebrow') }}</p>
+        <h1>{{ t('profile.title') }}</h1>
+        <p class="muted">{{ t('profile.subtitle') }}</p>
+    </div>
+</div>
+
+<section class="content-card form-card profile-card">
+    {% if notice %}<div class="{{ notice.kind == 'error' ? 'alert' : 'success-notice' }}" role="status">{{ notice.message }}</div>{% endif %}
+    <form method="post" action="/settings/profile" class="task-form">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <div class="field-wide section-heading"><div><h2>{{ t('profile.account') }}</h2><p class="muted">{{ t('profile.account_help') }}</p></div></div>
+        <label>{{ t('profile.username') }}<input type="text" name="username" required minlength="3" maxlength="64" pattern="[A-Za-z0-9_-]+" value="{{ user.username }}"><span class="field-help">{{ t('profile.username_help') }}</span></label>
+        <label>{{ t('profile.email') }}<input type="email" value="{{ user.email }}" readonly disabled><span class="field-help">{{ t('profile.email_help') }}</span></label>
+
+        <div class="field-wide section-heading profile-section"><div><h2>{{ t('profile.regional') }}</h2></div></div>
+        <label>{{ t('profile.timezone') }}<select name="timezone" data-timezone-select>{% for timezone in timezones %}<option value="{{ timezone }}" {{ preferences.timezone == timezone ? 'selected' : '' }}>{{ timezone }}</option>{% endfor %}</select><span class="field-help">{{ t('profile.current_time') }}: <span data-timezone-preview>—</span></span></label>
+        <label>{{ t('profile.theme') }}<select name="theme">{% for theme in themes %}<option value="{{ theme }}" {{ preferences.theme == theme ? 'selected' : '' }}>{{ t('theme.' ~ theme) }}</option>{% endfor %}</select><span class="field-help">{{ t('profile.theme_help') }}</span></label>
+
+        <div class="field-wide section-heading profile-section"><div><h2>{{ t('profile.password') }}</h2><p class="muted">{{ t('profile.password_help') }}</p></div></div>
+        <label>{{ t('profile.current_password') }}<input type="password" name="current_password" autocomplete="current-password"></label>
+        <label>{{ t('profile.new_password') }}<input type="password" name="new_password" minlength="12" autocomplete="new-password"></label>
+        <label>{{ t('profile.confirm_password') }}<input type="password" name="confirm_new_password" minlength="12" autocomplete="new-password"></label>
+        <div class="field-wide notification-link-card"><span>{{ t('profile.notifications_help') }}</span><a href="/settings/notifications">{{ t('nav.notifications') }} →</a></div>
+        <div class="form-actions field-wide"><button type="submit">{{ t('common.save') }}</button></div>
+    </form>
+</section>
+{% endblock %}
+
+{% block scripts %}<script src="/assets/profile.js" defer></script>{% endblock %}

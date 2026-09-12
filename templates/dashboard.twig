@@ -3,101 +3,125 @@
 {% block title %}{{ t('dashboard.page_title') }} · TMS{% endblock %}
 
 {% block content %}
-<div class="page-header">
+<div class="page-header dashboard-header">
     <div>
         <p class="eyebrow">{{ t('dashboard.eyebrow') }}</p>
         <h1>{{ t('dashboard.title') }}</h1>
         <p class="muted">{{ t('dashboard.subtitle') }}</p>
     </div>
-    <a class="button-link" href="/tasks/new">{{ t('nav.new_task') }}</a>
 </div>
 
-<section class="stats-grid" aria-label="{{ t('dashboard.stats_aria') }}">
-    <a class="stat-card" href="/tasks">
-        <span class="stat-value">{{ total_tasks }}</span>
-        <span class="stat-label">{{ t('dashboard.all_tasks') }}</span>
-    </a>
+<section class="stats-grid dashboard-stats" aria-label="{{ t('dashboard.stats_aria') }}">
     <a class="stat-card" href="/tasks">
         <span class="stat-value">{{ open_tasks }}</span>
-        <span class="stat-label">{{ t('dashboard.open') }}</span>
+        <span class="stat-label">{{ t('dashboard.current') }}</span>
     </a>
-    <a class="stat-card" href="/tasks?priority=urgent">
-        <span class="stat-value">{{ urgent_tasks }}</span>
-        <span class="stat-label">{{ t('dashboard.urgent') }}</span>
+    <a class="stat-card" href="/tasks?deadline_from={{ today_date }}&deadline_to={{ today_date }}">
+        <span class="stat-value">{{ today_tasks }}</span>
+        <span class="stat-label">{{ t('dashboard.today') }}</span>
+    </a>
+    <a class="stat-card" href="/tasks?deadline_from={{ tomorrow_date }}&deadline_to={{ week_end_date }}">
+        <span class="stat-value">{{ week_tasks }}</span>
+        <span class="stat-label">{{ t('dashboard.week') }}</span>
     </a>
     <a class="stat-card" href="/tasks?overdue=1">
         <span class="stat-value">{{ overdue_tasks }}</span>
         <span class="stat-label">{{ t('dashboard.overdue') }}</span>
     </a>
+    <a class="stat-card" href="/tasks?priority=urgent">
+        <span class="stat-value">{{ urgent_tasks }}</span>
+        <span class="stat-label">{{ t('dashboard.urgent') }}</span>
+    </a>
 </section>
 
-<section class="content-card" id="quick-add">
-    <div class="section-heading">
-        <div>
-            <h2>{{ t('quick_add.title') }}</h2>
-            <p class="muted">{{ t('quick_add.help') }}</p>
+<div class="dashboard-grid">
+    <section class="content-card dashboard-status-card">
+        <div class="section-heading">
+            <div>
+                <h2>{{ t('dashboard.by_status') }}</h2>
+                <p class="muted">{{ t('dashboard.by_status_help') }}</p>
+            </div>
         </div>
-    </div>
+        {% if status_breakdown is empty %}
+            <div class="empty-state dashboard-empty">
+                <span>{{ t('dashboard.no_active_tasks') }}</span>
+            </div>
+        {% else %}
+            <div class="status-chart-wrap">
+                <div class="status-donut" style="--status-gradient: {{ status_chart_gradient }}" aria-hidden="true">
+                    <span>{{ open_tasks }}</span>
+                </div>
+                <div class="status-legend">
+                    {% for item in status_breakdown %}
+                        <a href="/tasks?status_id={{ item.id }}">
+                            <span class="status-dot" style="--status-color: {{ item.color }}"></span>
+                            <span>{{ item.name }}</span>
+                            <strong>{{ item.count }}</strong>
+                        </a>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+    </section>
 
-    {% if quick_add_notice %}
-        <div class="{{ quick_add_notice.kind == 'error' ? 'alert' : 'muted' }}" role="status">
-            {{ quick_add_notice.message }}
-            {% if quick_add_notice.task_id|default(null) %}
-                · <a href="/tasks/{{ quick_add_notice.task_id }}/edit">{{ t('quick_add.open_task') }}</a>
-            {% endif %}
+    <section class="content-card dashboard-stuck-card">
+        <div class="section-heading">
+            <div>
+                <h2>{{ t('dashboard.stuck_tasks') }}</h2>
+                <p class="muted">{{ t('dashboard.stuck_tasks_help') }}</p>
+            </div>
+            <a href="/tasks">{{ t('common.view_all') }}</a>
         </div>
-    {% endif %}
-
-    <form class="task-form" method="post" action="/tasks/quick-add">
-        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-        <label>
-            {{ t('task_form.title') }}
-            <input type="text" name="title" maxlength="255" required placeholder="{{ t('quick_add.title_placeholder') }}">
-        </label>
-        <label>
-            {{ t('task_form.deadline') }}
-            <input type="datetime-local" name="deadline">
-        </label>
-        <label class="field-wide">
-            {{ t('task_form.description') }}
-            <textarea name="description" rows="2" maxlength="10000" placeholder="{{ t('quick_add.description_placeholder') }}"></textarea>
-        </label>
-        <div class="form-actions field-wide">
-            <button type="submit">{{ t('quick_add.submit') }}</button>
-            <span class="field-help">{{ t('quick_add.defaults_help') }}</span>
-        </div>
-    </form>
-</section>
-
-<section class="content-card" style="margin-top: 18px;">
-    <div class="section-heading">
-        <div>
-            <h2>{{ t('dashboard.next_tasks') }}</h2>
-            <p class="muted">{{ t('dashboard.next_tasks_help') }}</p>
-        </div>
-        <a href="/tasks">{{ t('common.view_all') }}</a>
-    </div>
-
-    {% if next_tasks is empty %}
-        <div class="empty-state">
-            <strong>{{ t('dashboard.empty_title') }}</strong>
-            <span>{{ t('dashboard.empty_body') }}</span>
-        </div>
-    {% else %}
-        <div class="task-list compact-list">
-            {% for task in next_tasks %}
-                <a class="task-row" href="/tasks/{{ task.id }}/edit">
-                    <span class="status-dot" style="--status-color: {{ status_map[task.statusId].color|default('#6b7280') }}"></span>
-                    <span class="task-row-main">
-                        <strong>{{ task.title }}</strong>
-                        <span class="muted">
-                            {{ status_map[task.statusId].name|default(t('task.no_status')) }} · {{ priority_labels[task.priority]|default(t('priority.medium')) }}
+        {% if stuck_tasks is empty %}
+            <div class="empty-state dashboard-empty">
+                <span>{{ t('dashboard.no_stuck_tasks') }}</span>
+            </div>
+        {% else %}
+            <div class="task-list compact-list">
+                {% for task in stuck_tasks %}
+                    <a class="task-row" href="/tasks/{{ task.id }}/edit" data-task-preview="{{ task.id }}">
+                        <span class="status-dot" style="--status-color: {{ status_map[task.statusId].color|default('#6b7280') }}"></span>
+                        <span class="task-row-main">
+                            <strong>{{ task.title }}</strong>
+                            <span class="muted">{{ status_map[task.statusId].name|default(t('task.no_status')) }}</span>
                         </span>
-                    </span>
-                    <span class="task-deadline">{{ task.deadline ? task.deadline|date('Y-m-d H:i') : t('task.no_deadline') }}</span>
-                </a>
-            {% endfor %}
+                        <span class="task-deadline">{{ t('dashboard.updated') }} {{ task.updatedAt|date('Y-m-d') }}</span>
+                    </a>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="content-card dashboard-next-card">
+        <div class="section-heading">
+            <div>
+                <h2>{{ t('dashboard.next_tasks') }}</h2>
+                <p class="muted">{{ t('dashboard.next_tasks_help') }}</p>
+            </div>
+            <a href="/tasks">{{ t('common.view_all') }}</a>
         </div>
-    {% endif %}
-</section>
+
+        {% if next_tasks is empty %}
+            <div class="empty-state dashboard-empty">
+                <strong>{{ t('dashboard.empty_title') }}</strong>
+                <span>{{ t('dashboard.empty_body') }}</span>
+            </div>
+        {% else %}
+            <div class="task-list compact-list">
+                {% for task in next_tasks %}
+                    <a class="task-row" href="/tasks/{{ task.id }}/edit" data-task-preview="{{ task.id }}">
+                        <span class="status-dot" style="--status-color: {{ status_map[task.statusId].color|default('#6b7280') }}"></span>
+                        <span class="task-row-main">
+                            <strong>{{ task.title }}</strong>
+                            <span class="muted">
+                                {{ status_map[task.statusId].name|default(t('task.no_status')) }} · {{ priority_labels[task.priority]|default(t('priority.medium')) }}
+                            </span>
+                        </span>
+                        <span class="task-deadline">{{ task.deadline ? task.deadline|date('Y-m-d H:i') : t('task.no_deadline') }}</span>
+                    </a>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </section>
+</div>
 {% endblock %}

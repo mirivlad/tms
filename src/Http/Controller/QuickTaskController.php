@@ -63,19 +63,51 @@ final class QuickTaskController
                 null,
             );
 
+            $message = $this->translator->trans('quick_add.created');
+            if ($this->wantsJson($request)) {
+                return $this->json($response, [
+                    'success' => true,
+                    'message' => $message,
+                    'task_id' => $taskId,
+                ], 201);
+            }
+
             $_SESSION['quick_add_notice'] = [
                 'kind' => 'success',
-                'message' => $this->translator->trans('quick_add.created'),
+                'message' => $message,
                 'task_id' => $taskId,
             ];
         } catch (DomainException $error) {
+            if ($this->wantsJson($request)) {
+                return $this->json($response, [
+                    'success' => false,
+                    'message' => $error->getMessage(),
+                ], 400);
+            }
+
             $_SESSION['quick_add_notice'] = [
                 'kind' => 'error',
                 'message' => $error->getMessage(),
             ];
         }
 
-        return $response->withHeader('Location', '/dashboard#quick-add')->withStatus(302);
+        return $response->withHeader('Location', '/dashboard')->withStatus(302);
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function json(ResponseInterface $response, array $payload, int $status): ResponseInterface
+    {
+        $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $response->getBody()->write($encoded === false ? '{"success":false}' : $encoded);
+
+        return $response
+            ->withHeader('Content-Type', 'application/json; charset=utf-8')
+            ->withStatus($status);
+    }
+
+    private function wantsJson(ServerRequestInterface $request): bool
+    {
+        return str_contains(strtolower($request->getHeaderLine('Accept')), 'application/json');
     }
 
     private function defaultStatusId(int $userId): ?int

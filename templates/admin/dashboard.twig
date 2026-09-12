@@ -1,0 +1,8 @@
+{% extends "app_layout.twig" %}
+{% block title %}{{ t('admin.title') }} · TMS{% endblock %}
+{% block content %}
+<div class="page-header"><div><p class="eyebrow">{{ t('admin.eyebrow') }}</p><h1>{{ t('admin.title') }}</h1><p class="muted">{{ t('admin.subtitle') }}</p></div><a class="button-link" href="/admin/users">{{ t('admin.users') }}</a></div>
+{% if notice %}<div class="{{ notice.kind == 'error' ? 'alert' : 'success-notice' }}">{{ notice.message }}</div>{% endif %}
+<section class="stats-grid admin-stats"><a class="stat-card" href="/admin/users"><span class="stat-value">{{ total_users }}</span><span class="stat-label">{{ t('admin.total_users') }}</span></a><a class="stat-card" href="/admin/users"><span class="stat-value">{{ active_users }}</span><span class="stat-label">{{ t('admin.active_users') }}</span></a><a class="stat-card" href="/admin/pending-users"><span class="stat-value">{{ pending_users }}</span><span class="stat-label">{{ t('admin.pending_users') }}</span></a></section>
+<section class="content-card"><div class="section-heading"><div><h2>{{ t('admin.system_tools') }}</h2><p class="muted">{{ t('admin.system_tools_help') }}</p></div></div><div class="admin-actions"><a class="button-link" href="/admin/users">{{ t('admin.users') }}</a><a class="secondary-link button-link" href="/admin/pending-users">{{ t('admin.pending_users') }}</a><a class="secondary-link button-link" href="/admin/notifications">{{ t('nav.notifications') }}</a></div></section>
+{% endblock %}

@@ -103,7 +103,7 @@ do
   test "$code" = "409"
 done
 
-# Donor parity: restore a missing built-in status template without stealing
+# Feature completeness: restore a missing built-in status template without stealing
 # the user's already configured default/completion roles.
 in_progress_id=$(db "SELECT id FROM statuses WHERE user_id=$admin_id AND name='In progress' LIMIT 1")
 test -n "$in_progress_id"
