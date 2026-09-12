@@ -184,6 +184,7 @@ final class ApplicationFactory
             $notificationSettings,
             $telegramLinkTokens,
             $telegramSender,
+            $translator,
             $telegramWebhookSecret,
         );
         $requireAuth = new RequireAuthMiddleware($sessions);
