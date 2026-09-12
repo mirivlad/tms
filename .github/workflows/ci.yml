@@ -246,6 +246,9 @@ jobs:
       - name: Exercise notification workflow
         run: bash tests/smoke/notifications.sh
 
+      - name: Exercise password recovery workflow
+        run: bash tests/smoke/password-recovery.sh
+
       - name: Show stack state on failure
         if: failure()
         run: |
