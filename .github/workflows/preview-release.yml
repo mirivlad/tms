@@ -91,6 +91,7 @@ jobs:
 
           Included in current previews:
           - secure login, logout and rotating persistent login;
+          - browser and local-console password recovery with hashed single-use reset tokens;
           - owner-isolated task storage and metadata;
           - Russian and English UI catalogs with a runtime language switch;
           - dashboard, task list, Kanban board and calendar;

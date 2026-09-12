@@ -6,10 +6,10 @@ TMS is a lightweight, self-hosted task management system for people who want to 
 
 ## Container channels
 
-The current published preview is `v0.1.0-preview.4`:
+The current published preview is `v0.1.0-preview.5`:
 
 ```text
-ghcr.io/mirivlad/tms:v0.1.0-preview.4
+ghcr.io/mirivlad/tms:v0.1.0-preview.5
 ```
 
 For a deployment you want to keep stable while evaluating it, use a versioned preview tag. `preview` follows the newest published preview release.
@@ -44,6 +44,7 @@ Team collaboration (workspaces, projects, membership, assignees and ACLs) is pla
 
 - password login/logout with session ID rotation;
 - rotating persistent login tokens stored as selector + verifier hash;
+- browser and local-console password recovery with single-use reset tokens;
 - CSRF protection for state-changing browser requests;
 - Russian and English interface catalogs with a runtime language switch;
 - overview dashboard;
@@ -139,7 +140,7 @@ TMS_IMAGE=ghcr.io/mirivlad/tms:edge
 For a reproducible deployment, use a versioned release tag or one of the immutable edge tags instead:
 
 ```text
-TMS_IMAGE=ghcr.io/mirivlad/tms:v0.1.0-preview.4
+TMS_IMAGE=ghcr.io/mirivlad/tms:v0.1.0-preview.5
 # or, after an edge publication:
 TMS_IMAGE=ghcr.io/mirivlad/tms:sha-0123456789ab
 ```
