@@ -91,8 +91,10 @@ final class TaskRepository
 
         $query = trim($query);
         if ($query !== '') {
-            $sql .= " AND (t.title LIKE :query ESCAPE '!' OR t.description LIKE :query ESCAPE '!')";
-            $params['query'] = '%' . $this->escapeLike($query) . '%';
+            $sql .= " AND (t.title LIKE :query_title ESCAPE '!' OR t.description LIKE :query_description ESCAPE '!')";
+            $escapedQuery = '%' . $this->escapeLike($query) . '%';
+            $params['query_title'] = $escapedQuery;
+            $params['query_description'] = $escapedQuery;
         }
 
         if ($deadlineFrom !== '') {
