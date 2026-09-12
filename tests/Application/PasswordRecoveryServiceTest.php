@@ -105,7 +105,7 @@ final class PasswordRecoveryServiceTest extends TestCase
 
     private function createSchema(): void
     {
-        $this->db->exec('CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT UNIQUE, email TEXT UNIQUE, password_hash TEXT, role TEXT, is_active INTEGER, approved_at TEXT)');
+        $this->db->exec('CREATE TABLE users (id INTEGER PRIMARY KEY, username TEXT UNIQUE, email TEXT UNIQUE, password_hash TEXT, role TEXT, is_active INTEGER, approved_at TEXT, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)');
         $this->db->exec('CREATE TABLE remember_tokens (selector TEXT PRIMARY KEY, user_id INTEGER, verifier_hash TEXT, expires_at TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP)');
         $this->db->exec('CREATE TABLE password_reset_tokens (selector TEXT PRIMARY KEY, user_id INTEGER, verifier_hash TEXT, expires_at TEXT, consumed_at TEXT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP)');
         $this->db->exec("CREATE TABLE notification_settings (user_id INTEGER PRIMARY KEY, email_enabled INTEGER DEFAULT 0, email_address TEXT NULL, telegram_enabled INTEGER DEFAULT 0, telegram_chat_id TEXT NULL, telegram_username TEXT NULL, notify_tomorrow INTEGER DEFAULT 0, tomorrow_time TEXT DEFAULT '08:00', notify_upcoming INTEGER DEFAULT 0, urgent_minutes INTEGER DEFAULT 15, high_minutes INTEGER DEFAULT 60, medium_minutes INTEGER DEFAULT 240, low_minutes INTEGER DEFAULT 1440, notify_overdue INTEGER DEFAULT 0, overdue_time TEXT DEFAULT '09:00', notify_digest INTEGER DEFAULT 0, digest_time TEXT DEFAULT '19:30')");
