@@ -15,9 +15,11 @@ final class CsrfMiddleware implements MiddlewareInterface
 {
     private const SESSION_KEY = '_csrf_token';
 
+    /** @param list<string> $excludedPaths */
     public function __construct(
         private readonly ResponseFactoryInterface $responseFactory,
         private readonly Translator $translator,
+        private readonly array $excludedPaths = [],
     ) {
     }
 
@@ -28,7 +30,6 @@ final class CsrfMiddleware implements MiddlewareInterface
         if ($this->requiresValidation($request) && !$this->isValid($request, $token)) {
             $response = $this->responseFactory->createResponse(403);
             $response->getBody()->write($this->translator->trans('validation.invalid_csrf'));
-
             return $response;
         }
 
@@ -40,26 +41,26 @@ final class CsrfMiddleware implements MiddlewareInterface
         if (!isset($_SESSION[self::SESSION_KEY]) || !is_string($_SESSION[self::SESSION_KEY])) {
             $_SESSION[self::SESSION_KEY] = bin2hex(random_bytes(32));
         }
-
         return $_SESSION[self::SESSION_KEY];
     }
 
     private function requiresValidation(ServerRequestInterface $request): bool
     {
+        if (in_array($request->getUri()->getPath(), $this->excludedPaths, true)) {
+            return false;
+        }
         return in_array(strtoupper($request->getMethod()), ['POST', 'PUT', 'PATCH', 'DELETE'], true);
     }
 
     private function isValid(ServerRequestInterface $request, string $expected): bool
     {
         $provided = $request->getHeaderLine('X-CSRF-Token');
-
         if ($provided === '') {
             $body = $request->getParsedBody();
             if (is_array($body) && isset($body['_csrf']) && is_string($body['_csrf'])) {
                 $provided = $body['_csrf'];
             }
         }
-
         return $provided !== '' && hash_equals($expected, $provided);
     }
 }

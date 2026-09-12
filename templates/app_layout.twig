@@ -18,6 +18,7 @@
         <a href="/calendar">{{ t('nav.calendar') }}</a>
         <a href="/metadata">{{ t('nav.metadata') }}</a>
         <a href="/custom-fields">{{ t('nav.custom_fields') }}</a>
+        <a href="/settings/notifications">{{ t('nav.notifications') }}</a>
         <a class="nav-primary" href="/tasks/new">{{ t('nav.new_task') }}</a>
     </nav>
     <div class="topbar-actions">
@@ -28,15 +29,10 @@
             <button class="locale-choice {{ locale == 'en' ? 'active' : '' }}" type="submit" name="locale" value="en" title="{{ t('locale.en') }}">EN</button>
         </form>
         <span class="muted">{{ username }}</span>
-        <form method="post" action="/logout">
-            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-            <button class="secondary compact" type="submit">{{ t('nav.sign_out') }}</button>
-        </form>
+        <form method="post" action="/logout"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="secondary compact" type="submit">{{ t('nav.sign_out') }}</button></form>
     </div>
 </header>
-<main class="page">
-    {% block content %}{% endblock %}
-</main>
+<main class="page">{% block content %}{% endblock %}</main>
 {% block scripts %}{% endblock %}
 </body>
 </html>

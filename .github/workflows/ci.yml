@@ -36,6 +36,10 @@ jobs:
       DB_PASS: ci-database-password-not-a-secret
       SESSION_SECURE: "false"
       TMS_PORT: "18080"
+      NOTIFICATION_SECRET: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+      NOTIFICATION_INTERVAL_SECONDS: "3600"
+      TELEGRAM_BOT_NAME: "@ci_tms_bot"
+      TELEGRAM_WEBHOOK_SECRET: ci-webhook-secret-12345
 
     steps:
       - uses: actions/checkout@v4
@@ -235,6 +239,9 @@ jobs:
 
       - name: Exercise metadata administration
         run: bash tests/smoke/metadata.sh
+
+      - name: Exercise notification workflow
+        run: bash tests/smoke/notifications.sh
 
       - name: Show stack state on failure
         if: failure()

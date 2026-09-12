@@ -1,0 +1,36 @@
+{% extends "app_layout.twig" %}
+{% block title %}{{ t('notifications.title') }} · TMS{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/assets/notifications.css">{% endblock %}
+{% block content %}
+<div class="page-header">
+  <div><p class="eyebrow">{{ t('notifications.eyebrow') }}</p><h1>{{ t('notifications.title') }}</h1><p class="muted">{{ t('notifications.subtitle', {'timezone': deployment_timezone}) }}</p></div>
+  {% if role == 'admin' %}<a class="text-link" href="/admin/notifications">{{ t('notifications.admin_link') }}</a>{% endif %}
+</div>
+{% if message %}<div class="alert success">{{ message }}</div>{% endif %}
+{% if error %}<div class="alert">{{ error }}</div>{% endif %}
+<section class="content-card notification-card">
+<form method="post" action="/settings/notifications" class="notification-form">
+<input type="hidden" name="_csrf" value="{{ csrf_token }}">
+<h2>{{ t('notifications.channels') }}</h2>
+<label class="checkbox-inline"><input type="checkbox" name="email_enabled" value="1" {{ settings.emailEnabled ? 'checked' : '' }}> {{ t('notifications.email_enabled') }}</label>
+<label>{{ t('notifications.email_address') }}<input type="email" name="email_address" value="{{ settings.emailAddress|default('') }}" placeholder="{{ settings.accountEmail }}"><span class="field-help">{{ t('notifications.email_help', {'email': settings.accountEmail}) }}</span></label>
+<label class="checkbox-inline"><input type="checkbox" name="telegram_enabled" value="1" {{ settings.telegramEnabled ? 'checked' : '' }}> {{ t('notifications.telegram_enabled') }}</label>
+{% if settings.telegramChatId %}<p class="muted">{{ t('notifications.telegram_linked', {'username': settings.telegramUsername|default('')}) }}</p>{% else %}<p class="muted">{{ t('notifications.telegram_not_linked') }}</p>{% endif %}
+<h2>{{ t('notifications.rules') }}</h2>
+<div class="notification-rule"><label class="checkbox-inline"><input type="checkbox" name="notify_tomorrow" value="1" {{ settings.notifyTomorrow ? 'checked' : '' }}> {{ t('notifications.tomorrow') }}</label><label>{{ t('notifications.at_time') }}<input type="time" name="tomorrow_time" value="{{ settings.tomorrowTime }}"></label></div>
+<div class="notification-rule vertical"><label class="checkbox-inline"><input type="checkbox" name="notify_upcoming" value="1" {{ settings.notifyUpcoming ? 'checked' : '' }}> {{ t('notifications.upcoming') }}</label><div class="lead-grid"><label>{{ t('priority.urgent') }}<input type="number" min="1" max="10080" name="urgent_minutes" value="{{ settings.urgentMinutes }}"></label><label>{{ t('priority.high') }}<input type="number" min="1" max="10080" name="high_minutes" value="{{ settings.highMinutes }}"></label><label>{{ t('priority.medium') }}<input type="number" min="1" max="10080" name="medium_minutes" value="{{ settings.mediumMinutes }}"></label><label>{{ t('priority.low') }}<input type="number" min="1" max="10080" name="low_minutes" value="{{ settings.lowMinutes }}"></label></div><span class="field-help">{{ t('notifications.minutes_before') }}</span></div>
+<div class="notification-rule"><label class="checkbox-inline"><input type="checkbox" name="notify_overdue" value="1" {{ settings.notifyOverdue ? 'checked' : '' }}> {{ t('notifications.overdue') }}</label><label>{{ t('notifications.at_time') }}<input type="time" name="overdue_time" value="{{ settings.overdueTime }}"></label></div>
+<div class="notification-rule"><label class="checkbox-inline"><input type="checkbox" name="notify_digest" value="1" {{ settings.notifyDigest ? 'checked' : '' }}> {{ t('notifications.digest') }}</label><label>{{ t('notifications.at_time') }}<input type="time" name="digest_time" value="{{ settings.digestTime }}"></label></div>
+<div class="form-actions"><button type="submit">{{ t('common.save') }}</button></div>
+</form>
+</section>
+<section class="content-card notification-card">
+<h2>{{ t('notifications.telegram_link_title') }}</h2>
+{% if bot_name %}<p class="muted">{{ t('notifications.telegram_bot', {'bot': bot_name}) }}</p>{% else %}<p class="muted">{{ t('notifications.telegram_not_configured') }}</p>{% endif %}
+{% if telegram_link_command %}<div class="link-command"><code>{{ telegram_link_command }}</code><p>{{ t('notifications.telegram_link_expires') }}</p></div>{% endif %}
+<div class="inline-actions">
+<form method="post" action="/settings/notifications/telegram-link"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button type="submit" class="secondary" {{ not bot_name ? 'disabled' : '' }}>{{ t('notifications.telegram_generate_link') }}</button></form>
+{% if settings.telegramChatId %}<form method="post" action="/settings/notifications/telegram-test"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button type="submit" class="secondary">{{ t('notifications.telegram_test') }}</button></form><form method="post" action="/settings/notifications/telegram-disconnect"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button type="submit" class="secondary">{{ t('notifications.telegram_disconnect') }}</button></form>{% endif %}
+</div>
+</section>
+{% endblock %}

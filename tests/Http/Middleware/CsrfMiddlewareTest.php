@@ -82,6 +82,27 @@ final class CsrfMiddlewareTest extends TestCase
         self::assertSame(204, $response->getStatusCode());
     }
 
+    public function testExplicitWebhookPathCanUseItsOwnAuthenticationInsteadOfCsrf(): void
+    {
+        $middleware = new CsrfMiddleware(
+            new ResponseFactory(),
+            $this->translator(),
+            ['/telegram/webhook'],
+        );
+        $request = (new ServerRequestFactory())->createServerRequest('POST', '/telegram/webhook');
+
+        $handler = new class implements RequestHandlerInterface {
+            public function handle(ServerRequestInterface $request): ResponseInterface
+            {
+                return (new ResponseFactory())->createResponse(202);
+            }
+        };
+
+        $response = $middleware->process($request, $handler);
+
+        self::assertSame(202, $response->getStatusCode());
+    }
+
     private function translator(): Translator
     {
         return new Translator(dirname(__DIR__, 3) . '/resources/i18n', 'en');
