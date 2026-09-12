@@ -77,12 +77,13 @@ final class NotificationAdminController
     public function testEmail(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $user = $this->users->findById($this->sessions->currentUserId() ?? 0);
+        $body = $this->translator->trans('notifications.smtp_test_body');
         if ($user === null || !$this->email->send(
             $user->email,
             $user->username,
-            'TMS SMTP test',
-            '<p>TMS SMTP transport is configured correctly.</p>',
-            'TMS SMTP transport is configured correctly.',
+            $this->translator->trans('notifications.smtp_test_subject'),
+            '<p>' . htmlspecialchars($body, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p>',
+            $body,
         )) {
             return $this->render(
                 $request,
