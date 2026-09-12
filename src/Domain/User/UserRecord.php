@@ -14,6 +14,8 @@ final readonly class UserRecord
         public string $role,
         public bool $isActive,
         public bool $isApproved,
+        public bool $isEmailVerified = false,
+        public ?string $createdAt = null,
     ) {
     }
 }

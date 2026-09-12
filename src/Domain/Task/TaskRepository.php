@@ -125,28 +125,44 @@ final class TaskRepository
         return $this->fetchTasks($sql, $params);
     }
 
-    /** @return list<TaskRecord> */
+    /**
+     * @param list<int> $statusIds
+     * @param list<int> $typeIds
+     * @param list<int> $priorities
+     * @return list<TaskRecord>
+     */
     public function listCalendarForUser(
         int $userId,
         string $rangeStart,
         string $rangeEnd,
         string $mode = 'deadlines_only',
-        ?int $statusId = null,
-        ?int $typeId = null,
+        array $statusIds = [],
+        array $typeIds = [],
         ?int $customerId = null,
-        ?int $priority = null,
+        array $priorities = [],
+        bool $statusInvert = false,
+        bool $typeInvert = false,
+        bool $priorityInvert = false,
+        string $customerQuery = '',
     ): array {
         if (!in_array($mode, ['deadlines_only', 'no_deadlines', 'all'], true)) {
             throw new DomainException('Unsupported calendar mode.');
         }
-        if ($priority !== null) {
+        $statusIds = $this->positiveIds($statusIds);
+        $typeIds = $this->positiveIds($typeIds);
+        $priorities = array_values(array_unique($priorities));
+        foreach ($priorities as $priority) {
             $this->assertPriority($priority);
         }
 
+        $customerQuery = trim($customerQuery);
         $sql = 'SELECT t.id, t.created_by, t.title, t.description, t.deadline, t.status_id, t.type_id,
                        t.priority, t.customer_id, t.created_at, t.updated_at
-                FROM tasks t
-                WHERE t.created_by = :user_id AND ';
+                FROM tasks t';
+        if ($customerQuery !== '') {
+            $sql .= ' LEFT JOIN customers c ON c.id = t.customer_id AND c.user_id = t.created_by';
+        }
+        $sql .= ' WHERE t.created_by = :user_id AND ';
         $params = [
             'user_id' => $userId,
             'range_start' => $rangeStart,
@@ -162,25 +178,61 @@ final class TaskRepository
                      OR (t.deadline IS NULL AND t.created_at >= :range_start AND t.created_at < :range_end))';
         }
 
-        if ($statusId !== null) {
-            $sql .= ' AND t.status_id = :status_id';
-            $params['status_id'] = $statusId;
+        if ($statusIds !== []) {
+            $condition = $this->calendarInCondition('t.status_id', 'status', $statusIds, $params, $statusInvert, true);
+            $sql .= ' AND ' . $condition;
         }
-        if ($typeId !== null) {
-            $sql .= ' AND t.type_id = :type_id';
-            $params['type_id'] = $typeId;
+        if ($typeIds !== []) {
+            $condition = $this->calendarInCondition('t.type_id', 'type', $typeIds, $params, $typeInvert, true);
+            $sql .= ' AND ' . $condition;
         }
         if ($customerId !== null) {
             $sql .= ' AND t.customer_id = :customer_id';
             $params['customer_id'] = $customerId;
         }
-        if ($priority !== null) {
-            $sql .= ' AND t.priority = :priority';
-            $params['priority'] = $priority;
+        if ($customerQuery !== '') {
+            $sql .= " AND c.name LIKE :customer_query ESCAPE '!'";
+            $params['customer_query'] = '%' . $this->escapeLike($customerQuery) . '%';
+        }
+        if ($priorities !== []) {
+            $condition = $this->calendarInCondition('t.priority', 'priority', $priorities, $params, $priorityInvert, false);
+            $sql .= ' AND ' . $condition;
         }
 
         $sql .= ' ORDER BY COALESCE(t.deadline, t.created_at) ASC, t.priority DESC, t.id ASC';
         return $this->fetchTasks($sql, $params);
+    }
+
+    /**
+     * @param list<int> $values
+     * @param array<string, int|string|null> $params
+     */
+    private function calendarInCondition(
+        string $column,
+        string $prefix,
+        array $values,
+        array &$params,
+        bool $invert,
+        bool $includeNullWhenInverted,
+    ): string {
+        $placeholders = [];
+        foreach ($values as $index => $value) {
+            $key = $prefix . '_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $value;
+        }
+        $operator = $invert ? 'NOT IN' : 'IN';
+        $condition = $column . ' ' . $operator . ' (' . implode(', ', $placeholders) . ')';
+        return $invert && $includeNullWhenInverted ? '(' . $column . ' IS NULL OR ' . $condition . ')' : $condition;
+    }
+
+    /**
+     * @param list<int> $values
+     * @return list<int>
+     */
+    private function positiveIds(array $values): array
+    {
+        return array_values(array_unique(array_filter($values, static fn (int $id): bool => $id > 0)));
     }
 
     public function createForUser(
@@ -294,6 +346,85 @@ final class TaskRepository
         $stmt = $this->db->prepare('DELETE FROM tasks WHERE id = :task_id AND created_by = :user_id');
         $stmt->execute(['task_id' => $taskId, 'user_id' => $userId]);
         return $stmt->rowCount() === 1;
+    }
+
+    /** @param list<int> $taskIds */
+    public function bulkUpdateStatusForUser(int $userId, array $taskIds, int $statusId): int
+    {
+        if (!$this->metadataOwned('statuses', $userId, $statusId)) {
+            throw new DomainException('Selected status is unavailable.');
+        }
+        return $this->bulkUpdateForUser($userId, $taskIds, 'status_id', $statusId);
+    }
+
+    /** @param list<int> $taskIds */
+    public function bulkUpdateTypeForUser(int $userId, array $taskIds, ?int $typeId): int
+    {
+        if ($typeId !== null && !$this->metadataOwned('task_types', $userId, $typeId)) {
+            throw new DomainException('Selected task type is unavailable.');
+        }
+        return $this->bulkUpdateForUser($userId, $taskIds, 'type_id', $typeId);
+    }
+
+    /** @param list<int> $taskIds */
+    public function bulkUpdatePriorityForUser(int $userId, array $taskIds, int $priority): int
+    {
+        $this->assertPriority($priority);
+        return $this->bulkUpdateForUser($userId, $taskIds, 'priority', $priority);
+    }
+
+    /** @param list<int> $taskIds */
+    public function bulkUpdateDeadlineForUser(int $userId, array $taskIds, ?string $deadline): int
+    {
+        return $this->bulkUpdateForUser($userId, $taskIds, 'deadline', $deadline);
+    }
+
+    /** @param list<int> $taskIds */
+    private function bulkUpdateForUser(int $userId, array $taskIds, string $column, int|string|null $value): int
+    {
+        if (!in_array($column, ['status_id', 'type_id', 'priority', 'deadline'], true)) {
+            throw new DomainException('Unsupported bulk task field.');
+        }
+        $taskIds = array_values(array_unique(array_filter($taskIds, static fn (int $id): bool => $id > 0)));
+        if ($taskIds === []) {
+            return 0;
+        }
+
+        $params = ['user_id' => $userId, 'value' => $value];
+        $placeholders = [];
+        foreach ($taskIds as $index => $taskId) {
+            $key = 'task_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $taskId;
+        }
+
+        $count = $this->db->prepare(
+            'SELECT COUNT(*) FROM tasks WHERE created_by = :user_id AND id IN (' . implode(', ', $placeholders) . ')'
+        );
+        $countParams = $params;
+        unset($countParams['value']);
+        $count->execute($countParams);
+        $matched = (int) $count->fetchColumn();
+        if ($matched === 0) {
+            return 0;
+        }
+
+        $stmt = $this->db->prepare(
+            'UPDATE tasks SET ' . $column . ' = :value, updated_at = CURRENT_TIMESTAMP
+             WHERE created_by = :user_id AND id IN (' . implode(', ', $placeholders) . ')'
+        );
+        $stmt->execute($params);
+        return $matched;
+    }
+
+    private function metadataOwned(string $table, int $userId, int $id): bool
+    {
+        if (!in_array($table, ['statuses', 'task_types'], true)) {
+            throw new DomainException('Unsupported metadata table.');
+        }
+        $stmt = $this->db->prepare('SELECT 1 FROM ' . $table . ' WHERE id = :id AND user_id = :user_id LIMIT 1');
+        $stmt->execute(['id' => $id, 'user_id' => $userId]);
+        return $stmt->fetchColumn() !== false;
     }
 
     private function assertOwnedMetadata(int $userId, int $statusId, ?int $typeId, ?int $customerId): void

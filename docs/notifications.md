@@ -1,12 +1,12 @@
 # Notifications
 
-TMS uses one notification engine for email and Telegram. It replaces the donor's overlapping notification jobs.
+TMS uses one notification engine for email and Telegram.
 
 ## Model
 
 SMTP is deployment-wide and is configured by an administrator in **Notification administration**. Each user independently chooses whether email and/or Telegram delivery is enabled and which rules are active: tasks due tomorrow, upcoming deadlines, overdue tasks, and a daily digest.
 
-Notification times use `APP_TIMEZONE`. TMS does not currently reinterpret individual task deadlines in per-user timezones; that decision is intentionally deferred until the user-profile/timezone work.
+The background notification scheduler currently evaluates delivery times in `APP_TIMEZONE`. Authenticated web requests use the timezone selected in the user profile, falling back to `APP_TIMEZONE` when no preference is stored.
 
 Successful deliveries are written to `sent_notifications` with a per-channel dedupe key. A failed email does not suppress a Telegram retry, and vice versa. Upcoming-task dedupe includes the deadline, so moving a deadline can legitimately produce a new notification.
 

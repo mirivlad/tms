@@ -87,7 +87,7 @@ jobs:
         run: |
           set -euo pipefail
           notes=$(cat <<'EOF'
-          Public TMS preview intended for self-hosted feature-parity and UI evaluation.
+          Public TMS preview intended for self-hosted feature and UI evaluation.
 
           Included in current previews:
           - secure login, logout and rotating persistent login;
@@ -98,14 +98,14 @@ jobs:
           - rich-text task descriptions with server-side sanitization;
           - quick-add and owner-scoped customer autocomplete;
           - status, task-type and customer administration;
-          - owner-scoped custom fields with all six donor field types;
-          - donor-grade task-table filters, custom/standard sorting and 10/25/50/100 pagination;
+          - owner-scoped custom fields with text, textarea, select, money, checkbox and checkbox-list types;
+          - advanced task-table filters, custom/standard sorting and 10/25/50/100 pagination;
           - secure owner-scoped attachments stored outside the public web root;
           - SMTP/email and Telegram notification settings plus background delivery;
           - MariaDB migrations and first-admin CLI bootstrap;
           - Docker Compose and an image-based Portainer Stack.
 
-          This is intentionally a prerelease, not the stable v0.1.0. Remaining parity work is focused on user/admin flows, donor bulk actions and the final systematic donor audit before UI polish.
+          This is intentionally a prerelease, not the stable v0.1.0. Remaining work is focused on feature-completeness review, integration/regression hardening and final release cleanup before broad UI polish.
 
           Container image:
           `ghcr.io/mirivlad/tms:${TAG}`

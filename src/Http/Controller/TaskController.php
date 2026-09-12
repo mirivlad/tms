@@ -10,6 +10,8 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
 use Tms\Application\TaskListSorter;
+use Tms\Domain\Attachment\AttachmentRecord;
+use Tms\Domain\Attachment\AttachmentRepository;
 use Tms\Domain\Customer\CustomerRecord;
 use Tms\Domain\Customer\CustomerRepository;
 use Tms\Domain\CustomField\CustomFieldRecord;
@@ -38,6 +40,7 @@ final class TaskController
         private readonly Twig $view,
         private readonly SessionManager $sessions,
         private readonly TaskRepository $tasks,
+        private readonly AttachmentRepository $attachments,
         private readonly StatusRepository $statuses,
         private readonly TaskTypeRepository $taskTypes,
         private readonly CustomerRepository $customers,
@@ -151,6 +154,12 @@ final class TaskController
             'per_page' => $perPage,
         ];
 
+        $bulkNotice = $_SESSION['bulk_notice'] ?? null;
+        unset($_SESSION['bulk_notice']);
+        if (!is_array($bulkNotice) || !is_string($bulkNotice['message'] ?? null)) {
+            $bulkNotice = null;
+        }
+
         return $this->view->render($response, 'tasks/index.twig', $this->commonViewData($request) + [
             'tasks' => $tasks,
             'status_map' => $statusMap,
@@ -178,6 +187,62 @@ final class TaskController
             'total_pages' => $totalPages,
             'pagination' => $this->pagination($viewParams, $page, $totalPages),
             'per_page_links' => $this->perPageLinks($viewParams, $perPage),
+            'bulk_notice' => $bulkNotice,
+        ]);
+    }
+
+    /** @param array<string, string> $args */
+    public function showJson(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $userId = $this->userId();
+        $task = $this->tasks->findForUser($userId, $this->taskId($args));
+        if ($task === null) {
+            return $this->json($response, ['error' => $this->translator->trans('task_preview.not_found')], 404);
+        }
+
+        $status = $task->statusId === null ? null : ($this->statusMap($userId)[$task->statusId] ?? null);
+        $type = $task->typeId === null ? null : ($this->typeMap($userId)[$task->typeId] ?? null);
+        $customer = $task->customerId === null ? null : ($this->customerMap($userId)[$task->customerId] ?? null);
+        $fields = $this->customFields->listForUser($userId);
+        $values = $this->customValues->listForTasks($userId, [$task->id])[$task->id] ?? [];
+        $custom = [];
+        foreach ($fields as $field) {
+            if (!array_key_exists($field->id, $values)) {
+                continue;
+            }
+            $custom[] = [
+                'name' => $field->name,
+                'value' => $this->customValueCodec->display($field, $values[$field->id]),
+            ];
+        }
+
+        $attachments = array_map(
+            static fn (AttachmentRecord $attachment): array => [
+                'id' => $attachment->id,
+                'name' => $attachment->originalName,
+                'mime_type' => $attachment->mimeType,
+                'file_size' => $attachment->fileSize,
+                'download_url' => '/tasks/' . $task->id . '/attachments/' . $attachment->id,
+            ],
+            $this->attachments->listForTask($userId, $task->id),
+        );
+
+        return $this->json($response, [
+            'id' => $task->id,
+            'title' => $task->title,
+            'description' => trim(strip_tags($task->description)),
+            'status' => $status?->name,
+            'status_color' => $status?->color,
+            'type' => $type?->name,
+            'priority' => $this->priorityLabels()[$task->priority] ?? $this->translator->trans('priority.medium'),
+            'customer' => $customer?->name,
+            'deadline' => $task->deadline,
+            'created_at' => $task->createdAt,
+            'updated_at' => $task->updatedAt,
+            'custom_fields' => $custom,
+            'attachments' => $attachments,
+            'edit_url' => '/tasks/' . $task->id . '/edit',
+            'delete_url' => '/tasks/' . $task->id . '/delete',
         ]);
     }
 
@@ -593,6 +658,14 @@ final class TaskController
         }
         $timestamp = strtotime($deadline);
         return $timestamp === false ? '' : date('Y-m-d\\TH:i', $timestamp);
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function json(ResponseInterface $response, array $payload, int $status = 200): ResponseInterface
+    {
+        $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $response->getBody()->write($json === false ? '{}': $json);
+        return $response->withHeader('Content-Type', 'application/json; charset=utf-8')->withStatus($status);
     }
 
     /** @return array<string, mixed> */

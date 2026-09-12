@@ -42,11 +42,24 @@ final class CalendarController
         $query = $request->getQueryParams();
         $month = $this->month($query['month'] ?? null);
         $mode = $this->mode($query['mode'] ?? null);
-        $statusId = $this->queryInt($query, 'status_id');
-        $typeId = $this->queryInt($query, 'type_id');
+        $statusIds = $this->queryInts($query, 'status_id');
+        $statusInvert = $statusIds !== [] && ($query['status_invert'] ?? null) === '1';
+        $typeIds = $this->queryInts($query, 'type_id');
+        $typeInvert = $typeIds !== [] && ($query['type_invert'] ?? null) === '1';
         $customerId = $this->queryInt($query, 'customer_id');
-        $priorityName = is_string($query['priority'] ?? null) ? (string) $query['priority'] : '';
-        $priority = self::PRIORITIES[$priorityName] ?? null;
+        $customerQuery = is_string($query['customer'] ?? null) ? trim((string) $query['customer']) : '';
+        $priorityNames = $this->queryStrings($query, 'priority');
+        $priorities = [];
+        foreach ($priorityNames as $name) {
+            if (isset(self::PRIORITIES[$name])) {
+                $priorities[] = self::PRIORITIES[$name];
+            }
+        }
+        $priorityNames = array_values(array_filter(
+            array_unique($priorityNames),
+            static fn (string $name): bool => isset(self::PRIORITIES[$name]),
+        ));
+        $priorityInvert = $priorities !== [] && ($query['priority_invert'] ?? null) === '1';
 
         $firstDay = DateTimeImmutable::createFromFormat('!Y-m-d', $month . '-01');
         if ($firstDay === false) {
@@ -63,10 +76,14 @@ final class CalendarController
             $gridStart->format('Y-m-d H:i:s'),
             $gridEnd->format('Y-m-d H:i:s'),
             $mode,
-            $statusId,
-            $typeId,
+            $statusIds,
+            $typeIds,
             $customerId,
-            $priority,
+            $priorities,
+            $statusInvert,
+            $typeInvert,
+            $priorityInvert,
+            $customerQuery,
         );
 
         $tasksByDay = [];
@@ -92,10 +109,14 @@ final class CalendarController
 
         $filters = [
             'mode' => $mode,
-            'status_id' => $statusId,
-            'type_id' => $typeId,
+            'status_id' => $statusIds,
+            'status_invert' => $statusInvert,
+            'type_id' => $typeIds,
+            'type_invert' => $typeInvert,
             'customer_id' => $customerId,
-            'priority' => $priorityName,
+            'customer' => $customerQuery,
+            'priority' => $priorityNames,
+            'priority_invert' => $priorityInvert,
         ];
 
         $monthLabel = $this->translator->trans('month.' . $firstDay->format('m')) . ' ' . $firstDay->format('Y');
@@ -147,16 +168,61 @@ final class CalendarController
     }
 
     /**
-     * @param array{mode:string,status_id:?int,type_id:?int,customer_id:?int,priority:string} $filters
+     * @param array<string, mixed> $query
+     * @return list<int>
+     */
+    private function queryInts(array $query, string $key): array
+    {
+        $value = $query[$key] ?? [];
+        $values = is_array($value) ? $value : [$value];
+        $ids = [];
+        foreach ($values as $raw) {
+            if (is_scalar($raw) && ctype_digit((string) $raw) && (int) $raw > 0) {
+                $ids[] = (int) $raw;
+            }
+        }
+        return array_values(array_unique($ids));
+    }
+
+    /**
+     * @param array<string, mixed> $query
+     * @return list<string>
+     */
+    private function queryStrings(array $query, string $key): array
+    {
+        $value = $query[$key] ?? [];
+        $values = is_array($value) ? $value : [$value];
+        $strings = [];
+        foreach ($values as $raw) {
+            if (is_scalar($raw)) {
+                $string = trim((string) $raw);
+                if ($string !== '') {
+                    $strings[] = $string;
+                }
+            }
+        }
+        return array_values(array_unique($strings));
+    }
+
+    /**
+     * @param array{mode:string,status_id:list<int>,status_invert:bool,type_id:list<int>,type_invert:bool,customer_id:?int,customer:string,priority:list<string>,priority_invert:bool} $filters
      */
     private function monthQuery(DateTimeImmutable $month, array $filters): string
     {
         $params = ['month' => $month->format('Y-m'), 'mode' => $filters['mode']];
-        foreach (['status_id', 'type_id', 'customer_id', 'priority'] as $key) {
+        foreach (['status_id', 'type_id', 'priority'] as $key) {
+            if ($filters[$key] !== []) {
+                $params[$key] = $filters[$key];
+            }
+        }
+        foreach (['customer_id', 'customer'] as $key) {
             if ($filters[$key] !== null && $filters[$key] !== '') {
                 $params[$key] = $filters[$key];
             }
         }
+        if ($filters['status_invert']) { $params['status_invert'] = '1'; }
+        if ($filters['type_invert']) { $params['type_invert'] = '1'; }
+        if ($filters['priority_invert']) { $params['priority_invert'] = '1'; }
         return http_build_query($params);
     }
 

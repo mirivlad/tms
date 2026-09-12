@@ -21,4 +21,4 @@ The following rules are release blockers, not optional hardening:
 5. Production mode must not expose stack traces, SQL errors, filesystem paths or secret material to clients.
 6. Passwords must be stored only through PHP's password hashing API; session and remember-me tokens must be unguessable and revocable.
 
-During migration from the internal application, code that does not yet satisfy these invariants is fixed before it is accepted into the public baseline.
+Code that does not satisfy these invariants is not accepted into the release baseline.

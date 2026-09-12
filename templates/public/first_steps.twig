@@ -1,0 +1,30 @@
+{% extends "public_layout.twig" %}
+{% block title %}{{ t('first_steps.title') }} · TMS{% endblock %}
+{% block content %}
+<article class="content-card public-document">
+    <h1>{{ t('first_steps.title') }}</h1>
+    <p class="lead">{{ t('first_steps.intro') }}</p>
+
+    <h2>{{ t('first_steps.screens') }}</h2>
+    <p><strong>{{ t('nav.overview') }}.</strong> {{ t('first_steps.overview') }}</p>
+    <p><strong>{{ t('nav.board') }}.</strong> {{ t('first_steps.board') }}</p>
+    <p><strong>{{ t('nav.tasks') }}.</strong> {{ t('first_steps.list') }}</p>
+    <p><strong>{{ t('nav.calendar') }}.</strong> {{ t('first_steps.calendar') }}</p>
+
+    <h2>{{ t('first_steps.structure') }}</h2>
+    <p>{{ t('first_steps.structure_body') }}</p>
+    <p>{{ t('first_steps.custom_fields') }}</p>
+
+    <h2>{{ t('first_steps.workflow') }}</h2>
+    <ol>
+        <li>{{ t('first_steps.step1') }}</li>
+        <li>{{ t('first_steps.step2') }}</li>
+        <li>{{ t('first_steps.step3') }}</li>
+        <li>{{ t('first_steps.step4') }}</li>
+        <li>{{ t('first_steps.step5') }}</li>
+    </ol>
+
+    <h2>{{ t('first_steps.notifications') }}</h2>
+    <p>{{ t('first_steps.notifications_body') }}</p>
+</article>
+{% endblock %}

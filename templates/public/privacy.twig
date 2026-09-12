@@ -1,0 +1,23 @@
+{% extends "public_layout.twig" %}
+{% block title %}{{ t('privacy.title') }} · TMS{% endblock %}
+{% block content %}
+<article class="content-card public-document">
+    <h1>{{ t('privacy.title') }}</h1>
+    <p class="lead">{{ t('privacy.intro') }}</p>
+
+    <h2>{{ t('privacy.storage_title') }}</h2>
+    <p>{{ t('privacy.storage_body') }}</p>
+
+    <h2>{{ t('privacy.operator_title') }}</h2>
+    <p>{{ t('privacy.operator_body') }}</p>
+
+    <h2>{{ t('privacy.integrations_title') }}</h2>
+    <p>{{ t('privacy.integrations_body') }}</p>
+
+    <h2>{{ t('privacy.logs_title') }}</h2>
+    <p>{{ t('privacy.logs_body') }}</p>
+
+    <h2>{{ t('privacy.security_title') }}</h2>
+    <p>{{ t('privacy.security_body') }}</p>
+</article>
+{% endblock %}

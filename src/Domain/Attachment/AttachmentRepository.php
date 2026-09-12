@@ -34,6 +34,23 @@ final class AttachmentRepository
         return $records;
     }
 
+    /** @return list<AttachmentRecord> */
+    public function listForUser(int $userId): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT id, task_id, user_id, storage_name, original_name, mime_type, file_size, sha256, created_at
+             FROM attachments WHERE user_id = :user_id ORDER BY id ASC'
+        );
+        $stmt->execute(['user_id' => $userId]);
+        $records = [];
+        while (($row = $stmt->fetch()) !== false) {
+            if (is_array($row)) {
+                $records[] = $this->hydrate($row);
+            }
+        }
+        return $records;
+    }
+
     public function findForTask(int $userId, int $taskId, int $attachmentId): ?AttachmentRecord
     {
         $stmt = $this->db->prepare(

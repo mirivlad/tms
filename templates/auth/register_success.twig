@@ -1,0 +1,5 @@
+<!doctype html>
+<html lang="{{ locale }}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ t('registration.success_title') }} · TMS</title><link rel="stylesheet" href="/assets/app.css"></head>
+<body class="auth-page"><main class="auth-card"><div class="brand">TMS</div><h1>{{ t('registration.success_title') }}</h1>
+{% if email_sent %}<p>{{ t('registration.success_sent', {'email': email}) }}</p>{% else %}<div class="alert">{{ t('registration.success_not_sent') }}</div>{% endif %}
+<p><a class="text-link" href="/login">{{ t('registration.back_to_login') }}</a></p></main></body></html>
