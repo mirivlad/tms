@@ -54,25 +54,38 @@ final class TaskController
         $userId = $this->userId();
         $query = $request->getQueryParams();
         $statusId = $this->queryInt($query, 'status_id');
+        $statusInvert = $statusId !== null && ($query['status_invert'] ?? null) === '1';
         $typeId = $this->queryInt($query, 'type_id');
-        $customerId = $this->queryInt($query, 'customer_id');
-        $priorityName = is_string($query['priority'] ?? null) ? (string) $query['priority'] : '';
+        $priorityName = is_string($query['priority'] ?? null) ? trim((string) $query['priority']) : '';
         $priority = self::PRIORITIES[$priorityName] ?? null;
-        $search = is_string($query['q'] ?? null) ? (string) $query['q'] : '';
+        if ($priority === null) {
+            $priorityName = '';
+        }
+        $search = $this->queryString($query, 'q');
+        $customerQuery = $this->queryString($query, 'customer');
         $overdue = ($query['overdue'] ?? null) === '1';
-
-        $tasks = $this->tasks->listFilteredForUser(
-            $userId,
-            statusId: $statusId,
-            typeId: $typeId,
-            customerId: $customerId,
-            priority: $priority,
-            query: $search,
-            overdue: $overdue,
-        );
+        $deadlineFrom = $this->queryDate($query, 'deadline_from');
+        $deadlineTo = $this->queryDate($query, 'deadline_to');
+        $createdFrom = $this->queryDate($query, 'created_from');
+        $createdTo = $this->queryDate($query, 'created_to');
 
         $fields = $this->customFields->listForUser($userId);
         $customFilters = $this->customFilters($query, $fields);
+        $tasks = $this->tasks->listFilteredForUser(
+            $userId,
+            statusId: $statusId,
+            statusInvert: $statusInvert,
+            typeId: $typeId,
+            customerQuery: $customerQuery,
+            priority: $priority,
+            query: $search,
+            overdue: $overdue,
+            deadlineFrom: $deadlineFrom,
+            deadlineTo: $deadlineTo,
+            createdFrom: $createdFrom,
+            createdTo: $createdTo,
+        );
+
         $taskIds = array_map(static fn (TaskRecord $task): int => $task->id, $tasks);
         $valuesByTask = $this->customValues->listForTasks($userId, $taskIds);
         $tasks = $this->filterByCustomFields($tasks, $fields, $valuesByTask, $customFilters);
@@ -93,34 +106,49 @@ final class TaskController
             $customerNames[$id] = $customer->name;
         }
 
-        $sortField = is_string($query['sort'] ?? null) ? trim((string) $query['sort']) : '';
-        $sortOrder = is_string($query['order'] ?? null) && strtolower((string) $query['order']) === 'desc'
-            ? 'desc'
-            : 'asc';
+        $sortField = is_string($query['sort'] ?? null) ? trim((string) $query['sort']) : 'deadline';
+        $sortOrder = is_string($query['order'] ?? null) && strtolower((string) $query['order']) === 'asc'
+            ? 'asc'
+            : 'desc';
         if (!$this->taskListSorter->supports($sortField, $fields)) {
-            $sortField = '';
-            $sortOrder = 'asc';
+            $sortField = 'deadline';
+            $sortOrder = 'desc';
         }
-        if ($sortField !== '') {
-            $tasks = $this->taskListSorter->sort(
-                $tasks,
-                $sortField,
-                $sortOrder,
-                $statusNames,
-                $typeNames,
-                $customerNames,
-                $fields,
-                $valuesByTask,
-            );
-        }
+        $tasks = $this->taskListSorter->sort(
+            $tasks,
+            $sortField,
+            $sortOrder,
+            $statusNames,
+            $typeNames,
+            $customerNames,
+            $fields,
+            $valuesByTask,
+        );
+
+        $perPage = $this->perPage($query);
+        $totalTasks = count($tasks);
+        $totalPages = max(1, (int) ceil($totalTasks / $perPage));
+        $page = min($this->page($query), $totalPages);
+        $tasks = array_slice($tasks, ($page - 1) * $perPage, $perPage);
 
         $filters = [
             'status_id' => $statusId,
+            'status_invert' => $statusInvert,
             'type_id' => $typeId,
-            'customer_id' => $customerId,
             'priority' => $priorityName,
             'q' => $search,
+            'customer' => $customerQuery,
             'overdue' => $overdue,
+            'deadline_from' => $deadlineFrom,
+            'deadline_to' => $deadlineTo,
+            'created_from' => $createdFrom,
+            'created_to' => $createdTo,
+        ];
+        $baseParams = $this->filterQueryParams($filters, $customFilters);
+        $viewParams = $baseParams + [
+            'sort' => $sortField,
+            'order' => $sortOrder,
+            'per_page' => $perPage,
         ];
 
         return $this->view->render($response, 'tasks/index.twig', $this->commonViewData($request) + [
@@ -132,10 +160,24 @@ final class TaskController
             'custom_values' => $valuesByTask,
             'custom_filters' => $customFilters,
             'filters' => $filters,
+            'active_filters' => $this->activeFilterChips(
+                $filters,
+                $customFilters,
+                $fields,
+                $statusMap,
+                $typeMap,
+                $viewParams,
+            ),
             'sort_field' => $sortField,
             'sort_order' => $sortOrder,
-            'sort_links' => $this->sortLinks($filters, $customFilters, $fields, $sortField, $sortOrder),
+            'sort_links' => $this->sortLinks($baseParams, $fields, $sortField, $sortOrder, $perPage),
             'priority_labels' => $this->priorityLabels(),
+            'total_tasks' => $totalTasks,
+            'current_page' => $page,
+            'per_page' => $perPage,
+            'total_pages' => $totalPages,
+            'pagination' => $this->pagination($viewParams, $page, $totalPages),
+            'per_page_links' => $this->perPageLinks($viewParams, $perPage),
         ]);
     }
 
@@ -593,37 +635,17 @@ final class TaskController
     }
 
     /**
-     * @param array{status_id:?int,type_id:?int,customer_id:?int,priority:string,q:string,overdue:bool} $filters
-     * @param array<int, string> $customFilters
+     * @param array<string, scalar|array<int, string>> $baseParams
      * @param list<CustomFieldRecord> $fields
      * @return array<string, array{url:string,active:bool,order:string}>
      */
     private function sortLinks(
-        array $filters,
-        array $customFilters,
+        array $baseParams,
         array $fields,
         string $currentField,
         string $currentOrder,
+        int $perPage,
     ): array {
-        $params = [];
-        foreach (['status_id', 'type_id', 'customer_id'] as $key) {
-            if ($filters[$key] !== null) {
-                $params[$key] = $filters[$key];
-            }
-        }
-        if ($filters['priority'] !== '') {
-            $params['priority'] = $filters['priority'];
-        }
-        if (trim($filters['q']) !== '') {
-            $params['q'] = $filters['q'];
-        }
-        if ($filters['overdue']) {
-            $params['overdue'] = '1';
-        }
-        if ($customFilters !== []) {
-            $params['custom'] = $customFilters;
-        }
-
         $keys = ['title', 'status_name', 'type_name', 'priority', 'customer', 'created_at', 'deadline'];
         foreach ($fields as $field) {
             $keys[] = 'custom_' . $field->id;
@@ -633,14 +655,217 @@ final class TaskController
         foreach ($keys as $key) {
             $active = $currentField === $key;
             $nextOrder = $active && $currentOrder === 'asc' ? 'desc' : 'asc';
-            $query = $params + ['sort' => $key, 'order' => $nextOrder];
+            $query = $baseParams + [
+                'sort' => $key,
+                'order' => $nextOrder,
+                'per_page' => $perPage,
+            ];
             $links[$key] = [
-                'url' => '/tasks?' . http_build_query($query, '', '&', PHP_QUERY_RFC3986),
+                'url' => $this->tasksUrl($query),
                 'active' => $active,
                 'order' => $active ? $currentOrder : '',
             ];
         }
         return $links;
+    }
+
+    /**
+     * @param array{status_id:?int,status_invert:bool,type_id:?int,priority:string,q:string,customer:string,overdue:bool,deadline_from:string,deadline_to:string,created_from:string,created_to:string} $filters
+     * @param array<int, string> $customFilters
+     * @return array<string, scalar|array<int, string>>
+     */
+    private function filterQueryParams(array $filters, array $customFilters): array
+    {
+        $params = [];
+        if ($filters['status_id'] !== null) {
+            $params['status_id'] = $filters['status_id'];
+            if ($filters['status_invert']) {
+                $params['status_invert'] = '1';
+            }
+        }
+        if ($filters['type_id'] !== null) {
+            $params['type_id'] = $filters['type_id'];
+        }
+        foreach (['priority', 'q', 'customer', 'deadline_from', 'deadline_to', 'created_from', 'created_to'] as $key) {
+            if ($filters[$key] !== '') {
+                $params[$key] = $filters[$key];
+            }
+        }
+        if ($filters['overdue']) {
+            $params['overdue'] = '1';
+        }
+        if ($customFilters !== []) {
+            $params['custom'] = $customFilters;
+        }
+        return $params;
+    }
+
+    /**
+     * @param array{status_id:?int,status_invert:bool,type_id:?int,priority:string,q:string,customer:string,overdue:bool,deadline_from:string,deadline_to:string,created_from:string,created_to:string} $filters
+     * @param array<int, string> $customFilters
+     * @param list<CustomFieldRecord> $fields
+     * @param array<int, StatusRecord> $statusMap
+     * @param array<int, TaskTypeRecord> $typeMap
+     * @param array<string, scalar|array<int, string>> $viewParams
+     * @return list<array{label:string,value:string,url:string}>
+     */
+    private function activeFilterChips(
+        array $filters,
+        array $customFilters,
+        array $fields,
+        array $statusMap,
+        array $typeMap,
+        array $viewParams,
+    ): array {
+        $chips = [];
+        $add = function (string $key, string $label, string $value = '') use (&$chips, $viewParams): void {
+            $params = $viewParams;
+            unset($params[$key]);
+            if ($key === 'status_id') {
+                unset($params['status_invert']);
+            }
+            $chips[] = ['label' => $label, 'value' => $value, 'url' => $this->tasksUrl($params)];
+        };
+
+        if ($filters['q'] !== '') {
+            $add('q', $this->translator->trans('tasks.search'), $filters['q']);
+        }
+        if ($filters['status_id'] !== null) {
+            $name = $statusMap[$filters['status_id']]->name ?? (string) $filters['status_id'];
+            $add('status_id', $this->translator->trans('tasks.status'), ($filters['status_invert'] ? '≠ ' : '') . $name);
+        }
+        if ($filters['type_id'] !== null) {
+            $name = $typeMap[$filters['type_id']]->name ?? (string) $filters['type_id'];
+            $add('type_id', $this->translator->trans('tasks.type'), $name);
+        }
+        if ($filters['priority'] !== '') {
+            $priority = self::PRIORITIES[$filters['priority']] ?? 1;
+            $add('priority', $this->translator->trans('tasks.priority'), $this->priorityLabels()[$priority]);
+        }
+        if ($filters['customer'] !== '') {
+            $add('customer', $this->translator->trans('tasks.customer'), $filters['customer']);
+        }
+        if ($filters['overdue']) {
+            $add('overdue', $this->translator->trans('tasks.overdue_only'));
+        }
+        foreach ([
+            'deadline_from' => 'tasks.deadline_from',
+            'deadline_to' => 'tasks.deadline_to',
+            'created_from' => 'tasks.created_from',
+            'created_to' => 'tasks.created_to',
+        ] as $key => $translationKey) {
+            if ($filters[$key] !== '') {
+                $add($key, $this->translator->trans($translationKey), $filters[$key]);
+            }
+        }
+
+        $fieldsById = [];
+        foreach ($fields as $field) {
+            $fieldsById[$field->id] = $field;
+        }
+        foreach ($customFilters as $fieldId => $value) {
+            $field = $fieldsById[$fieldId] ?? null;
+            if (!$field instanceof CustomFieldRecord) {
+                continue;
+            }
+            $display = $value;
+            if ($field->type === 'checkbox') {
+                $display = $value === '1'
+                    ? $this->translator->trans('common.yes')
+                    : $this->translator->trans('common.no');
+            }
+            $params = $viewParams;
+            $custom = is_array($params['custom'] ?? null) ? $params['custom'] : [];
+            unset($custom[$fieldId]);
+            if ($custom === []) {
+                unset($params['custom']);
+            } else {
+                $params['custom'] = $custom;
+            }
+            $chips[] = [
+                'label' => $field->name,
+                'value' => $display,
+                'url' => $this->tasksUrl($params),
+            ];
+        }
+        return $chips;
+    }
+
+    /**
+     * @param array<string, scalar|array<int, string>> $viewParams
+     * @return array{previous:?string,next:?string,items:list<array{label:string,url:?string,active:bool}>}
+     */
+    private function pagination(array $viewParams, int $page, int $totalPages): array
+    {
+        if ($totalPages <= 1) {
+            return ['previous' => null, 'next' => null, 'items' => []];
+        }
+
+        $pages = [1, $totalPages];
+        for ($candidate = max(1, $page - 2); $candidate <= min($totalPages, $page + 2); $candidate++) {
+            $pages[] = $candidate;
+        }
+        $pages = array_values(array_unique($pages));
+        sort($pages);
+
+        $items = [];
+        $previousPage = 0;
+        foreach ($pages as $candidate) {
+            if ($previousPage !== 0 && $candidate > $previousPage + 1) {
+                $items[] = ['label' => '…', 'url' => null, 'active' => false];
+            }
+            $params = $viewParams;
+            $params['page'] = $candidate;
+            $items[] = [
+                'label' => (string) $candidate,
+                'url' => $this->tasksUrl($params),
+                'active' => $candidate === $page,
+            ];
+            $previousPage = $candidate;
+        }
+
+        $previous = null;
+        if ($page > 1) {
+            $params = $viewParams;
+            $params['page'] = $page - 1;
+            $previous = $this->tasksUrl($params);
+        }
+        $next = null;
+        if ($page < $totalPages) {
+            $params = $viewParams;
+            $params['page'] = $page + 1;
+            $next = $this->tasksUrl($params);
+        }
+
+        return ['previous' => $previous, 'next' => $next, 'items' => $items];
+    }
+
+    /**
+     * @param array<string, scalar|array<int, string>> $viewParams
+     * @return list<array{value:int,url:string,active:bool}>
+     */
+    private function perPageLinks(array $viewParams, int $current): array
+    {
+        $links = [];
+        foreach ([10, 25, 50, 100] as $value) {
+            $params = $viewParams;
+            unset($params['page']);
+            $params['per_page'] = $value;
+            $links[] = [
+                'value' => $value,
+                'url' => $this->tasksUrl($params),
+                'active' => $value === $current,
+            ];
+        }
+        return $links;
+    }
+
+    /** @param array<string, scalar|array<int, string>> $params */
+    private function tasksUrl(array $params): string
+    {
+        return $params === []
+            ? '/tasks'
+            : '/tasks?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
     }
 
     /** @return array<int, string> */
@@ -659,6 +884,39 @@ final class TaskController
     {
         $value = $query[$key] ?? null;
         return is_scalar($value) && ctype_digit((string) $value) && (int) $value > 0 ? (int) $value : null;
+    }
+
+    /** @param array<string, mixed> $query */
+    private function queryString(array $query, string $key): string
+    {
+        $value = $query[$key] ?? null;
+        return is_scalar($value) ? trim((string) $value) : '';
+    }
+
+    /** @param array<string, mixed> $query */
+    private function queryDate(array $query, string $key): string
+    {
+        $value = $this->queryString($query, $key);
+        if ($value === '') {
+            return '';
+        }
+        $date = DateTimeImmutable::createFromFormat('!Y-m-d', $value);
+        return $date !== false && $date->format('Y-m-d') === $value ? $value : '';
+    }
+
+    /** @param array<string, mixed> $query */
+    private function page(array $query): int
+    {
+        $value = $query['page'] ?? null;
+        return is_scalar($value) && ctype_digit((string) $value) && (int) $value > 0 ? (int) $value : 1;
+    }
+
+    /** @param array<string, mixed> $query */
+    private function perPage(array $query): int
+    {
+        $value = $query['per_page'] ?? null;
+        $value = is_scalar($value) && ctype_digit((string) $value) ? (int) $value : 25;
+        return in_array($value, [10, 25, 50, 100], true) ? $value : 25;
     }
 
     /** @param array<string, mixed> $body */
