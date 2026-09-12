@@ -40,7 +40,8 @@ token=${reset_url#*token=}
 test "$token" != "$reset_url"
 
 curl --fail --silent --cookie-jar "$cookies" "$reset_url" > /tmp/recovery-reset.html
-grep -q 'Reset password' /tmp/recovery-reset.html
+grep -Fq 'name="token"' /tmp/recovery-reset.html
+grep -Fq "value="$token"" /tmp/recovery-reset.html
 reset_csrf=$(csrf_from /tmp/recovery-reset.html)
 test -n "$reset_csrf"
 
