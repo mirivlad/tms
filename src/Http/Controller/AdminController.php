@@ -75,6 +75,7 @@ final class AdminController
             'email_verified' => $user->isEmailVerified,
             'approved' => $user->isApproved,
             'created_at' => $user->createdAt,
+            'last_activity_at' => $this->formatActivity($user->lastActivityAt),
             'edit_url' => '/admin/users/' . $user->id . '/edit',
         ]);
     }
@@ -258,6 +259,17 @@ final class AdminController
         $body = $this->body($request);
         $return = is_string($body['return_to'] ?? null) ? (string) $body['return_to'] : '';
         return str_starts_with($return, '/') && !str_starts_with($return, '//') ? $return : $fallback;
+    }
+
+    private function formatActivity(?string $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        $format = $this->translator->locale() === 'ru' ? 'd.m.Y H:i' : 'Y-m-d H:i';
+        return (new DateTimeImmutable($value, new DateTimeZone('UTC')))
+            ->setTimezone(new DateTimeZone(date_default_timezone_get()))
+            ->format($format);
     }
 
     /** @param array<string, mixed> $payload */

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tms\Domain\User;
 
+use DateTimeImmutable;
+use DateTimeZone;
 use DomainException;
 use PDO;
 use RuntimeException;
@@ -17,7 +19,7 @@ final class UserRepository
     public function findByUsername(string $username): ?UserRecord
     {
         $stmt = $this->db->prepare(
-            'SELECT id, username, email, password_hash, role, is_active, email_verified_at, approved_at, created_at
+            'SELECT id, username, email, password_hash, role, is_active, email_verified_at, approved_at, created_at, last_activity_at
              FROM users
              WHERE username = :username
              LIMIT 1'
@@ -35,7 +37,7 @@ final class UserRepository
     public function findByEmail(string $email): ?UserRecord
     {
         $stmt = $this->db->prepare(
-            'SELECT id, username, email, password_hash, role, is_active, email_verified_at, approved_at, created_at
+            'SELECT id, username, email, password_hash, role, is_active, email_verified_at, approved_at, created_at, last_activity_at
              FROM users
              WHERE email = :email
              LIMIT 1'
@@ -54,7 +56,7 @@ final class UserRepository
         }
 
         $stmt = $this->db->prepare(
-            'SELECT id, username, email, password_hash, role, is_active, email_verified_at, approved_at, created_at
+            'SELECT id, username, email, password_hash, role, is_active, email_verified_at, approved_at, created_at, last_activity_at
              FROM users
              WHERE username = :username OR email = :email
              LIMIT 1'
@@ -71,7 +73,7 @@ final class UserRepository
     public function findById(int $userId): ?UserRecord
     {
         $stmt = $this->db->prepare(
-            'SELECT id, username, email, password_hash, role, is_active, email_verified_at, approved_at, created_at
+            'SELECT id, username, email, password_hash, role, is_active, email_verified_at, approved_at, created_at, last_activity_at
              FROM users
              WHERE id = :id
              LIMIT 1'
@@ -84,6 +86,18 @@ final class UserRepository
         }
 
         return $this->hydrate($row);
+    }
+
+    public function touchActivity(int $userId, DateTimeImmutable $at): bool
+    {
+        $stmt = $this->db->prepare(
+            'UPDATE users SET last_activity_at = :last_activity_at WHERE id = :id'
+        );
+        $stmt->execute([
+            'last_activity_at' => $at->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'),
+            'id' => $userId,
+        ]);
+        return $stmt->rowCount() === 1;
     }
 
     public function replacePasswordHash(int $userId, string $passwordHash): void
@@ -101,7 +115,7 @@ final class UserRepository
     public function listAll(): array
     {
         $stmt = $this->db->query(
-            'SELECT id, username, email, password_hash, role, is_active, email_verified_at, approved_at, created_at
+            'SELECT id, username, email, password_hash, role, is_active, email_verified_at, approved_at, created_at, last_activity_at
              FROM users ORDER BY created_at ASC, id ASC'
         );
         if ($stmt === false) {
@@ -322,6 +336,7 @@ final class UserRepository
             isApproved: $row['approved_at'] !== null,
             isEmailVerified: $row['email_verified_at'] !== null,
             createdAt: isset($row['created_at']) ? (string) $row['created_at'] : null,
+            lastActivityAt: isset($row['last_activity_at']) ? (string) $row['last_activity_at'] : null,
         );
     }
 }

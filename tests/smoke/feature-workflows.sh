@@ -160,6 +160,7 @@ curl --fail --silent --cookie "$user_cookies" "$base_url/dashboard" > /tmp/tms-f
 grep -q 'class="theme-light"' /tmp/tms-feature-dashboard.html
 grep -q 'featureuser2' /tmp/tms-feature-dashboard.html
 grep -q 'dashboard-tip' /tmp/tms-feature-dashboard.html
+test -n "$(db "SELECT last_activity_at FROM users WHERE id=$user_id")"
 
 root_status=$(curl --silent --output /dev/null --write-out '%{http_code}' --cookie "$user_cookies" "$base_url/")
 test "$root_status" = "302"
@@ -342,6 +343,11 @@ test "$new_login_status" = "302"
 
 # Administrator impersonation is reversible and keeps the original admin identity isolated.
 curl --fail --silent --cookie "$admin_cookies" "$base_url/admin/users" > /tmp/tms-admin-users-before-impersonation.html
+grep -q 'Last activity' /tmp/tms-admin-users-before-impersonation.html
+curl --fail --silent --cookie "$admin_cookies" "$base_url/api/admin/users/$user_id" > /tmp/tms-admin-user-active.json
+grep -Eq '"last_activity_at":"[^"]+"' /tmp/tms-admin-user-active.json
+activity_before_impersonation=$(db "SELECT last_activity_at FROM users WHERE id=$user_id")
+test -n "$activity_before_impersonation"
 impersonate_csrf=$(csrf_from /tmp/tms-admin-users-before-impersonation.html)
 test -n "$impersonate_csrf"
 impersonate_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
@@ -354,6 +360,7 @@ grep -q 'action="/admin/stop-impersonation"' /tmp/tms-impersonated-dashboard.htm
 grep -q 'featureuser2' /tmp/tms-impersonated-dashboard.html
 curl --fail --silent --cookie "$admin_cookies" "$base_url/tasks" > /tmp/tms-impersonated-tasks.html
 grep -q 'Feature bulk beta' /tmp/tms-impersonated-tasks.html
+test "$(db "SELECT last_activity_at FROM users WHERE id=$user_id")" = "$activity_before_impersonation"
 if grep -q 'CI urgent task' /tmp/tms-impersonated-tasks.html; then
   echo 'Impersonation leaked the administrator task scope.' >&2
   exit 1
