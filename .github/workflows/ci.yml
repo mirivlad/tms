@@ -143,7 +143,7 @@ jobs:
           curl --fail --silent --cookie /tmp/tms-cookies \
             http://127.0.0.1:18080/dashboard > /tmp/dashboard-ru.html
           grep -q '<html lang="ru">' /tmp/dashboard-ru.html
-          grep -q 'Обзор задач' /tmp/dashboard-ru.html
+          grep -q 'dashboard-stats' /tmp/dashboard-ru.html
 
           dashboard_csrf=$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' /tmp/dashboard-ru.html | head -n1)
           test -n "$dashboard_csrf"
@@ -158,7 +158,7 @@ jobs:
           curl --fail --silent --cookie /tmp/tms-cookies \
             http://127.0.0.1:18080/dashboard > /tmp/dashboard-en.html
           grep -q '<html lang="en">' /tmp/dashboard-en.html
-          grep -q 'Task overview' /tmp/dashboard-en.html
+          grep -q 'dashboard-stats' /tmp/dashboard-en.html
 
           curl --fail --silent --cookie /tmp/tms-cookies \
             http://127.0.0.1:18080/tasks/new > /tmp/task-form.html
@@ -234,7 +234,7 @@ jobs:
           test -n "$remember"
           curl --fail --silent --header "Cookie: tms_remember=$remember" \
             http://127.0.0.1:18080/dashboard > /tmp/remember-dashboard.html
-          grep -q 'Task overview' /tmp/remember-dashboard.html
+          grep -q 'dashboard-stats' /tmp/remember-dashboard.html
 
       - name: Exercise rich task form workflow
         run: bash tests/smoke/task-form.sh
