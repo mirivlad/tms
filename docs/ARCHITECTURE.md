@@ -2,7 +2,7 @@
 
 ## Baseline
 
-TMS keeps the existing proven technology choices: PHP, Slim 4, Twig and PDO. The migration is deliberately evolutionary rather than a framework rewrite.
+TMS uses PHP, Slim 4, Twig and PDO. The architecture favors small, explicit components and incremental evolution over framework-heavy abstractions.
 
 New application code uses PSR-4 autoloading under `Tms\\` and is divided by responsibility instead of being manually required from a single oversized front controller.
 
@@ -12,7 +12,7 @@ New application code uses PSR-4 autoloading under `Tms\\` and is divided by resp
 
 ## Data access and authorization
 
-The internal application historically mixed authorization into some queries while omitting it from others. The public codebase adopts an explicit rule:
+Authorization is treated as a data-access invariant, not only as a controller concern:
 
 > A user-owned entity is never loaded or mutated by an unscoped public repository method.
 
@@ -36,4 +36,4 @@ Schema changes are delivered through versioned migrations. Production SQL dumps 
 
 ## Billing
 
-Billing, trial, tariff and payment-provider logic from the historical hosted deployment is outside the scope of TMS and is intentionally not migrated.
+Billing, trials, tariffs and payment-provider integration are outside the scope of TMS. TMS is a self-hosted task-management application, not a subscription platform.

@@ -1,0 +1,41 @@
+<dialog class="quick-add-dialog task-preview-dialog" id="task-preview-dialog" aria-labelledby="task-preview-title"
+    data-label-loading="{{ t('task_preview.loading') }}"
+    data-label-failed="{{ t('task_preview.failed') }}"
+    data-label-no-description="{{ t('task_preview.no_description') }}"
+    data-label-status="{{ t('tasks.status') }}"
+    data-label-type="{{ t('tasks.type') }}"
+    data-label-priority="{{ t('tasks.priority') }}"
+    data-label-customer="{{ t('tasks.customer') }}"
+    data-label-deadline="{{ t('task_form.deadline') }}"
+    data-label-updated="{{ t('task_preview.updated') }}"
+    data-label-attachments="{{ t('task_preview.attachments') }}"
+    data-label-delete-confirm="{{ t('task_preview.delete_confirm') }}">
+    <div class="task-preview-body">
+        <header class="quick-add-dialog-header">
+            <div>
+                <h2 id="task-preview-title" data-task-preview-title>{{ t('task_preview.title') }}</h2>
+                <p class="muted" data-task-preview-meta></p>
+            </div>
+            <button class="secondary compact quick-add-close" type="button" data-task-preview-close aria-label="{{ t('common.cancel') }}">×</button>
+        </header>
+        <p class="task-preview-description" data-task-preview-description></p>
+        <dl class="task-preview-details" data-task-preview-details></dl>
+        <div class="task-preview-custom" data-task-preview-custom hidden>
+            <h3>{{ t('task_preview.custom_fields') }}</h3>
+            <dl data-task-preview-custom-list></dl>
+        </div>
+        <div class="task-preview-attachments" data-task-preview-attachments hidden>
+            <h3>{{ t('task_preview.attachments') }}</h3>
+            <ul data-task-preview-attachment-list></ul>
+        </div>
+        <p class="quick-add-result error" data-task-preview-error role="alert" hidden></p>
+        <footer class="quick-add-dialog-actions">
+            <a class="button-link" href="/tasks" data-task-preview-edit>{{ t('common.edit') }}</a>
+            <form method="post" action="/tasks" data-task-preview-delete-form hidden>
+                <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                <button class="danger-link task-preview-delete" type="submit">{{ t('task_preview.delete') }}</button>
+            </form>
+            <button class="secondary" type="button" data-task-preview-close>{{ t('common.cancel') }}</button>
+        </footer>
+    </div>
+</dialog>

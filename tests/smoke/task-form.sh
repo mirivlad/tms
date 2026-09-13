@@ -85,17 +85,26 @@ if printf '%s' "$updated_description" | grep -qi 'onclick'; then
 fi
 
 curl --fail --silent --cookie "$cookies" "$base_url/dashboard" > /tmp/quick-dashboard.html
-grep -q 'action="/tasks/quick-add"' /tmp/quick-dashboard.html
+grep -q 'id="quick-add-dialog"' /tmp/quick-dashboard.html
+grep -q 'data-quick-add-trigger' /tmp/quick-dashboard.html
+grep -q '/assets/quick-add.js' /tmp/quick-dashboard.html
 quick_csrf=$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' /tmp/quick-dashboard.html | head -n1)
 test -n "$quick_csrf"
 
-quick_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+# Quick-add is a global workflow, not dashboard-only.
+curl --fail --silent --cookie "$cookies" "$base_url/tasks" > /tmp/quick-tasks.html
+grep -q 'id="quick-add-dialog"' /tmp/quick-tasks.html
+grep -q 'data-quick-add-trigger' /tmp/quick-tasks.html
+
+quick_status=$(curl --silent --output /tmp/quick-add.json --write-out '%{http_code}' \
   --cookie "$cookies" \
+  --header 'Accept: application/json' \
   --data-urlencode "_csrf=$quick_csrf" \
   --data-urlencode 'title=CI quick task' \
   --data-urlencode 'description=Quick <script>alert(7)</script> note' \
   "$base_url/tasks/quick-add")
-test "$quick_status" = "302"
+test "$quick_status" = "201"
+grep -q '"success":true' /tmp/quick-add.json
 quick_id=$(db "SELECT id FROM tasks WHERE created_by=$admin_id AND title='CI quick task' LIMIT 1")
 test -n "$quick_id"
 test "$(db "SELECT priority FROM tasks WHERE id=$quick_id")" = "1"
@@ -106,9 +115,5 @@ if printf '%s' "$quick_description" | grep -q '<script'; then
   exit 1
 fi
 printf '%s' "$quick_description" | grep -q '&lt;script&gt;alert(7)&lt;/script&gt;'
-
-curl --fail --silent --cookie "$cookies" "$base_url/dashboard" > /tmp/quick-dashboard-after.html
-grep -q 'Task added.' /tmp/quick-dashboard-after.html
-grep -q "/tasks/$quick_id/edit" /tmp/quick-dashboard-after.html
 
 bash tests/smoke/attachments.sh

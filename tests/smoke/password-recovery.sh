@@ -82,4 +82,5 @@ new_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
   --data-urlencode "password=$new_password" \
   "$base_url/login")
 test "$new_status" = "302"
-curl --fail --silent --cookie "$login_cookies" "$base_url/dashboard" | grep -q 'Task overview'
+curl --fail --silent --cookie "$login_cookies" "$base_url/dashboard" > /tmp/recovery-dashboard.html
+grep -q 'Task overview' /tmp/recovery-dashboard.html

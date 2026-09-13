@@ -10,7 +10,7 @@
         <h1>{{ t('tasks.title') }}</h1>
         <p class="muted">{{ t('tasks.subtitle') }}</p>
     </div>
-    <a class="button-link" href="/tasks/new">{{ t('nav.new_task') }}</a>
+    <a class="button-link" href="/tasks/new" data-quick-add-trigger>{{ t('nav.new_task') }}</a>
 </div>
 
 <section class="content-card filters-card">
@@ -145,10 +145,68 @@
 </section>
 
 <section class="content-card task-table-card">
+    {% if bulk_notice %}
+        <div class="bulk-notice {{ bulk_notice.kind == 'error' ? 'alert' : 'success-notice' }}" role="status">{{ bulk_notice.message }}</div>
+    {% endif %}
+
     <div class="task-table-summary">
         <strong>{{ t('tasks.total', {'count': total_tasks}) }}</strong>
         <span class="muted">{{ t('tasks.page_of', {'page': current_page, 'pages': total_pages}) }}</span>
     </div>
+
+    {% if tasks is not empty %}
+        <form id="bulk-action-form" class="bulk-actions" method="post" action="/tasks/bulk" data-bulk-form data-delete-confirm="{{ t('bulk.delete_confirm') }}">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <div class="bulk-actions-heading">
+                <strong>{{ t('bulk.title') }}</strong>
+                <span class="muted">{{ t('bulk.selected') }}: <span data-bulk-count>0</span></span>
+            </div>
+            <div class="bulk-action-options">
+                <label class="checkbox-inline"><input type="radio" name="action" value="delete" required> {{ t('bulk.delete') }}</label>
+                <label class="checkbox-inline"><input type="radio" name="action" value="update_status"> {{ t('bulk.change_status') }}</label>
+                <label class="checkbox-inline"><input type="radio" name="action" value="update_type"> {{ t('bulk.change_type') }}</label>
+                <label class="checkbox-inline"><input type="radio" name="action" value="update_priority"> {{ t('bulk.change_priority') }}</label>
+                <label class="checkbox-inline"><input type="radio" name="action" value="update_deadline"> {{ t('bulk.change_deadline') }}</label>
+            </div>
+            <div class="bulk-action-fields">
+                <label data-bulk-field="update_status" hidden>
+                    {{ t('bulk.new_status') }}
+                    <select name="status_id">
+                        {% for id, status in status_map %}<option value="{{ id }}">{{ status.name }}</option>{% endfor %}
+                    </select>
+                </label>
+                <label data-bulk-field="update_type" hidden>
+                    {{ t('bulk.new_type') }}
+                    <select name="type_id">
+                        <option value="">{{ t('task.no_type') }}</option>
+                        {% for id, type in type_map %}<option value="{{ id }}">{{ type.name }}</option>{% endfor %}
+                    </select>
+                </label>
+                <label data-bulk-field="update_priority" hidden>
+                    {{ t('bulk.new_priority') }}
+                    <select name="priority">
+                        <option value="low">{{ t('priority.low') }}</option>
+                        <option value="medium" selected>{{ t('priority.medium') }}</option>
+                        <option value="high">{{ t('priority.high') }}</option>
+                        <option value="urgent">{{ t('priority.urgent') }}</option>
+                    </select>
+                </label>
+                <fieldset class="bulk-deadline-field" data-bulk-field="update_deadline" hidden>
+                    <legend>{{ t('bulk.new_deadline') }}</legend>
+                    <div class="bulk-deadline-presets">
+                        <label class="checkbox-inline"><input type="radio" name="deadline_type" value="today"> {{ t('bulk.deadline_today') }}</label>
+                        <label class="checkbox-inline"><input type="radio" name="deadline_type" value="tomorrow"> {{ t('bulk.deadline_tomorrow') }}</label>
+                        <label class="checkbox-inline"><input type="radio" name="deadline_type" value="week"> {{ t('bulk.deadline_week') }}</label>
+                        <label class="checkbox-inline"><input type="radio" name="deadline_type" value="month"> {{ t('bulk.deadline_month') }}</label>
+                        <label class="checkbox-inline"><input type="radio" name="deadline_type" value="clear"> {{ t('bulk.deadline_clear') }}</label>
+                        <label class="checkbox-inline"><input type="radio" name="deadline_type" value="custom"> {{ t('bulk.deadline_custom') }}</label>
+                    </div>
+                    <input type="datetime-local" name="custom_deadline" data-bulk-custom-deadline disabled>
+                </fieldset>
+            </div>
+            <button type="submit" class="compact" data-bulk-submit disabled>{{ t('bulk.apply') }}</button>
+        </form>
+    {% endif %}
     {% if tasks is empty %}
         <div class="empty-state">
             <strong>{{ t('tasks.empty_title') }}</strong>
@@ -159,6 +217,7 @@
             <table class="task-table">
                 <thead>
                     <tr>
+                        <th class="bulk-select-cell"><input type="checkbox" data-bulk-select-all aria-label="{{ t('bulk.select_all') }}"></th>
                         <th>{{ sorting.head(sort_links.title, t('tasks.table.task')) }}</th>
                         <th>{{ sorting.head(sort_links.status_name, t('tasks.table.status')) }}</th>
                         <th>{{ sorting.head(sort_links.type_name, t('tasks.table.type')) }}</th>
@@ -175,6 +234,9 @@
                 <tbody>
                 {% for task in tasks %}
                     <tr>
+                        <td class="bulk-select-cell">
+                            <input type="checkbox" name="task_ids[]" value="{{ task.id }}" form="bulk-action-form" data-bulk-task aria-label="{{ t('bulk.select_task', {'title': task.title}) }}">
+                        </td>
                         <td>
                             <a class="task-title" href="/tasks/{{ task.id }}/edit">{{ task.title }}</a>
                             {% if task.description %}<div class="muted task-preview">{{ task.description|striptags }}</div>{% endif %}
@@ -203,6 +265,7 @@
                         <td class="nowrap">{{ task.createdAt|date('Y-m-d H:i') }}</td>
                         <td class="nowrap">{{ task.deadline ? task.deadline|date('Y-m-d H:i') : '—' }}</td>
                         <td class="row-actions">
+                            <a class="text-link" href="/tasks/{{ task.id }}/edit" data-task-preview="{{ task.id }}">{{ t('common.view') }}</a>
                             <a class="text-link" href="/tasks/{{ task.id }}/edit">{{ t('common.edit') }}</a>
                             <form method="post" action="/tasks/{{ task.id }}/delete" onsubmit="return confirm('{{ t('tasks.delete_confirm') }}')">
                                 <input type="hidden" name="_csrf" value="{{ csrf_token }}">
@@ -230,4 +293,8 @@
         </nav>
     {% endif %}
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script src="/assets/bulk-actions.js" defer></script>
 {% endblock %}

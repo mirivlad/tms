@@ -31,6 +31,12 @@ final class TaskCalendarRepositoryTest extends TestCase
             updated_at TEXT NOT NULL
         )');
 
+        $db->exec('CREATE TABLE customers (
+            id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, name TEXT NOT NULL
+        )');
+        $db->exec("INSERT INTO customers (id,user_id,name) VALUES
+            (50,1,'Acme 100%'),(51,1,'Other customer'),(60,2,'Foreign')");
+
         $db->exec("INSERT INTO tasks
             (id, created_by, title, description, deadline, status_id, type_id, priority, customer_id, created_at, updated_at)
             VALUES
@@ -90,13 +96,48 @@ final class TaskCalendarRepositoryTest extends TestCase
             '2026-09-01 00:00:00',
             '2026-10-01 00:00:00',
             'all',
-            statusId: 10,
-            typeId: 30,
+            statusIds: [10],
+            typeIds: [30],
             customerId: 50,
-            priority: 3,
+            priorities: [3],
         );
 
         self::assertCount(1, $tasks);
         self::assertSame('Deadline task', $tasks[0]->title);
+    }
+
+    public function testCalendarSupportsMultipleValuesAndInversion(): void
+    {
+        $tasks = $this->tasks->listCalendarForUser(
+            1,
+            '2026-09-01 00:00:00',
+            '2026-10-01 00:00:00',
+            'all',
+            statusIds: [999],
+            typeIds: [999],
+            priorities: [3],
+            statusInvert: true,
+            typeInvert: true,
+            priorityInvert: true,
+        );
+
+        self::assertCount(1, $tasks);
+        self::assertSame('No deadline task', $tasks[0]->title);
+    }
+
+    public function testCalendarCustomerSubstringEscapesLikeWildcards(): void
+    {
+        $tasks = $this->tasks->listCalendarForUser(
+            1,
+            '2026-09-01 00:00:00',
+            '2026-10-01 00:00:00',
+            'all',
+            customerQuery: '100%',
+        );
+
+        self::assertSame(['Deadline task', 'No deadline task'], array_map(
+            static fn ($task): string => $task->title,
+            $tasks,
+        ));
     }
 }

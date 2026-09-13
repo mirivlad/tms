@@ -31,7 +31,7 @@
                             <span class="priority priority-{{ task.priority }}">{{ priority_labels[task.priority]|default(t('priority.medium')) }}</span>
                             {% if task.deadline %}<span class="muted small">{{ task.deadline|date('Y-m-d H:i') }}</span>{% endif %}
                         </div>
-                        <a class="task-card-title" href="/tasks/{{ task.id }}/edit">{{ task.title }}</a>
+                        <a class="task-card-title" href="/tasks/{{ task.id }}/edit" data-task-preview="{{ task.id }}">{{ task.title }}</a>
                         {% if task.description %}<p class="task-card-description">{{ task.description|striptags }}</p>{% endif %}
                         <div class="task-card-meta">
                             {% if type_map[task.typeId] is defined %}<span>{{ type_map[task.typeId].name }}</span>{% endif %}

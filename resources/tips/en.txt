@@ -1,0 +1,7 @@
+Use the board for execution and the task list for review and cleanup.
+Give deadlines only to work that actually has a deadline.
+A small number of meaningful statuses is easier to maintain than a complex workflow.
+Use quick add when you only need to capture a thought; refine the task later.
+If a task has not moved for several days, either clarify the next action or close it.
+Custom fields are most useful when you also filter or sort by them.
+Keep notifications selective: an alert that fires for everything quickly becomes background noise.

@@ -1,0 +1,5 @@
+<!doctype html>
+<html lang="{{ locale }}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>{{ t('registration.verify_title') }} · TMS</title><link rel="stylesheet" href="/assets/app.css"></head>
+<body class="auth-page"><main class="auth-card"><div class="brand">TMS</div><h1>{{ t('registration.verify_title') }}</h1>
+{% if success %}<p>{{ auto_login ? t('registration.verify_success_login') : t('registration.verify_success_pending') }}</p>{% else %}<div class="alert">{{ t('registration.verify_invalid') }}</div>{% endif %}
+<p><a class="text-link" href="{{ auto_login ? '/dashboard' : '/login' }}">{{ auto_login ? t('nav.overview') : t('registration.back_to_login') }}</a></p></main></body></html>

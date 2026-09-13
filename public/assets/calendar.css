@@ -184,3 +184,8 @@
         grid-template-columns: 1fr;
     }
 }
+
+.calendar-filter-help { grid-column: 1 / -1; margin: 0; }
+.calendar-filter-group { display: grid; gap: 6px; align-self: start; }
+.calendar-filter-group select[multiple] { min-height: 112px; }
+.calendar-invert { min-height: 0; align-self: start; font-size: .76rem; }

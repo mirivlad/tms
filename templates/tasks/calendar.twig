@@ -19,10 +19,14 @@
         <form method="get" action="/calendar" class="month-jump">
             <input type="month" name="month" value="{{ month }}" min="1970-01" max="2100-12" aria-label="{{ t('calendar.month_aria') }}">
             <input type="hidden" name="mode" value="{{ filters.mode }}">
-            {% if filters.status_id %}<input type="hidden" name="status_id" value="{{ filters.status_id }}">{% endif %}
-            {% if filters.type_id %}<input type="hidden" name="type_id" value="{{ filters.type_id }}">{% endif %}
+            {% for id in filters.status_id %}<input type="hidden" name="status_id[]" value="{{ id }}">{% endfor %}
+            {% if filters.status_invert %}<input type="hidden" name="status_invert" value="1">{% endif %}
+            {% for id in filters.type_id %}<input type="hidden" name="type_id[]" value="{{ id }}">{% endfor %}
+            {% if filters.type_invert %}<input type="hidden" name="type_invert" value="1">{% endif %}
             {% if filters.customer_id %}<input type="hidden" name="customer_id" value="{{ filters.customer_id }}">{% endif %}
-            {% if filters.priority %}<input type="hidden" name="priority" value="{{ filters.priority }}">{% endif %}
+            {% if filters.customer %}<input type="hidden" name="customer" value="{{ filters.customer }}">{% endif %}
+            {% for priority in filters.priority %}<input type="hidden" name="priority[]" value="{{ priority }}">{% endfor %}
+            {% if filters.priority_invert %}<input type="hidden" name="priority_invert" value="1">{% endif %}
             <button type="submit">{{ t('calendar.go') }}</button>
         </form>
         <a class="button-link secondary-link" href="/calendar?{{ next_query }}">{{ t('calendar.next') }} →</a>
@@ -30,6 +34,7 @@
 
     <form method="get" action="/calendar" class="calendar-filters">
         <input type="hidden" name="month" value="{{ month }}">
+        <p class="field-help calendar-filter-help">{{ t('calendar.multi_select_help') }}</p>
         <label>
             {{ t('calendar.show') }}
             <select name="mode">
@@ -38,42 +43,43 @@
                 <option value="all" {{ filters.mode == 'all' ? 'selected' : '' }}>{{ t('calendar.mode.all') }}</option>
             </select>
         </label>
-        <label>
-            {{ t('tasks.status') }}
-            <select name="status_id">
-                <option value="">{{ t('tasks.all_statuses') }}</option>
-                {% for status in statuses %}
-                    <option value="{{ status.id }}" {{ filters.status_id == status.id ? 'selected' : '' }}>{{ status.name }}</option>
-                {% endfor %}
-            </select>
-        </label>
-        <label>
-            {{ t('tasks.type') }}
-            <select name="type_id">
-                <option value="">{{ t('tasks.all_types') }}</option>
-                {% for type in types %}
-                    <option value="{{ type.id }}" {{ filters.type_id == type.id ? 'selected' : '' }}>{{ type.name }}</option>
-                {% endfor %}
-            </select>
-        </label>
-        <label>
-            {{ t('tasks.priority') }}
-            <select name="priority">
-                <option value="">{{ t('tasks.all_priorities') }}</option>
-                <option value="urgent" {{ filters.priority == 'urgent' ? 'selected' : '' }}>{{ t('priority.urgent') }}</option>
-                <option value="high" {{ filters.priority == 'high' ? 'selected' : '' }}>{{ t('priority.high') }}</option>
-                <option value="medium" {{ filters.priority == 'medium' ? 'selected' : '' }}>{{ t('priority.medium') }}</option>
-                <option value="low" {{ filters.priority == 'low' ? 'selected' : '' }}>{{ t('priority.low') }}</option>
-            </select>
-        </label>
+        <div class="calendar-filter-group">
+            <label>
+                {{ t('tasks.status') }}
+                <select name="status_id[]" multiple size="4">
+                    {% for status in statuses %}
+                        <option value="{{ status.id }}" {{ status.id in filters.status_id ? 'selected' : '' }}>{{ status.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="checkbox-inline calendar-invert"><input type="checkbox" name="status_invert" value="1" {{ filters.status_invert ? 'checked' : '' }}> {{ t('calendar.exclude_selected') }}</label>
+        </div>
+        <div class="calendar-filter-group">
+            <label>
+                {{ t('tasks.type') }}
+                <select name="type_id[]" multiple size="4">
+                    {% for type in types %}
+                        <option value="{{ type.id }}" {{ type.id in filters.type_id ? 'selected' : '' }}>{{ type.name }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="checkbox-inline calendar-invert"><input type="checkbox" name="type_invert" value="1" {{ filters.type_invert ? 'checked' : '' }}> {{ t('calendar.exclude_selected') }}</label>
+        </div>
+        <div class="calendar-filter-group">
+            <label>
+                {{ t('tasks.priority') }}
+                <select name="priority[]" multiple size="4">
+                    <option value="urgent" {{ 'urgent' in filters.priority ? 'selected' : '' }}>{{ t('priority.urgent') }}</option>
+                    <option value="high" {{ 'high' in filters.priority ? 'selected' : '' }}>{{ t('priority.high') }}</option>
+                    <option value="medium" {{ 'medium' in filters.priority ? 'selected' : '' }}>{{ t('priority.medium') }}</option>
+                    <option value="low" {{ 'low' in filters.priority ? 'selected' : '' }}>{{ t('priority.low') }}</option>
+                </select>
+            </label>
+            <label class="checkbox-inline calendar-invert"><input type="checkbox" name="priority_invert" value="1" {{ filters.priority_invert ? 'checked' : '' }}> {{ t('calendar.exclude_selected') }}</label>
+        </div>
         <label>
             {{ t('tasks.customer') }}
-            <select name="customer_id">
-                <option value="">{{ t('tasks.all_customers') }}</option>
-                {% for customer in customers %}
-                    <option value="{{ customer.id }}" {{ filters.customer_id == customer.id ? 'selected' : '' }}>{{ customer.name }}</option>
-                {% endfor %}
-            </select>
+            <input type="text" name="customer" value="{{ filters.customer }}" placeholder="{{ t('calendar.customer_placeholder') }}">
         </label>
         <div class="filter-actions">
             <button type="submit">{{ t('common.apply') }}</button>
@@ -94,7 +100,7 @@
                 </header>
                 <div class="calendar-task-list">
                     {% for task in day.tasks %}
-                        <a class="calendar-task priority-border-{{ task.priority }}" href="/tasks/{{ task.id }}/edit" title="{{ task.title }}">
+                        <a class="calendar-task priority-border-{{ task.priority }}" href="/tasks/{{ task.id }}/edit" data-task-preview="{{ task.id }}" title="{{ task.title }}">
                             <span class="status-dot" style="--status-color: {{ status_map[task.statusId].color|default('#6b7280') }}"></span>
                             <span class="calendar-task-text">
                                 <strong>{{ task.title }}</strong>

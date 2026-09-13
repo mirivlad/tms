@@ -163,7 +163,7 @@ forbidden_admin=$(curl --silent --output /dev/null --write-out '%{http_code}' \
   --cookie "$other_cookies" "$base_url/admin/notifications")
 test "$forbidden_admin" = "403"
 
-# The notifier is a separate process, starts only after the migrated app is healthy,
+# The notifier is a separate process, starts only after the application is healthy,
 # and can be invoked repeatedly without performing migrations itself.
 docker compose ps notifier --status running | grep -q notifier
 runner_output=$(docker compose exec -T notifier php /var/www/html/bin/notify.php)

@@ -139,4 +139,39 @@ final class TaskCrudRepositoryTest extends TestCase
         self::assertCount(1, $results);
         self::assertSame('Late open', $results[0]->title);
     }
+
+    public function testBulkUpdatesAreOwnerScopedAndSupportAvailableActions(): void
+    {
+        $first = $this->tasks->createForUser(1, 'Bulk one', '', null, 10, 30, 1, 50);
+        $second = $this->tasks->createForUser(1, 'Bulk two', '', null, 10, 30, 1, 50);
+        $ids = [$first, $second, 200];
+
+        self::assertSame(2, $this->tasks->bulkUpdateStatusForUser(1, $ids, 11));
+        self::assertSame(11, $this->tasks->findForUser(1, $first)?->statusId);
+        self::assertSame(20, $this->tasks->findForUser(2, 200)?->statusId);
+
+        self::assertSame(2, $this->tasks->bulkUpdateTypeForUser(1, $ids, null));
+        self::assertNull($this->tasks->findForUser(1, $second)?->typeId);
+
+        self::assertSame(2, $this->tasks->bulkUpdatePriorityForUser(1, $ids, 3));
+        self::assertSame(3, $this->tasks->findForUser(1, $first)?->priority);
+
+        self::assertSame(2, $this->tasks->bulkUpdateDeadlineForUser(1, $ids, '2026-09-30 12:00:00'));
+        self::assertSame('2026-09-30 12:00:00', $this->tasks->findForUser(1, $second)?->deadline);
+    }
+
+    public function testBulkUpdatesRejectForeignMetadata(): void
+    {
+        $task = $this->tasks->createForUser(1, 'Owned bulk', '', null, 10, 30, 1, null);
+
+        try {
+            $this->tasks->bulkUpdateStatusForUser(1, [$task], 20);
+            self::fail('Foreign status should have been rejected.');
+        } catch (DomainException) {
+            self::assertSame(10, $this->tasks->findForUser(1, $task)?->statusId);
+        }
+
+        $this->expectException(DomainException::class);
+        $this->tasks->bulkUpdateTypeForUser(1, [$task], 40);
+    }
 }
