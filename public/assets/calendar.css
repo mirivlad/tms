@@ -1,6 +1,6 @@
 .calendar-page-header { margin-bottom: 10px; }
 .calendar-workspace {
-    height: calc(100dvh - 128px);
+    height: calc(100dvh - 158px);
     min-height: 610px;
     display: grid;
     grid-template-columns: minmax(0, 1fr) minmax(250px, 292px);

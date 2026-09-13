@@ -53,6 +53,10 @@ PYCODE
 curl --fail --silent "$base_url/" > /tmp/tms-landing.html
 grep -q 'landing-hero' /tmp/tms-landing.html
 grep -q 'TMS' /tmp/tms-landing.html
+app_version=$(tr -d '\r\n' < VERSION)
+grep -q '© 2026 mirivlad' /tmp/tms-landing.html
+grep -q 'github.com/mirivlad/tms' /tmp/tms-landing.html
+grep -q "v${app_version}" /tmp/tms-landing.html
 curl --fail --silent "$base_url/first_steps" > /tmp/tms-first-steps.html
 grep -q 'TMS' /tmp/tms-first-steps.html
 curl --fail --silent "$base_url/privacy" > /tmp/tms-privacy.html

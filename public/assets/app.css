@@ -19,7 +19,8 @@ button.secondary, .secondary-link { background: transparent; color: var(--primar
 button.compact { padding: 7px 11px; }
 button:not(.secondary):not(.danger-link):hover, .button-link:hover { background: var(--primary-hover); color: var(--primary-contrast); }
 
-.auth-page { display: grid; place-items: center; padding: 24px; }
+.auth-page { display: grid; grid-template-rows: minmax(0, 1fr) auto; place-items: center; padding: 24px; }
+.auth-page > .page-footer { align-self: end; padding-bottom: 0; }
 .auth-card, .panel, .content-card {
     background: var(--surface);
     border: 1px solid var(--border);
@@ -359,7 +360,9 @@ textarea { resize: vertical; min-height: 110px; }
 .public-document h2 { margin-top: 30px; }
 .public-document .lead { color: var(--text-soft); font-size: 1.05rem; }
 .public-document li { margin: 7px 0; line-height: 1.5; }
-.page-footer { display: flex; justify-content: center; gap: 16px; padding: 18px 24px 28px; color: var(--muted); font-size: .78rem; }
+.page-footer { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 6px 14px; min-height: 28px; padding: 4px 24px 8px; color: var(--muted); font-size: .72rem; }
+.page-footer a { color: var(--muted); }
+.page-footer a:hover { color: var(--text); }
 .task-preview-attachments { border-top: 1px solid var(--border); padding-top: 12px; }
 .task-preview-attachments h3 { margin: 0 0 10px; font-size: .9rem; }
 .task-preview-attachments ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
@@ -448,7 +451,7 @@ textarea { resize: vertical; min-height: 110px; }
 .filters-card { padding-top: 12px; padding-bottom: 12px; }
 .bulk-actions[hidden] { display: none !important; }
 .bulk-actions { position: sticky; top: 64px; z-index: 12; box-shadow: 0 12px 32px var(--shadow); }
-.board { height: calc(100dvh - 118px); min-height: 480px; align-items: stretch; }
+.board { height: calc(100dvh - 148px); min-height: 480px; align-items: stretch; }
 .board-column { min-height: 0; max-height: 100%; display: flex; flex-direction: column; border-top: 3px solid var(--status-color, var(--border-strong)); }
 .board-column-header { flex: 0 0 auto; background: color-mix(in srgb, var(--status-color, var(--surface)) 7%, var(--board-column-bg)); }
 .board-cards { min-height: 0; overflow-y: auto; align-content: start; }

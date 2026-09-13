@@ -131,6 +131,9 @@ final class ApplicationFactory
             return $utc->setTimezone(new DateTimeZone(date_default_timezone_get()))->format($format);
         }));
         $twig->getEnvironment()->addGlobal('locale', $translator->locale());
+        $versionPath = dirname(__DIR__, 2) . '/VERSION';
+        $appVersion = is_file($versionPath) ? trim((string) file_get_contents($versionPath)) : 'dev';
+        $twig->getEnvironment()->addGlobal('app_version', $appVersion !== '' ? $appVersion : 'dev');
 
         $users = new UserRepository($db);
         $preferences = new UserPreferenceRepository($db, $appTimezone);
