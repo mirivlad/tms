@@ -14,6 +14,7 @@ return [
     'admin.total_users' => 'Total users',
     'admin.active_users' => 'Active users',
     'admin.system_tools' => 'System tools',
+    'admin.system_notifications' => 'System notifications',
     'admin.system_tools_help' => 'User administration and deployment-wide notification settings.',
     'admin.edit_user' => 'Edit user',
     'admin.account_details' => 'Account details',

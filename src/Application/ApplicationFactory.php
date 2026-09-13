@@ -25,6 +25,7 @@ use Tms\Domain\CustomField\TaskCustomFieldValueRepository;
 use Tms\Domain\Notification\NotificationSettingsRepository;
 use Tms\Domain\Notification\SmtpSettingsRepository;
 use Tms\Domain\Notification\TelegramLinkTokenRepository;
+use Tms\Domain\Notification\TelegramSystemSettingsRepository;
 use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRepository;
 use Tms\Domain\TaskType\TaskTypeRepository;
@@ -65,9 +66,10 @@ use Tms\I18n\Translator;
 use Tms\Infrastructure\AttachmentStorage;
 use Tms\Infrastructure\Database;
 use Tms\Infrastructure\NativeSessionIdRegenerator;
-use Tms\Infrastructure\SecretBox;
+use Tms\Infrastructure\NotificationSecretBoxFactory;
 use Tms\Infrastructure\SmtpEmailSender;
 use Tms\Infrastructure\TelegramBotSender;
+use Tms\Infrastructure\TelegramConfigurationProvider;
 use Tms\Security\EmailVerificationTokenRepository;
 use Tms\Security\PasswordAuthenticator;
 use Tms\Security\RegistrationCaptcha;
@@ -93,11 +95,15 @@ final class ApplicationFactory
         $rememberLifetime = new DateInterval('P' . $rememberDays . 'D');
         $attachmentMaxBytes = $this->positiveIntEnv('ATTACHMENT_MAX_BYTES', 10_485_760);
         $attachmentStoragePath = $this->env('ATTACHMENT_STORAGE_PATH', dirname(__DIR__, 2) . '/var/storage/attachments');
-        $notificationSecretRaw = $this->env('NOTIFICATION_SECRET', '');
-        $notificationSecret = $notificationSecretRaw !== '' ? new SecretBox($notificationSecretRaw) : null;
+        $notificationSecret = NotificationSecretBoxFactory::create(
+            $this->env('NOTIFICATION_SECRET', ''),
+            $this->env('NOTIFICATION_SECRET_FILE', dirname(__DIR__, 2) . '/var/secrets/notification.key'),
+        );
         $telegramBotToken = $this->env('TELEGRAM_BOT_TOKEN', '');
         $telegramBotName = $this->env('TELEGRAM_BOT_NAME', '');
         $telegramWebhookSecret = $this->env('TELEGRAM_WEBHOOK_SECRET', '');
+        $telegramProxyEnabled = $this->boolEnv('TELEGRAM_PROXY_ENABLED', false);
+        $telegramProxyUrl = $this->env('TELEGRAM_PROXY_URL', '');
         $registrationEnabled = $this->boolEnv('REGISTRATION_ENABLED', false);
         $registrationAutoApprove = $this->boolEnv('REGISTRATION_AUTO_APPROVE_AFTER_EMAIL', true);
 
@@ -147,6 +153,7 @@ final class ApplicationFactory
         $notificationSettings = new NotificationSettingsRepository($db);
         $smtpSettings = new SmtpSettingsRepository($db);
         $telegramLinkTokens = new TelegramLinkTokenRepository($db);
+        $telegramSystemSettings = new TelegramSystemSettingsRepository($db);
         $attachmentPolicy = new AttachmentPolicy($attachmentMaxBytes);
         $attachmentStorage = new AttachmentStorage($attachmentStoragePath, dirname(__DIR__, 2) . '/public');
         $sessions = new SessionManager(new NativeSessionIdRegenerator());
@@ -165,7 +172,16 @@ final class ApplicationFactory
         $persistentLogin = new PersistentLoginService($rememberTokens, $rememberLifetime);
         $cookiePolicy = new CookiePolicy($secureCookies, $sameSite);
         $userBootstrap = new UserBootstrapService($statuses, $taskTypes, $translator);
-        $telegramSender = new TelegramBotSender(new Client(), $telegramBotToken);
+        $telegramConfiguration = new TelegramConfigurationProvider(
+            $telegramSystemSettings,
+            $notificationSecret,
+            $telegramBotName,
+            $telegramBotToken,
+            $telegramWebhookSecret,
+            $telegramProxyEnabled,
+            $telegramProxyUrl,
+        );
+        $telegramSender = new TelegramBotSender(new Client(), $telegramConfiguration);
         $emailSender = new SmtpEmailSender($smtpSettings, $notificationSecret);
         $passwordRecovery = new PasswordRecoveryService(
             $users,
@@ -228,7 +244,7 @@ final class ApplicationFactory
             $telegramLinkTokens,
             $telegramSender,
             $translator,
-            $telegramBotName,
+            $telegramConfiguration,
             $appTimezone,
         );
         $notificationAdminController = new NotificationAdminController(
@@ -237,19 +253,19 @@ final class ApplicationFactory
             $users,
             $smtpSettings,
             $emailSender,
+            $telegramSystemSettings,
+            $telegramConfiguration,
             $telegramSender,
             $notificationSecret,
             $translator,
             $appUrl,
-            $telegramWebhookSecret,
-            $telegramBotToken,
         );
         $telegramWebhookController = new TelegramWebhookController(
             $notificationSettings,
             $telegramLinkTokens,
             $telegramSender,
             $translator,
-            $telegramWebhookSecret,
+            $telegramConfiguration,
         );
         $requireAuth = new RequireAuthMiddleware($sessions);
         $requireAdmin = new RequireAdminMiddleware($sessions, $app->getResponseFactory(), $translator);
@@ -359,6 +375,8 @@ final class ApplicationFactory
         $app->get('/admin/notifications', [$notificationAdminController, 'show'])->add($requireAdmin)->add($requireAuth);
         $app->post('/admin/notifications/smtp', [$notificationAdminController, 'saveSmtp'])->add($requireAdmin)->add($requireAuth);
         $app->post('/admin/notifications/smtp-test', [$notificationAdminController, 'testEmail'])->add($requireAdmin)->add($requireAuth);
+        $app->post('/admin/notifications/telegram', [$notificationAdminController, 'saveTelegram'])->add($requireAdmin)->add($requireAuth);
+        $app->post('/admin/notifications/telegram-test', [$notificationAdminController, 'testTelegram'])->add($requireAdmin)->add($requireAuth);
         $app->post('/admin/notifications/telegram-webhook', [$notificationAdminController, 'setupTelegramWebhook'])->add($requireAdmin)->add($requireAuth);
         $app->post('/telegram/webhook', [$telegramWebhookController, 'handle']);
 

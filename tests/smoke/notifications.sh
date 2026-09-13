@@ -2,7 +2,8 @@
 set -euo pipefail
 
 base_url="${APP_URL:?APP_URL is required}"
-webhook_secret="${TELEGRAM_WEBHOOK_SECRET:?TELEGRAM_WEBHOOK_SECRET is required for notification smoke}"
+fallback_webhook_secret="${TELEGRAM_WEBHOOK_SECRET:?TELEGRAM_WEBHOOK_SECRET is required for notification smoke}"
+webhook_secret="ci-db-webhook-secret-12345"
 admin_cookies=/tmp/tms-notify-admin-cookies
 other_cookies=/tmp/tms-notify-other-cookies
 
@@ -30,15 +31,23 @@ login() {
 
 admin_id=$(db "SELECT id FROM users WHERE username='ciadmin' LIMIT 1")
 other_id=$(db "SELECT id FROM users WHERE username='other' LIMIT 1")
+test -n "$fallback_webhook_secret"
 test -n "$admin_id"
 test -n "$other_id"
 test "$(db "SELECT COUNT(*) FROM schema_migrations WHERE version='005_notifications.sql'")" = "1"
+test "$(db "SELECT COUNT(*) FROM schema_migrations WHERE version='010_telegram_system_settings.sql'")" = "1"
+test "$(docker compose exec -T app stat -c '%a' /var/www/html/var/secrets/notification.key)" = "600"
+test -s <(docker compose exec -T app cat /var/www/html/var/secrets/notification.key)
 
 login ciadmin ci-admin-password-12345 "$admin_cookies"
 
 curl --fail --silent --cookie "$admin_cookies" "$base_url/settings/notifications" > /tmp/notify-settings.html
 grep -q '>Notifications<' /tmp/notify-settings.html
 grep -q 'name="notify_upcoming"' /tmp/notify-settings.html
+if grep -q '/admin/notifications' /tmp/notify-settings.html; then
+  echo 'User notification settings must not link to system notification administration.' >&2
+  exit 1
+fi
 csrf=$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' /tmp/notify-settings.html | head -n1)
 test -n "$csrf"
 
@@ -73,6 +82,44 @@ test "$(db "SELECT COUNT(*) FROM notification_settings WHERE user_id=$other_id")
 curl --fail --silent --cookie "$admin_cookies" "$base_url/admin/notifications" > /tmp/notify-admin.html
 admin_csrf=$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' /tmp/notify-admin.html | head -n1)
 test -n "$admin_csrf"
+grep -q 'action="/admin/notifications/telegram"' /tmp/notify-admin.html
+grep -q 'name="proxy_enabled"' /tmp/notify-admin.html
+grep -q 'name="proxy_url"' /tmp/notify-admin.html
+
+# Deployment-wide Telegram credentials and proxy settings are managed in the admin UI.
+telegram_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --cookie "$admin_cookies" \
+  --data-urlencode "_csrf=$admin_csrf" \
+  --data-urlencode 'bot_name=@ci_tms_bot' \
+  --data-urlencode 'bot_token=123456:ci-fake-token' \
+  --data-urlencode "webhook_secret=$webhook_secret" \
+  --data-urlencode 'proxy_enabled=1' \
+  --data-urlencode 'proxy_url=http://ciuser:cipass@127.0.0.1:9' \
+  "$base_url/admin/notifications/telegram")
+test "$telegram_status" = "302"
+test "$(db "SELECT bot_name FROM telegram_system_settings WHERE id=1")" = "@ci_tms_bot"
+test "$(db "SELECT proxy_enabled FROM telegram_system_settings WHERE id=1")" = "1"
+token_ciphertext=$(db "SELECT bot_token_ciphertext FROM telegram_system_settings WHERE id=1")
+secret_ciphertext=$(db "SELECT webhook_secret_ciphertext FROM telegram_system_settings WHERE id=1")
+proxy_ciphertext=$(db "SELECT proxy_url_ciphertext FROM telegram_system_settings WHERE id=1")
+test -n "$token_ciphertext"
+test -n "$secret_ciphertext"
+test -n "$proxy_ciphertext"
+test "$token_ciphertext" != "123456:ci-fake-token"
+test "$secret_ciphertext" != "$webhook_secret"
+test "$proxy_ciphertext" != "http://ciuser:cipass@127.0.0.1:9"
+
+# A deliberately unreachable local proxy must produce a useful, bounded diagnostic
+# rather than exposing the token or proxy credentials.
+curl --silent --cookie "$admin_cookies" \
+  --data-urlencode "_csrf=$admin_csrf" \
+  "$base_url/admin/notifications/telegram-test" > /tmp/notify-telegram-test.html
+grep -q 'could not connect to the Telegram API' /tmp/notify-telegram-test.html
+if grep -q 'ci-fake-token\|ciuser:cipass' /tmp/notify-telegram-test.html; then
+  echo 'Telegram diagnostics exposed protected credentials.' >&2
+  exit 1
+fi
+
 smtp_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
   --cookie "$admin_cookies" \
   --data-urlencode "_csrf=$admin_csrf" \

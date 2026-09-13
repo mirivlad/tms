@@ -2,9 +2,11 @@
 set -eu
 
 attachment_storage="${ATTACHMENT_STORAGE_PATH:-/var/www/html/var/storage/attachments}"
-mkdir -p "$attachment_storage"
-chown www-data:www-data "$attachment_storage"
-chmod 0700 "$attachment_storage"
+notification_secret_file="${NOTIFICATION_SECRET_FILE:-/var/www/html/var/secrets/notification.key}"
+notification_secret_dir="$(dirname "$notification_secret_file")"
+mkdir -p "$attachment_storage" "$notification_secret_dir"
+chown www-data:www-data "$attachment_storage" "$notification_secret_dir"
+chmod 0700 "$attachment_storage" "$notification_secret_dir"
 
 if [ "${TMS_SKIP_MIGRATIONS:-false}" != "true" ]; then
     attempt=1

@@ -10,6 +10,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Tms\Domain\Notification\NotificationSettingsRepository;
 use Tms\Domain\Notification\TelegramLinkTokenRepository;
 use Tms\I18n\Translator;
+use Tms\Infrastructure\TelegramConfigurationProvider;
 use Tms\Infrastructure\TelegramSender;
 
 final class TelegramWebhookController
@@ -19,15 +20,16 @@ final class TelegramWebhookController
         private readonly TelegramLinkTokenRepository $tokens,
         private readonly TelegramSender $telegram,
         private readonly Translator $translator,
-        private readonly string $webhookSecret,
+        private readonly TelegramConfigurationProvider $telegramConfiguration,
     ) {
     }
 
     public function handle(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        if ($this->webhookSecret === ''
+        $webhookSecret = $this->telegramConfiguration->get()->webhookSecret;
+        if ($webhookSecret === ''
             || !hash_equals(
-                $this->webhookSecret,
+                $webhookSecret,
                 $request->getHeaderLine('X-Telegram-Bot-Api-Secret-Token'),
             )) {
             return $response->withStatus(403);

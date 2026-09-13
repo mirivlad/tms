@@ -13,6 +13,7 @@ use Slim\Views\Twig;
 use Tms\Domain\Notification\NotificationSettingsRepository;
 use Tms\Domain\Notification\TelegramLinkTokenRepository;
 use Tms\I18n\Translator;
+use Tms\Infrastructure\TelegramConfigurationProvider;
 use Tms\Infrastructure\TelegramSender;
 use Tms\Security\SessionManager;
 
@@ -25,7 +26,7 @@ final class NotificationSettingsController
         private readonly TelegramLinkTokenRepository $linkTokens,
         private readonly TelegramSender $telegram,
         private readonly Translator $translator,
-        private readonly string $botName,
+        private readonly TelegramConfigurationProvider $telegramConfiguration,
         private readonly string $deploymentTimezone,
     ) {
     }
@@ -64,7 +65,8 @@ final class NotificationSettingsController
 
     public function generateTelegramLink(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        if ($this->botName === '') {
+        $telegram = $this->telegramConfiguration->get();
+        if ($telegram->botName === '' || $telegram->botToken === '' || $telegram->webhookSecret === '') {
             return $this->render($request, $response, null, $this->translator->trans('notifications.telegram_not_configured'), 503);
         }
         $token = $this->linkTokens->issue($this->userId(), new DateTimeImmutable('now'), new DateInterval('PT24H'));
@@ -104,12 +106,14 @@ final class NotificationSettingsController
         unset($_SESSION['_notification_flash']);
         $command = $_SESSION['_telegram_link_command'] ?? null;
         unset($_SESSION['_telegram_link_command']);
+        $telegram = $this->telegramConfiguration->get();
         return $this->view->render($response, 'notifications/settings.twig', [
             'settings' => $this->settings->getForUser($this->userId()),
             'csrf_token' => $this->csrfToken($request),
             'username' => $this->sessions->currentUsername(),
             'role' => $this->sessions->currentRole(),
-            'bot_name' => $this->botName,
+            'bot_name' => $telegram->botName,
+            'telegram_available' => $telegram->botName !== '' && $telegram->botToken !== '' && $telegram->webhookSecret !== '',
             'deployment_timezone' => $this->deploymentTimezone,
             'telegram_link_command' => is_string($command) ? $command : null,
             'message' => $message ?? (is_string($flash) ? $flash : null),

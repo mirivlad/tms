@@ -14,6 +14,7 @@ return [
     'admin.total_users' => 'Всего пользователей',
     'admin.active_users' => 'Активные пользователи',
     'admin.system_tools' => 'Системные инструменты',
+    'admin.system_notifications' => 'Система уведомлений',
     'admin.system_tools_help' => 'Управление пользователями и общими настройками уведомлений.',
     'admin.edit_user' => 'Редактировать пользователя',
     'admin.account_details' => 'Параметры аккаунта',

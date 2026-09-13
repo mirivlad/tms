@@ -101,7 +101,7 @@ jobs:
             outro='This is a prerelease. Use the versioned image tag when evaluating it.'
           else
             intro='TMS stable release for self-hosted task management.'
-            outro='Stable v0.1.0 establishes the supported baseline for subsequent compatible fixes and incremental releases.'
+            outro="Stable ${TAG} is the supported baseline for subsequent compatible fixes and incremental releases."
           fi
           notes=$(cat <<EOF
           $intro
@@ -119,7 +119,7 @@ jobs:
           - calendar day quick-add, customer autocomplete and wheel-aware wide-board navigation;
           - optional self-registration with visual CAPTCHA, email verification and administrator approval;
           - administrator user management, direct account creation, quick user details and impersonation;
-          - SMTP/email and Telegram notification delivery;
+          - SMTP/email and Telegram notification delivery with administrator-managed Telegram credentials, webhook setup and optional HTTP/SOCKS proxy;
           - Russian and English interface catalogs;
           - MariaDB migrations, first-admin CLI bootstrap, Docker Compose and Portainer deployment.
 
