@@ -101,6 +101,30 @@ grep -q '"approved":false' /tmp/tms-admin-user.json
 grep -q "/admin/users/$user_id/edit" /tmp/tms-admin-user.json
 admin_csrf=$(csrf_from /tmp/tms-pending.html)
 test -n "$admin_csrf"
+
+# Administrator can create a ready-to-use account without public registration.
+curl --fail --silent --cookie "$admin_cookies" "$base_url/admin/users/new" > /tmp/tms-feature-admin-new-user.html
+grep -q 'action="/admin/users/new"' /tmp/tms-feature-admin-new-user.html
+manual_csrf=$(csrf_from /tmp/tms-feature-admin-new-user.html)
+test -n "$manual_csrf"
+manual_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --cookie "$admin_cookies" \
+  --data-urlencode "_csrf=$manual_csrf" \
+  --data-urlencode 'username=manualuser' \
+  --data-urlencode 'email=manualuser@example.invalid' \
+  --data-urlencode 'password=manual-user-password-12345' \
+  --data-urlencode 'password_confirm=manual-user-password-12345' \
+  --data-urlencode 'role=user' \
+  --data-urlencode 'is_active=1' \
+  --data-urlencode 'approved=1' \
+  --data-urlencode 'email_verified=1' \
+  "$base_url/admin/users/new")
+test "$manual_status" = "302"
+manual_id=$(db "SELECT id FROM users WHERE username='manualuser' LIMIT 1")
+test -n "$manual_id"
+test "$(db "SELECT COUNT(*) FROM users WHERE id=$manual_id AND is_active=1 AND approved_at IS NOT NULL AND email_verified_at IS NOT NULL")" = "1"
+test "$(db "SELECT COUNT(*) FROM statuses WHERE user_id=$manual_id")" = "3"
+test "$(db "SELECT COUNT(*) FROM task_types WHERE user_id=$manual_id")" = "1"
 verify_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
   --cookie "$admin_cookies" \
   --data-urlencode "_csrf=$admin_csrf" \

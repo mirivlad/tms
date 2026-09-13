@@ -52,4 +52,13 @@ return [
     'admin.details_title' => 'User details',
     'admin.details_loading' => 'Loading…',
     'admin.details_failed' => 'Unable to load user details.',
+    'admin.create_user' => 'Create user',
+    'admin.back_to_users' => 'Back to users',
+    'admin.password' => 'Password',
+    'admin.password_confirm' => 'Confirm password',
+    'admin.password_min' => 'Password must contain at least 12 characters.',
+    'admin.password_mismatch' => 'Passwords do not match.',
+    'admin.role_invalid' => 'Invalid user role.',
+    'admin.identity_exists' => 'A user with that username or email already exists.',
+    'admin.created_notice' => 'User account created.',
 ];
