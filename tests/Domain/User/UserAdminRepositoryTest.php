@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Tms\Tests\Domain\User;
 
+use DateTimeImmutable;
+use DateTimeZone;
 use DomainException;
 use PDO;
 use PHPUnit\Framework\TestCase;
@@ -19,7 +21,7 @@ final class UserAdminRepositoryTest extends TestCase
         $this->db = new PDO('sqlite::memory:');
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
-        $this->db->exec('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, email TEXT UNIQUE, password_hash TEXT, role TEXT, is_active INTEGER, email_verified_at TEXT NULL, approved_at TEXT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)');
+        $this->db->exec('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, email TEXT UNIQUE, password_hash TEXT, role TEXT, is_active INTEGER, email_verified_at TEXT NULL, approved_at TEXT NULL, last_activity_at TEXT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)');
         $this->db->exec("INSERT INTO users (id,username,email,password_hash,role,is_active,email_verified_at,approved_at) VALUES (1,'admin','admin@example.test','hash','admin',1,'2026-01-01','2026-01-01'),(2,'user','user@example.test','hash','user',1,'2026-01-01','2026-01-01')");
         $this->users = new UserRepository($this->db);
     }
@@ -44,6 +46,13 @@ final class UserAdminRepositoryTest extends TestCase
         self::assertNotNull($updated);
         self::assertSame('new@example.test', $updated->email);
         self::assertFalse($updated->isEmailVerified);
+    }
+
+    public function testActivityTimestampCanBeRecordedAndRead(): void
+    {
+        $at = new DateTimeImmutable('2026-09-13 06:30:45', new DateTimeZone('UTC'));
+        self::assertTrue($this->users->touchActivity(2, $at));
+        self::assertSame('2026-09-13 06:30:45', $this->users->findById(2)?->lastActivityAt);
     }
 
     public function testPendingListIncludesUnverifiedOrUnapprovedUsers(): void

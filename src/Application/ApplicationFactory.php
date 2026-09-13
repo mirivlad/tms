@@ -60,6 +60,7 @@ use Tms\Http\Middleware\RequireAdminMiddleware;
 use Tms\Http\Middleware\RequireAuthMiddleware;
 use Tms\Http\Middleware\SanitizeTaskDescriptionMiddleware;
 use Tms\Http\Middleware\UserTimezoneMiddleware;
+use Tms\Http\Middleware\UserActivityMiddleware;
 use Tms\I18n\Translator;
 use Tms\Infrastructure\AttachmentStorage;
 use Tms\Infrastructure\Database;
@@ -122,6 +123,13 @@ final class ApplicationFactory
         $twig->getEnvironment()->addFunction(new TwigFunction('t', [$translator, 'trans']));
         $twig->getEnvironment()->addFunction(new TwigFunction('sanitize_task_html', [$descriptionSanitizer, 'sanitize']));
         $twig->getEnvironment()->addFunction(new TwigFunction('custom_field_display', [$customValueCodec, 'display']));
+        $twig->getEnvironment()->addFunction(new TwigFunction('format_utc_datetime', static function (?string $value, string $format = 'Y-m-d H:i'): string {
+            if ($value === null || $value === '') {
+                return '';
+            }
+            $utc = new DateTimeImmutable($value, new DateTimeZone('UTC'));
+            return $utc->setTimezone(new DateTimeZone(date_default_timezone_get()))->format($format);
+        }));
         $twig->getEnvironment()->addGlobal('locale', $translator->locale());
 
         $users = new UserRepository($db);
@@ -352,6 +360,7 @@ final class ApplicationFactory
         $app->add(new CsrfMiddleware($app->getResponseFactory(), $translator, ['/telegram/webhook']));
         $app->add(TwigMiddleware::create($app, $twig));
         $app->add(new UserTimezoneMiddleware($sessions, $preferences, $appTimezone));
+        $app->add(new UserActivityMiddleware($sessions, $users));
         $app->add(new PersistentLoginMiddleware($sessions, $persistentLogin, $users, $cookiePolicy, $rememberLifetime, $rememberCookieName));
         $app->addBodyParsingMiddleware();
         $app->addRoutingMiddleware();

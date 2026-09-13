@@ -30,6 +30,7 @@ final class PasswordAuthenticatorTest extends TestCase
                 is_active INTEGER NOT NULL,
                 email_verified_at TEXT NULL,
                 approved_at TEXT NULL,
+                last_activity_at TEXT NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )'

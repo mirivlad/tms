@@ -21,6 +21,8 @@ return [
     'admin.role_user' => 'Пользователь',
     'admin.role_admin' => 'Администратор',
     'admin.active' => 'Активен',
+    'admin.last_activity' => 'Последняя активность',
+    'admin.no_activity' => 'Нет данных',
     'admin.created' => 'Создан',
     'admin.email_verified' => 'Email подтверждён',
     'admin.approved' => 'Одобрен',

@@ -21,6 +21,8 @@ return [
     'admin.role_user' => 'User',
     'admin.role_admin' => 'Administrator',
     'admin.active' => 'Active',
+    'admin.last_activity' => 'Last activity',
+    'admin.no_activity' => 'No activity yet',
     'admin.created' => 'Created',
     'admin.email_verified' => 'Email verified',
     'admin.approved' => 'Approved',
