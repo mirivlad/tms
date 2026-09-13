@@ -4,9 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ t('auth.page_title') }} · TMS</title>
+    <link rel="stylesheet" href="/assets/themes.css">
     <link rel="stylesheet" href="/assets/app.css">
 </head>
-<body class="auth-page">
+<body class="auth-page" data-theme="system">
 <main class="auth-card">
     <form class="locale-switch auth-locale-switch" method="post" action="/locale" aria-label="{{ t('locale.switch_aria') }}">
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
@@ -46,5 +47,6 @@
     <p><a class="text-link" href="/forgot-password">{{ t('auth.forgot_link') }}</a></p>
     {% if registration_enabled %}<p><a class="text-link" href="/register">{{ t('auth.register_link') }}</a></p>{% endif %}
 </main>
+{% include "page_footer.twig" %}
 </body>
 </html>

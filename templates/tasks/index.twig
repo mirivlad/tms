@@ -4,18 +4,14 @@
 {% block title %}{{ t('tasks.page_title') }} · TMS{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div>
-        <p class="eyebrow">{{ t('tasks.eyebrow') }}</p>
-        <h1>{{ t('tasks.title') }}</h1>
-        <p class="muted">{{ t('tasks.subtitle') }}</p>
-    </div>
+<div class="page-header compact-page-header">
+    <h1>{{ t('tasks.title') }}</h1>
     <a class="button-link" href="/tasks/new" data-quick-add-trigger>{{ t('nav.new_task') }}</a>
 </div>
 
 <section class="content-card filters-card">
     <div class="filter-toolbar">
-        <details class="filter-panel" {{ active_filters is not empty ? 'open' : '' }}>
+        <details class="filter-panel">
             <summary>
                 {{ t('tasks.filters') }}
                 {% if active_filters is not empty %}<span class="filter-count">{{ active_filters|length }}</span>{% endif %}
@@ -155,7 +151,7 @@
     </div>
 
     {% if tasks is not empty %}
-        <form id="bulk-action-form" class="bulk-actions" method="post" action="/tasks/bulk" data-bulk-form data-delete-confirm="{{ t('bulk.delete_confirm') }}">
+        <form id="bulk-action-form" class="bulk-actions" method="post" hidden action="/tasks/bulk" data-bulk-form data-delete-confirm="{{ t('bulk.delete_confirm') }}">
             <input type="hidden" name="_csrf" value="{{ csrf_token }}">
             <div class="bulk-actions-heading">
                 <strong>{{ t('bulk.title') }}</strong>
@@ -242,8 +238,8 @@
                             {% if task.description %}<div class="muted task-preview">{{ task.description|striptags }}</div>{% endif %}
                         </td>
                         <td>
-                            <span class="status-pill">
-                                <span class="status-dot" style="--status-color: {{ status_map[task.statusId].color|default('#6b7280') }}"></span>
+                            <span class="status-pill" style="--status-color: {{ status_map[task.statusId].color|default('var(--status-neutral)') }}">
+                                <span class="status-dot"></span>
                                 {{ status_map[task.statusId].name|default('—') }}
                             </span>
                         </td>

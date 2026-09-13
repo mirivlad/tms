@@ -131,6 +131,9 @@ final class ApplicationFactory
             return $utc->setTimezone(new DateTimeZone(date_default_timezone_get()))->format($format);
         }));
         $twig->getEnvironment()->addGlobal('locale', $translator->locale());
+        $versionPath = dirname(__DIR__, 2) . '/VERSION';
+        $appVersion = is_file($versionPath) ? trim((string) file_get_contents($versionPath)) : 'dev';
+        $twig->getEnvironment()->addGlobal('app_version', $appVersion !== '' ? $appVersion : 'dev');
 
         $users = new UserRepository($db);
         $preferences = new UserPreferenceRepository($db, $appTimezone);
@@ -149,7 +152,7 @@ final class ApplicationFactory
         $sessions = new SessionManager(new NativeSessionIdRegenerator());
         $twig->getEnvironment()->addFunction(new TwigFunction('current_theme', static function () use ($sessions, $preferences): string {
             $userId = $sessions->currentUserId();
-            return $userId === null ? 'dark' : $preferences->getForUser($userId)->theme;
+            return $userId === null ? 'graphite' : $preferences->getForUser($userId)->theme;
         }));
         $twig->getEnvironment()->addFunction(new TwigFunction('current_role', static fn (): ?string => $sessions->currentRole()));
         $twig->getEnvironment()->addFunction(new TwigFunction('is_impersonating', static fn (): bool => $sessions->isImpersonating()));

@@ -235,6 +235,7 @@ final class TaskController
             'status_color' => $status?->color,
             'type' => $type?->name,
             'priority' => $this->priorityLabels()[$task->priority] ?? $this->translator->trans('priority.medium'),
+            'priority_value' => $task->priority,
             'customer' => $customer?->name,
             'deadline' => $task->deadline,
             'created_at' => $task->createdAt,

@@ -4,9 +4,10 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{{ t('registration.page_title') }} · TMS</title>
+    <link rel="stylesheet" href="/assets/themes.css">
     <link rel="stylesheet" href="/assets/app.css">
 </head>
-<body class="auth-page">
+<body class="auth-page" data-theme="system">
 <main class="auth-card">
     <div class="brand">TMS</div>
     <h1>{{ t('registration.title') }}</h1>
@@ -31,5 +32,6 @@
     <p><a class="text-link" href="/login">{{ t('registration.back_to_login') }}</a></p>
 </main>
 <script src="/assets/register.js" defer></script>
+{% include "page_footer.twig" %}
 </body>
 </html>

@@ -26,7 +26,7 @@ ghcr.io/mirivlad/tms:edge
 
 ## Direction
 
-The first stable public release focuses on a solid personal/self-hosted task manager with multiple isolated users. Status/type/customer administration, rich task editing, custom fields, attachments, notifications, dashboard/table/calendar workflows, profile settings, optional registration and user administration are implemented. The remaining work before stable is integration/regression verification, release hardening and the deliberately deferred UI-polish pass.
+The first stable public release focuses on a solid personal/self-hosted task manager with multiple isolated users. Status/type/customer administration, rich task editing, custom fields, attachments, notifications, dashboard/table/calendar workflows, profile settings, optional registration and user administration are implemented. The current preview also includes the dense work-surface UI pass and per-user theme engine; the remaining work before stable is integration/regression verification and release hardening.
 
 Team collaboration (workspaces, projects, membership, assignees and ACLs) is planned after the secure single-user-scope foundation is complete.
 
@@ -61,7 +61,7 @@ Team collaboration (workspaces, projects, membership, assignees and ACLs) is pla
 - six owner-scoped custom-field types: text, textarea, select, money, checkbox and checkbox list;
 - Kanban board with drag-and-drop and a no-JavaScript select fallback;
 - calendar with deadline/no-deadline/combined modes, multi-value status/type/priority filters, inversion and literal-safe customer search;
-- per-user profile settings for username, password, timezone and dark/light/system theme;
+- per-user profile settings for username, password, timezone and theme; included themes are Graphite, Midnight, Warm Dark, Paper, Frost and System;
 - optional self-registration with a local visual CAPTCHA, hashed single-use email-verification tokens and configurable automatic/manual approval;
 - administrator user management, quick user details, pending-user approval, manual verification, resend, activation/role editing and impersonation;
 - secure attachment upload/download/delete with persistent out-of-webroot storage;
@@ -200,7 +200,7 @@ See `SECURITY.md`, `docs/ARCHITECTURE.md` and `docs/PROJECT_SCOPE.md` for the re
 
 ## Remaining work before stable v0.1.0
 
-The core feature set is present: dashboard workflow, quick add/quick view, bulk actions, profile settings, registration/verification, user administration, advanced task/calendar filtering, attachments, notifications and custom fields. Before stable v0.1.0 the remaining work is final feature-completeness review, integration/regression hardening and release cleanup. Broad UI polish remains intentionally deferred until that review is closed.
+The core feature set and the first dense UI/theme pass are present: dashboard workflow, quick add/quick view, bulk actions, profile settings, registration/verification, user administration, advanced task/calendar filtering, attachments, notifications, custom fields and six interface theme modes. Before stable v0.1.0 the remaining work is deployment/regression hardening, real-user UI validation and release cleanup.
 
 ## Repository policy
 

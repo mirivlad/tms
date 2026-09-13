@@ -15,6 +15,7 @@
     const refreshSelection = () => {
         const n = selected().length;
         if (count) count.textContent = String(n);
+        form.hidden = n === 0;
         if (submit) submit.disabled = n === 0;
         if (toggleAll) {
             toggleAll.checked = rows.length > 0 && n === rows.length;

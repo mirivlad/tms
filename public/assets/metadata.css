@@ -9,8 +9,8 @@
     padding: 8px 11px;
     border: 1px solid var(--border);
     border-radius: 999px;
-    background: #14191f;
-    color: #c4cfdb;
+    background: var(--surface-subtle);
+    color: var(--text-soft);
 }
 
 .metadata-section {
@@ -47,9 +47,9 @@
 }
 
 .metadata-item {
-    border: 1px solid #29313b;
+    border: 1px solid var(--border);
     border-radius: 11px;
-    background: #12171d;
+    background: var(--surface-subtle);
     padding: 12px;
 }
 
@@ -69,9 +69,9 @@
 
 .metadata-badge {
     padding: 2px 7px;
-    border: 1px solid #394451;
+    border: 1px solid var(--border-strong);
     border-radius: 999px;
-    color: #aebac7;
+    color: var(--muted);
     font-size: .72rem;
 }
 
@@ -91,9 +91,9 @@
     width: 58px;
     height: 42px;
     padding: 4px;
-    border: 1px solid #394452;
+    border: 1px solid var(--border-strong);
     border-radius: 9px;
-    background: #101419;
+    background: var(--input-bg);
 }
 
 .compact-check {
@@ -108,7 +108,7 @@
     align-items: center;
     margin-top: 10px;
     padding-top: 10px;
-    border-top: 1px solid #252d36;
+    border-top: 1px solid var(--row-border);
 }
 
 .metadata-actions form {

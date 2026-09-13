@@ -128,6 +128,7 @@ final class CalendarController
             'month_label' => $monthLabel,
             'previous_query' => $this->monthQuery($firstDay->modify('-1 month'), $filters),
             'next_query' => $this->monthQuery($firstDay->modify('+1 month'), $filters),
+            'today_query' => $this->monthQuery(new DateTimeImmutable('first day of this month'), $filters),
             'days' => $days,
             'filters' => $filters,
             'statuses' => $this->statuses->listForUser($userId),

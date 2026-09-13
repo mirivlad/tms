@@ -4,18 +4,14 @@
 {% block styles %}<link rel="stylesheet" href="/assets/board-dnd.css">{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div>
-        <p class="eyebrow">{{ t('board.eyebrow') }}</p>
-        <h1>{{ t('board.title') }}</h1>
-        <p class="muted">{{ t('board.subtitle') }}</p>
-    </div>
+<div class="page-header compact-page-header">
+    <h1>{{ t('board.title') }}</h1>
     <a class="button-link" href="/tasks/new">{{ t('nav.new_task') }}</a>
 </div>
 
 <div class="board" role="list" data-board>
     {% for status in statuses %}
-        <section class="board-column" role="listitem" data-status-id="{{ status.id }}">
+        <section class="board-column" role="listitem" data-status-id="{{ status.id }}" style="--status-color: {{ status.color }}">
             <header class="board-column-header">
                 <div>
                     <span class="status-dot" style="--status-color: {{ status.color }}"></span>
@@ -37,17 +33,17 @@
                             {% if type_map[task.typeId] is defined %}<span>{{ type_map[task.typeId].name }}</span>{% endif %}
                             {% if customer_map[task.customerId] is defined %}<span>{{ customer_map[task.customerId].name }}</span>{% endif %}
                         </div>
-                        <form class="move-form" method="post" action="/tasks/{{ task.id }}/status">
-                            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                            <label>
-                                {{ t('board.move_to') }}
-                                <select name="status_id" onchange="this.form.submit()">
+                        <details class="move-menu">
+                            <summary>{{ t('board.move_to') }}</summary>
+                            <form class="move-form" method="post" action="/tasks/{{ task.id }}/status">
+                                <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                                <select name="status_id" aria-label="{{ t('board.move_to') }}" onchange="this.form.submit()">
                                     {% for target in statuses %}
                                         <option value="{{ target.id }}" {{ target.id == status.id ? 'selected' : '' }}>{{ target.name }}</option>
                                     {% endfor %}
                                 </select>
-                            </label>
-                        </form>
+                            </form>
+                        </details>
                     </article>
                 {% endfor %}
                 <div class="board-empty" {{ tasks_by_status[status.id] is not empty ? 'hidden' : '' }}>{{ t('common.no_tasks') }}</div>

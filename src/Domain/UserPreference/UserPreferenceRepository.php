@@ -10,7 +10,7 @@ use PDO;
 
 final class UserPreferenceRepository
 {
-    public const THEMES = ['dark', 'light', 'system'];
+    public const THEMES = ['graphite', 'midnight', 'warm-dark', 'paper', 'frost', 'system'];
 
     public function __construct(private readonly PDO $db, private readonly string $defaultTimezone = 'UTC')
     {
@@ -22,9 +22,18 @@ final class UserPreferenceRepository
         $stmt->execute(['user_id' => $userId]);
         $row = $stmt->fetch();
         if (is_array($row)) {
-            return new UserPreferenceRecord((int) $row['user_id'], (string) $row['timezone'], (string) $row['theme']);
+            return new UserPreferenceRecord((int) $row['user_id'], (string) $row['timezone'], self::normalizeTheme((string) $row['theme']));
         }
-        return new UserPreferenceRecord($userId, $this->defaultTimezone, 'dark');
+        return new UserPreferenceRecord($userId, $this->defaultTimezone, 'graphite');
+    }
+
+    public static function normalizeTheme(string $theme): string
+    {
+        return match ($theme) {
+            'dark' => 'graphite',
+            'light' => 'paper',
+            default => $theme,
+        };
     }
 
     public function saveForUser(int $userId, string $timezone, string $theme): void
@@ -32,6 +41,7 @@ final class UserPreferenceRepository
         if (!in_array($timezone, DateTimeZone::listIdentifiers(), true)) {
             throw new DomainException('Invalid timezone.');
         }
+        $theme = self::normalizeTheme($theme);
         if (!in_array($theme, self::THEMES, true)) {
             throw new DomainException('Invalid theme.');
         }
