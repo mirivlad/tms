@@ -31,7 +31,7 @@
         </fieldset>
 
         <div class="field-wide section-heading profile-section"><div><h2>{{ t('profile.password') }}</h2><p class="muted">{{ t('profile.password_help') }}</p></div></div>
-        <label>{{ t('profile.current_password') }}<input type="password" name="current_password" autocomplete="current-password"></label>
+        <label>{{ t('profile.current_password') }}<input type="password" name="current_password" autocomplete="off" spellcheck="false"></label>
         <label>{{ t('profile.new_password') }}<input type="password" name="new_password" minlength="12" autocomplete="new-password"></label>
         <label>{{ t('profile.confirm_password') }}<input type="password" name="confirm_new_password" minlength="12" autocomplete="new-password"></label>
         <div class="field-wide notification-link-card"><span>{{ t('profile.notifications_help') }}</span><a href="/settings/notifications">{{ t('nav.notifications') }} →</a></div>
