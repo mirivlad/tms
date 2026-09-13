@@ -99,8 +99,8 @@ jobs:
           - per-user timezone, notification preferences and six interface theme modes;
           - dense desktop work surfaces, semantic status/priority colors and viewport-oriented board/calendar layouts;
           - Paper as the default interface theme for new users while retaining each existing user choice;
-          - separate status/type/customer metadata tabs and a type-aware custom-field editor;
-          - calendar day quick-add and wheel-aware Kanban navigation for wide boards;
+          - separate status/type/customer metadata tabs and a hardened type-aware custom-field system with money formatting, typed filters and safe option updates;
+          - calendar day quick-add, customer autocomplete, corrected combined calendar mode and wheel-aware Kanban navigation for wide boards;
           - compact footer metadata with project source, license and the running software version;
           - optional self-registration with visual CAPTCHA, email verification and administrator approval;
           - administrator user management, direct account creation, quick user details and impersonation;
