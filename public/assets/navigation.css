@@ -64,6 +64,7 @@
     white-space: nowrap;
 }
 .nav-create-task:hover { background: var(--primary-hover); color: var(--primary-contrast); }
+.compact-page-header > a[href="/tasks/new"] { display: none; }
 .user-menu > summary { color: var(--text-strong); }
 .ui-icon { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
 .icon-action {
@@ -95,6 +96,7 @@
     .nav-create-task { padding: 7px 10px; }
     .user-menu > summary { max-width: 150px; }
     .user-menu .user-menu-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .nav-dropdown-panel { position: fixed; top: auto; left: 12px !important; right: 12px !important; min-width: 0; }
+    .user-menu .nav-dropdown-panel { position: fixed; top: 58px; left: 12px; right: 12px; min-width: 0; }
+    .nav-settings-menu .nav-dropdown-panel { position: fixed; top: 104px; left: 12px; right: 12px; min-width: 0; }
     .main-nav { align-items: center; }
 }
