@@ -6,10 +6,10 @@ TMS is a lightweight, self-hosted task management system for people who want to 
 
 ## Container channels
 
-The current published preview is `v0.1.0-preview.8`:
+The current published preview is `v0.1.0-preview.9`:
 
 ```text
-ghcr.io/mirivlad/tms:v0.1.0-preview.8
+ghcr.io/mirivlad/tms:v0.1.0-preview.9
 ```
 
 For a deployment you want to keep stable while evaluating it, use a versioned preview tag. `preview` follows the newest published preview release.
@@ -142,7 +142,7 @@ REGISTRATION_AUTO_APPROVE_AFTER_EMAIL=true
 
 `APP_URL` must be the browser-visible URL, not the container hostname. `APP_TIMEZONE` must be a valid PHP/IANA timezone and should match the wall-clock timezone users expect for task deadlines and calendar dates. `APP_LOCALE` is the initial/default UI locale (`en` or `ru`). Point your reverse proxy for the chosen subdomain at `TMS_PORT` on the Docker host.
 
-Registration is disabled by default. When enabled, verification links are built from `APP_URL`, so it must be externally correct. `REGISTRATION_AUTO_APPROVE_AFTER_EMAIL=true` is convenient for open self-registration; set it to `false` when new accounts require explicit approval in **Admin → Pending users**. Email verification requires working SMTP settings in TMS; an administrator can also verify an account manually.
+Registration is disabled by default. When enabled, verification links are built from `APP_URL`, so it must be externally correct. `REGISTRATION_AUTO_APPROVE_AFTER_EMAIL=true` is convenient for open self-registration; set it to `false` when new accounts require explicit approval in **Admin → Pending users**. Administrators can also create ready-to-use accounts directly from **Admin → Users**, including role, active state, approval and email-verification state. Email verification requires working SMTP settings in TMS; an administrator can also verify an account manually.
 
 By default the Portainer compose file stays pinned to the current versioned preview. To follow the newest CI-tested `main`, add:
 
@@ -153,7 +153,7 @@ TMS_IMAGE=ghcr.io/mirivlad/tms:edge
 For a reproducible deployment, use a versioned release tag or one of the immutable edge tags instead:
 
 ```text
-TMS_IMAGE=ghcr.io/mirivlad/tms:v0.1.0-preview.8
+TMS_IMAGE=ghcr.io/mirivlad/tms:v0.1.0-preview.9
 # or, after an edge publication:
 TMS_IMAGE=ghcr.io/mirivlad/tms:sha-0123456789ab
 ```

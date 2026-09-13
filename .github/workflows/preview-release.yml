@@ -103,7 +103,7 @@ jobs:
           - calendar day quick-add and wheel-aware Kanban navigation for wide boards;
           - compact footer metadata with project source, license and the running software version;
           - optional self-registration with visual CAPTCHA, email verification and administrator approval;
-          - administrator user management, quick user details and impersonation;
+          - administrator user management, direct account creation, quick user details and impersonation;
           - SMTP/email and Telegram notification delivery;
           - public landing, first-steps and privacy pages;
           - Russian and English interface catalogs;
