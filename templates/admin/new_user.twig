@@ -1,0 +1,46 @@
+{% extends "app_layout.twig" %}
+{% block title %}{{ t('admin.create_user') }} · TMS{% endblock %}
+{% block content %}
+<div class="page-header compact-page-header">
+    <h1>{{ t('admin.create_user') }}</h1>
+    <a class="secondary-link button-link" href="/admin/users">{{ t('admin.back_to_users') }}</a>
+</div>
+{% if notice %}<div class="{{ notice.kind == 'error' ? 'alert' : 'success-notice' }}">{{ notice.message }}</div>{% endif %}
+<section class="content-card form-card">
+    <form class="task-form" method="post" action="/admin/users/new">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label>
+            {{ t('profile.username') }}
+            <input type="text" name="username" maxlength="64" required value="{{ old.username|default('') }}" autocomplete="off">
+        </label>
+        <label>
+            {{ t('profile.email') }}
+            <input type="email" name="email" required value="{{ old.email|default('') }}" autocomplete="off">
+        </label>
+        <label>
+            {{ t('admin.password') }}
+            <input type="password" name="password" minlength="12" required autocomplete="new-password">
+        </label>
+        <label>
+            {{ t('admin.password_confirm') }}
+            <input type="password" name="password_confirm" minlength="12" required autocomplete="new-password">
+        </label>
+        <label>
+            {{ t('admin.role') }}
+            <select name="role">
+                <option value="user" {{ old.role|default('user') == 'user' ? 'selected' : '' }}>{{ t('admin.role_user') }}</option>
+                <option value="admin" {{ old.role|default('user') == 'admin' ? 'selected' : '' }}>{{ t('admin.role_admin') }}</option>
+            </select>
+        </label>
+        <div class="field-wide admin-create-flags">
+            <label class="checkbox-inline"><input type="checkbox" name="is_active" value="1" {{ old is empty or old.is_active|default(false) ? 'checked' : '' }}> {{ t('admin.active') }}</label>
+            <label class="checkbox-inline"><input type="checkbox" name="approved" value="1" {{ old is empty or old.approved|default(false) ? 'checked' : '' }}> {{ t('admin.approved') }}</label>
+            <label class="checkbox-inline"><input type="checkbox" name="email_verified" value="1" {{ old is empty or old.email_verified|default(false) ? 'checked' : '' }}> {{ t('admin.email_verified') }}</label>
+        </div>
+        <div class="form-actions field-wide">
+            <button type="submit">{{ t('admin.create_user') }}</button>
+            <a class="secondary-link button-link" href="/admin/users">{{ t('common.cancel') }}</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

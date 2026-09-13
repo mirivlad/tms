@@ -469,3 +469,5 @@ textarea { resize: vertical; min-height: 110px; }
     .bulk-actions { position: static; }
 }
 .main-nav a.active { background: var(--nav-active-bg); color: var(--nav-active-fg); font-weight: 750; }
+
+.admin-create-flags { display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; }

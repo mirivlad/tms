@@ -146,13 +146,17 @@ final class UserRepository
         bool $isActive = true,
         bool $emailVerified = false,
         bool $approved = false,
+        string $role = 'user',
     ): int {
+        if (!in_array($role, ['user', 'admin'], true)) {
+            throw new DomainException('Invalid user role.');
+        }
         $this->assertAvailableIdentity($username, $email);
         $stmt = $this->db->prepare(
             'INSERT INTO users (
                 username, email, password_hash, role, is_active, email_verified_at, approved_at, created_at, updated_at
              ) VALUES (
-                :username, :email, :password_hash, \'user\', :is_active, :email_verified_at, :approved_at,
+                :username, :email, :password_hash, :role, :is_active, :email_verified_at, :approved_at,
                 CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
              )'
         );
@@ -160,6 +164,7 @@ final class UserRepository
             'username' => trim($username),
             'email' => trim($email),
             'password_hash' => $passwordHash,
+            'role' => $role,
             'is_active' => $isActive ? 1 : 0,
             'email_verified_at' => $emailVerified ? gmdate('Y-m-d H:i:s') : null,
             'approved_at' => $approved ? gmdate('Y-m-d H:i:s') : null,

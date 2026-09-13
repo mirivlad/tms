@@ -206,7 +206,7 @@ final class ApplicationFactory
         $passwordRecoveryController = new PasswordRecoveryController($twig, $passwordRecovery, $translator);
         $publicController = new PublicController($twig);
         $registrationController = new RegistrationController($twig, $registration, $sessions, $registrationCaptcha, $translator, $registrationEnabled);
-        $adminController = new AdminController($twig, $sessions, $users, $rememberTokens, $registration, $attachments, $attachmentStorage, $translator);
+        $adminController = new AdminController($twig, $sessions, $users, $rememberTokens, $registration, $userBootstrap, $attachments, $attachmentStorage, $translator);
         $profileController = new ProfileController($twig, $sessions, $users, $preferences, $rememberTokens, $translator);
         $dashboardController = new DashboardController($twig, $sessions, $tasks, $statuses, $dashboardTips, $translator);
         $taskController = new TaskController($twig, $sessions, $tasks, $attachments, $statuses, $taskTypes, $customers, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator);
@@ -344,6 +344,8 @@ final class ApplicationFactory
         $app->post('/settings/notifications/telegram-disconnect', [$notificationController, 'disconnectTelegram'])->add($requireAuth);
         $app->get('/admin', [$adminController, 'dashboard'])->add($requireAdmin)->add($requireAuth);
         $app->get('/admin/users', [$adminController, 'users'])->add($requireAdmin)->add($requireAuth);
+        $app->get('/admin/users/new', [$adminController, 'newUser'])->add($requireAdmin)->add($requireAuth);
+        $app->post('/admin/users/new', [$adminController, 'createUser'])->add($requireAdmin)->add($requireAuth);
         $app->get('/api/admin/users/{id:[0-9]+}', [$adminController, 'detailsJson'])->add($requireAdmin)->add($requireAuth);
         $app->get('/admin/pending-users', [$adminController, 'pending'])->add($requireAdmin)->add($requireAuth);
         $app->get('/admin/users/{id:[0-9]+}/edit', [$adminController, 'edit'])->add($requireAdmin)->add($requireAuth);

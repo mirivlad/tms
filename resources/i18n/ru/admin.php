@@ -52,4 +52,13 @@ return [
     'admin.details_title' => 'Данные пользователя',
     'admin.details_loading' => 'Загрузка…',
     'admin.details_failed' => 'Не удалось загрузить данные пользователя.',
+    'admin.create_user' => 'Создать пользователя',
+    'admin.back_to_users' => 'Назад к пользователям',
+    'admin.password' => 'Пароль',
+    'admin.password_confirm' => 'Повторите пароль',
+    'admin.password_min' => 'Пароль должен содержать не менее 12 символов.',
+    'admin.password_mismatch' => 'Пароли не совпадают.',
+    'admin.role_invalid' => 'Некорректная роль пользователя.',
+    'admin.identity_exists' => 'Пользователь с таким именем или email уже существует.',
+    'admin.created_notice' => 'Пользователь создан.',
 ];

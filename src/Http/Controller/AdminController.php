@@ -11,6 +11,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
 use Tms\Application\RegistrationService;
+use Tms\Application\UserBootstrapService;
 use Tms\Domain\Attachment\AttachmentRepository;
 use Tms\Domain\User\UserRecord;
 use Tms\Domain\User\UserRepository;
@@ -27,6 +28,7 @@ final class AdminController
         private readonly UserRepository $users,
         private readonly RememberTokenRepository $rememberTokens,
         private readonly RegistrationService $registration,
+        private readonly UserBootstrapService $bootstrap,
         private readonly AttachmentRepository $attachments,
         private readonly AttachmentStorage $storage,
         private readonly Translator $translator,
@@ -50,6 +52,66 @@ final class AdminController
             'pending_count' => count($this->users->listPending()),
             'current_user_id' => $this->sessions->currentUserId(),
         ]);
+    }
+
+    public function newUser(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $old = $_SESSION['admin_create_user_old'] ?? null;
+        unset($_SESSION['admin_create_user_old']);
+        return $this->view->render($response, 'admin/new_user.twig', $this->viewData($request) + [
+            'old' => is_array($old) ? $old : [],
+        ]);
+    }
+
+    public function createUser(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $body = $this->body($request);
+        $username = is_string($body['username'] ?? null) ? trim((string) $body['username']) : '';
+        $email = is_string($body['email'] ?? null) ? trim((string) $body['email']) : '';
+        $password = is_string($body['password'] ?? null) ? (string) $body['password'] : '';
+        $confirm = is_string($body['password_confirm'] ?? null) ? (string) $body['password_confirm'] : '';
+        $role = is_string($body['role'] ?? null) ? (string) $body['role'] : 'user';
+        $active = ($body['is_active'] ?? null) === '1';
+        $approved = ($body['approved'] ?? null) === '1';
+        $verified = ($body['email_verified'] ?? null) === '1';
+
+        try {
+            if (preg_match('/^[A-Za-z0-9_-]{3,64}$/D', $username) !== 1) {
+                throw new DomainException($this->translator->trans('admin.username_invalid'));
+            }
+            if (filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+                throw new DomainException($this->translator->trans('admin.email_invalid'));
+            }
+            if (strlen($password) < 12) {
+                throw new DomainException($this->translator->trans('admin.password_min'));
+            }
+            if ($password !== $confirm) {
+                throw new DomainException($this->translator->trans('admin.password_mismatch'));
+            }
+            if (!in_array($role, ['user', 'admin'], true)) {
+                throw new DomainException($this->translator->trans('admin.role_invalid'));
+            }
+
+            $userId = $this->users->createUser(
+                $username,
+                $email,
+                password_hash($password, PASSWORD_DEFAULT),
+                $active,
+                $verified,
+                $approved,
+                $role,
+            );
+            $this->bootstrap->ensureDefaults($userId);
+            $this->notice('success', 'admin.created_notice');
+            return $response->withHeader('Location', '/admin/users/' . $userId . '/edit')->withStatus(302);
+        } catch (DomainException $error) {
+            $this->noticeRaw('error', $this->adminCreateMessage($error));
+            $_SESSION['admin_create_user_old'] = [
+                'username' => $username, 'email' => $email, 'role' => $role,
+                'is_active' => $active, 'approved' => $approved, 'email_verified' => $verified,
+            ];
+            return $response->withHeader('Location', '/admin/users/new')->withStatus(302);
+        }
     }
 
     public function pending(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
@@ -259,6 +321,15 @@ final class AdminController
         $body = $this->body($request);
         $return = is_string($body['return_to'] ?? null) ? (string) $body['return_to'] : '';
         return str_starts_with($return, '/') && !str_starts_with($return, '//') ? $return : $fallback;
+    }
+
+    private function adminCreateMessage(DomainException $error): string
+    {
+        return match ($error->getMessage()) {
+            'A user with that username or email already exists.' => $this->translator->trans('admin.identity_exists'),
+            'Invalid user role.' => $this->translator->trans('admin.role_invalid'),
+            default => $error->getMessage(),
+        };
     }
 
     private function formatActivity(?string $value): ?string
