@@ -1,4 +1,4 @@
-name: Preview release
+name: Version release
 
 on:
   push:
@@ -27,8 +27,17 @@ jobs:
           case "$version" in
             *[!0-9A-Za-z.-]*) echo "Invalid VERSION: $version" >&2; exit 1 ;;
           esac
+          if [[ "$version" == *-* ]]; then
+            channel=preview
+            prerelease=true
+          else
+            channel=latest
+            prerelease=false
+          fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          echo "channel=$channel" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
 
       - name: Refuse to overwrite an existing release
         env:
@@ -61,7 +70,7 @@ jobs:
           platforms: linux/amd64,linux/arm64
           tags: |
             ghcr.io/${{ github.repository }}:${{ steps.version.outputs.tag }}
-            ghcr.io/${{ github.repository }}:preview
+            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.channel }}
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
             org.opencontainers.image.version=${{ steps.version.outputs.version }}
@@ -79,46 +88,56 @@ jobs:
           grep -Fq 'linux/arm64' <<< "$manifest"
           docker pull "$IMAGE"
 
-      - name: Create GitHub prerelease
+      - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ steps.version.outputs.tag }}
+          PRERELEASE: ${{ steps.version.outputs.prerelease }}
         shell: bash
         run: |
           set -euo pipefail
-          notes=$(cat <<'EOF'
-          Public TMS preview intended for self-hosted feature and UI evaluation.
+          if [ "$PRERELEASE" = "true" ]; then
+            intro='Public TMS preview intended for self-hosted feature and UI evaluation.'
+            outro='This is a prerelease. Use the versioned image tag when evaluating it.'
+          else
+            intro='TMS stable release for self-hosted task management.'
+            outro='Stable v0.1.0 establishes the supported baseline for subsequent compatible fixes and incremental releases.'
+          fi
+          notes=$(cat <<EOF
+          $intro
 
-          Included in this preview:
+          Included:
           - secure login, persistent sessions and password recovery;
           - isolated multi-user task data, metadata and attachments;
           - dashboard counters, status distribution, stale tasks and daily tips;
           - task list, Kanban board and calendar with advanced filtering;
           - global quick add, task quick view and bulk task operations;
           - rich-text descriptions, customers and owner-scoped custom fields;
+          - type-aware custom-field editing, money formatting and typed task filters;
           - per-user timezone, notification preferences and six interface theme modes;
-          - dense desktop work surfaces, semantic status/priority colors and viewport-oriented board/calendar layouts;
-          - Paper as the default interface theme for new users while retaining each existing user choice;
-          - separate status/type/customer metadata tabs and a hardened type-aware custom-field system with money formatting, typed filters and safe option updates;
-          - calendar day quick-add, customer autocomplete, corrected combined calendar mode and wheel-aware Kanban navigation for wide boards;
-          - compact footer metadata with project source, license and the running software version;
+          - compact global navigation with settings/user menus and an always-available new-task action;
+          - calendar day quick-add, customer autocomplete and wheel-aware wide-board navigation;
           - optional self-registration with visual CAPTCHA, email verification and administrator approval;
           - administrator user management, direct account creation, quick user details and impersonation;
           - SMTP/email and Telegram notification delivery;
-          - public landing, first-steps and privacy pages;
           - Russian and English interface catalogs;
           - MariaDB migrations, first-admin CLI bootstrap, Docker Compose and Portainer deployment.
 
-          This is intentionally a prerelease, not the stable v0.1.0. The core feature and first UI/theme passes are closed; remaining work before stable focuses on real deployment validation, regression hardening and release cleanup.
+          $outro
 
           Container image:
-          `ghcr.io/mirivlad/tms:${TAG}`
+          \`ghcr.io/mirivlad/tms:${TAG}\`
           EOF
           )
 
-          printf '%s\n' "$notes" | sed "s/\${TAG}/$TAG/g" > /tmp/release-notes.md
-          gh release create "$TAG" \
-            --target "$GITHUB_SHA" \
-            --prerelease \
-            --title "TMS $TAG" \
+          printf '%s\n' "$notes" > /tmp/release-notes.md
+          args=(
+            "$TAG"
+            --target "$GITHUB_SHA"
+            --title "TMS $TAG"
             --notes-file /tmp/release-notes.md
+          )
+          if [ "$PRERELEASE" = "true" ]; then
+            args+=(--prerelease)
+          fi
+          gh release create "${args[@]}"
