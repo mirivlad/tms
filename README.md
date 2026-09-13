@@ -55,12 +55,12 @@ Team collaboration (workspaces, projects, membership, assignees and ACLs) is pla
 - dashboard counters, status distribution and stale-task view;
 - task quick-view modal backed by an owner-scoped JSON endpoint;
 - bulk task operations for status/type/priority/deadline changes and deletion;
-- advanced task-table filtering: status inversion, type, priority, literal-safe customer substring, overdue state, deadline/created ranges and custom fields;
+- advanced task-table filtering: status inversion, type, priority, literal-safe customer substring, overdue state, deadline/created ranges and type-aware custom-field filters (text, multiline text, select, money ranges, checkbox and checkbox-list matching);
 - sortable standard/custom columns with active-filter preservation, 10/25/50/100 per-page controls and pagination;
 - user-scoped status, task-type and customer administration in separate working tabs;
 - six owner-scoped custom-field types: text, textarea, select, money, checkbox and checkbox list, with type-aware option editing;
 - Kanban board with drag-and-drop, independent vertical column scrolling, wheel-assisted horizontal navigation and a no-JavaScript select fallback;
-- calendar with deadline/no-deadline/combined modes, multi-value status/type/priority filters, inversion, literal-safe customer search and day-level quick task creation;
+- calendar with deadline/no-deadline/combined modes, multi-value status/type/priority filters, inversion, customer autocomplete with literal-safe matching and day-level quick task creation;
 - per-user profile settings for username, password, timezone and theme; included themes are Graphite, Midnight, Warm Dark, Paper, Frost and System;
 - optional self-registration with a local visual CAPTCHA, hashed single-use email-verification tokens and configurable automatic/manual approval;
 - administrator user management, quick user details, pending-user approval, manual verification, resend, activation/role editing and impersonation;

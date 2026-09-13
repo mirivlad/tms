@@ -94,7 +94,16 @@
                 </label>
                 <label class="checkbox-inline calendar-invert"><input type="checkbox" name="priority_invert" value="1" {{ filters.priority_invert ? 'checked' : '' }}> {{ t('calendar.exclude_selected') }}</label>
             </div>
-            <label>{{ t('tasks.customer') }}<input type="text" name="customer" value="{{ filters.customer }}" placeholder="{{ t('calendar.customer_placeholder') }}"></label>
+            <div class="customer-autocomplete">
+                <label for="calendar-customer">{{ t('tasks.customer') }}</label>
+                <div class="customer-autocomplete-control">
+                    <input id="calendar-customer" type="text" name="customer" value="{{ filters.customer }}"
+                           autocomplete="off" placeholder="{{ t('calendar.customer_placeholder') }}"
+                           data-customer-autocomplete data-search-url="/api/customers/search"
+                           aria-autocomplete="list" aria-controls="calendar-customer-suggestions" aria-expanded="false">
+                    <div id="calendar-customer-suggestions" class="autocomplete-results" role="listbox" hidden></div>
+                </div>
+            </div>
             <span class="field-help">{{ t('calendar.multi_select_help') }}</span>
             <button type="submit">{{ t('common.apply') }}</button>
         </form>

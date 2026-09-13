@@ -88,20 +88,39 @@ final class CustomFieldRepositoriesTest extends TestCase
         self::assertSame([], $this->values->listForTask(1, 10));
     }
 
-    public function testChangingSelectOptionsClearsValuesThatMayHaveBecomeInvalid(): void
+    public function testChangingSelectOptionsKeepsValidValuesAndDropsRemovedOnes(): void
     {
+        $this->db->exec("INSERT INTO tasks (id, created_by) VALUES (11, 1)");
         $fieldId = $this->fields->createForUser(1, 'Environment', 'select', ['Prod', 'Stage'], false);
-        $this->values->replaceForTask(1, 10, [$fieldId => 'Stage']);
+        $this->values->replaceForTask(1, 10, [$fieldId => 'Prod']);
+        $this->values->replaceForTask(1, 11, [$fieldId => 'Stage']);
 
         self::assertTrue($this->fields->updateForUser(
             1,
             $fieldId,
             'Environment',
             'select',
-            ['Prod'],
+            ['Prod', 'QA'],
             false,
         ));
-        self::assertSame([], $this->values->listForTask(1, 10));
+        self::assertSame([$fieldId => 'Prod'], $this->values->listForTask(1, 10));
+        self::assertSame([], $this->values->listForTask(1, 11));
+    }
+
+    public function testChangingCheckboxListOptionsPrunesOnlyRemovedSelections(): void
+    {
+        $fieldId = $this->fields->createForUser(1, 'Tags', 'checkbox_list', ['red', 'blue', 'green'], false);
+        $this->values->replaceForTask(1, 10, [$fieldId => '["red","blue"]']);
+
+        self::assertTrue($this->fields->updateForUser(
+            1,
+            $fieldId,
+            'Tags',
+            'checkbox_list',
+            ['red', 'green'],
+            false,
+        ));
+        self::assertSame([$fieldId => '["red"]'], $this->values->listForTask(1, 10));
     }
 
     public function testReorderingCannotIncludeAnotherUsersField(): void

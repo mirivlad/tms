@@ -68,14 +68,14 @@ final class CustomFieldValueCodec
         return $value;
     }
 
-    private function encodeMoney(CustomFieldRecord $field, mixed $input): ?string
+    public function normalizeMoneyInput(mixed $input): ?string
     {
         $value = is_scalar($input) ? trim((string) $input) : '';
         if ($value === '') {
-            return $this->missing($field);
+            return null;
         }
 
-        $value = str_replace([' ', ','], ['', '.'], $value);
+        $value = str_replace(["\u{00A0}", ' ', ','], ['', '', '.'], $value);
         if (preg_match('/^\d{1,12}(?:\.\d{1,2})?$/D', $value) !== 1) {
             throw new DomainException('Money value must be a non-negative amount with at most two decimals.');
         }
@@ -86,6 +86,22 @@ final class CustomFieldValueCodec
             $whole = '0';
         }
         return $fraction === '' ? $whole : $whole . '.' . str_pad($fraction, 2, '0');
+    }
+
+    public function moneyMinorUnits(string $value): int
+    {
+        $normalized = $this->normalizeMoneyInput($value);
+        if ($normalized === null) {
+            throw new DomainException('Money value is empty.');
+        }
+        [$whole, $fraction] = array_pad(explode('.', $normalized, 2), 2, '');
+        return ((int) $whole * 100) + (int) str_pad($fraction, 2, '0');
+    }
+
+    private function encodeMoney(CustomFieldRecord $field, mixed $input): ?string
+    {
+        $value = $this->normalizeMoneyInput($input);
+        return $value ?? $this->missing($field);
     }
 
     private function encodeCheckbox(CustomFieldRecord $field, mixed $input): string

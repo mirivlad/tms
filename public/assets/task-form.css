@@ -69,46 +69,6 @@
     background: var(--code-bg);
 }
 
-.customer-autocomplete {
-    position: relative;
-}
-
-.autocomplete-results {
-    position: absolute;
-    z-index: 20;
-    top: calc(100% - 26px);
-    left: 0;
-    right: 0;
-    max-height: 240px;
-    overflow-y: auto;
-    border: 1px solid var(--border-strong);
-    border-radius: 9px;
-    background: var(--surface-2);
-    box-shadow: 0 12px 30px var(--shadow);
-}
-
-.autocomplete-option {
-    display: block;
-    width: 100%;
-    padding: 10px 12px;
-    border: 0;
-    border-bottom: 1px solid var(--row-border);
-    border-radius: 0;
-    background: transparent;
-    color: inherit;
-    text-align: left;
-    cursor: pointer;
-}
-
-.autocomplete-option:last-child {
-    border-bottom: 0;
-}
-
-.autocomplete-option:hover,
-.autocomplete-option.active {
-    background: var(--surface-3);
-}
-
 .attachment-card {
     margin-top: 18px;
 }

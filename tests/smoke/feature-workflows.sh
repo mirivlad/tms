@@ -314,6 +314,16 @@ grep -q 'name="type_id\[\]" multiple' /tmp/tms-feature-calendar-multi.html
 grep -q 'name="priority\[\]" multiple' /tmp/tms-feature-calendar-multi.html
 grep -q 'data-calendar-add' /tmp/tms-feature-calendar-multi.html
 grep -q '/assets/calendar.js' /tmp/tms-feature-calendar-multi.html
+grep -q 'data-customer-autocomplete' /tmp/tms-feature-calendar-multi.html
+grep -q 'data-search-url="/api/customers/search"' /tmp/tms-feature-calendar-multi.html
+
+# Native MariaDB PDO rejects reused named placeholders; mode=all must execute with distinct range parameters.
+curl --fail --silent --get --cookie "$user_cookies" \
+  --data-urlencode "month=$calendar_month" \
+  --data-urlencode 'mode=all' \
+  "$base_url/calendar" > /tmp/tms-feature-calendar-all.html
+grep -q 'Feature bulk alpha' /tmp/tms-feature-calendar-all.html
+grep -q 'Feature bulk beta' /tmp/tms-feature-calendar-all.html
 
 curl --fail --silent --get --cookie "$user_cookies" \
   --data-urlencode "month=$calendar_month" \

@@ -98,7 +98,8 @@ final class CustomFieldRepository
         $name = $this->normalizeName($name);
         $type = $this->normalizeType($type);
         $options = $this->normalizeOptions($type, $options);
-        $valueContractChanged = $existing->type !== $type || $existing->options !== $options;
+        $typeChanged = $existing->type !== $type;
+        $optionsChanged = $existing->options !== $options;
 
         $this->db->beginTransaction();
         try {
@@ -120,11 +121,12 @@ final class CustomFieldRepository
                 'user_id' => $userId,
             ]);
 
-            if ($valueContractChanged) {
-                $clear = $this->db->prepare(
-                    'DELETE FROM task_custom_field_values WHERE field_id = :field_id AND user_id = :user_id'
-                );
-                $clear->execute(['field_id' => $fieldId, 'user_id' => $userId]);
+            if ($typeChanged) {
+                $this->clearStoredValues($userId, $fieldId);
+            } elseif ($optionsChanged && $type === 'select') {
+                $this->pruneSelectValues($userId, $fieldId, $options);
+            } elseif ($optionsChanged && $type === 'checkbox_list') {
+                $this->pruneCheckboxListValues($userId, $fieldId, $options);
             }
 
             $this->db->commit();
@@ -183,6 +185,82 @@ final class CustomFieldRepository
                 $this->db->rollBack();
             }
             throw $error;
+        }
+    }
+
+    private function clearStoredValues(int $userId, int $fieldId): void
+    {
+        $stmt = $this->db->prepare(
+            'DELETE FROM task_custom_field_values WHERE field_id = :field_id AND user_id = :user_id'
+        );
+        $stmt->execute(['field_id' => $fieldId, 'user_id' => $userId]);
+    }
+
+    /** @param list<string> $options */
+    private function pruneSelectValues(int $userId, int $fieldId, array $options): void
+    {
+        $params = ['field_id' => $fieldId, 'user_id' => $userId];
+        $placeholders = [];
+        foreach ($options as $index => $option) {
+            $key = 'option_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $option;
+        }
+        $stmt = $this->db->prepare(
+            'DELETE FROM task_custom_field_values
+             WHERE field_id = :field_id AND user_id = :user_id
+               AND value NOT IN (' . implode(', ', $placeholders) . ')'
+        );
+        $stmt->execute($params);
+    }
+
+    /** @param list<string> $options */
+    private function pruneCheckboxListValues(int $userId, int $fieldId, array $options): void
+    {
+        $select = $this->db->prepare(
+            'SELECT task_id, value FROM task_custom_field_values
+             WHERE field_id = :field_id AND user_id = :user_id'
+        );
+        $select->execute(['field_id' => $fieldId, 'user_id' => $userId]);
+        $update = $this->db->prepare(
+            'UPDATE task_custom_field_values SET value = :value, updated_at = CURRENT_TIMESTAMP
+             WHERE task_id = :task_id AND field_id = :field_id AND user_id = :user_id'
+        );
+        $delete = $this->db->prepare(
+            'DELETE FROM task_custom_field_values
+             WHERE task_id = :task_id AND field_id = :field_id AND user_id = :user_id'
+        );
+
+        while (($row = $select->fetch()) !== false) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $stored = is_string($row['value'] ?? null) ? (string) $row['value'] : '';
+            try {
+                $decoded = json_decode($stored, true, 512, JSON_THROW_ON_ERROR);
+            } catch (JsonException) {
+                $decoded = [];
+            }
+            $kept = [];
+            if (is_array($decoded)) {
+                foreach ($decoded as $value) {
+                    if (is_string($value) && in_array($value, $options, true) && !in_array($value, $kept, true)) {
+                        $kept[] = $value;
+                    }
+                }
+            }
+            $params = [
+                'task_id' => (int) $row['task_id'],
+                'field_id' => $fieldId,
+                'user_id' => $userId,
+            ];
+            if ($kept === []) {
+                $delete->execute($params);
+                continue;
+            }
+            $update->execute($params + [
+                'value' => json_encode($kept, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+            ]);
         }
     }
 
