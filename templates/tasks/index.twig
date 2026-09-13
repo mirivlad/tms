@@ -88,26 +88,44 @@
                         <summary>{{ t('tasks.additional_fields') }}</summary>
                         <div class="custom-filter-grid">
                             {% for field in custom_fields %}
-                                {% set filter_value = custom_filters[field.id]|default('') %}
-                                <label class="custom-filter">
-                                    {{ field.name }}
-                                    {% if field.type == 'select' or field.type == 'checkbox_list' %}
+                                {% set filter_value = custom_filters[field.id]|default(null) %}
+                                <div class="custom-filter">
+                                    <span class="custom-filter-label">{{ field.name }}</span>
+                                    {% if field.type == 'text' %}
+                                        <input type="text" name="custom[{{ field.id }}]" value="{{ filter_value is iterable ? '' : filter_value|default('') }}" placeholder="{{ t('custom_fields.filter_placeholder') }}">
+                                    {% elseif field.type == 'textarea' %}
+                                        <textarea name="custom[{{ field.id }}]" rows="2" placeholder="{{ t('custom_fields.filter_placeholder') }}">{{ filter_value is iterable ? '' : filter_value|default('') }}</textarea>
+                                    {% elseif field.type == 'select' %}
                                         <select name="custom[{{ field.id }}]">
                                             <option value="">{{ t('custom_fields.any_value') }}</option>
                                             {% for option in field.options %}
                                                 <option value="{{ option }}" {{ filter_value == option ? 'selected' : '' }}>{{ option }}</option>
                                             {% endfor %}
                                         </select>
+                                    {% elseif field.type == 'money' %}
+                                        <div class="money-filter-range">
+                                            <input type="text" inputmode="decimal" name="custom[{{ field.id }}][min]" value="{{ filter_value.min|default('') }}" placeholder="{{ t('custom_fields.money_min') }}" data-money-input>
+                                            <input type="text" inputmode="decimal" name="custom[{{ field.id }}][max]" value="{{ filter_value.max|default('') }}" placeholder="{{ t('custom_fields.money_max') }}" data-money-input>
+                                        </div>
                                     {% elseif field.type == 'checkbox' %}
                                         <select name="custom[{{ field.id }}]">
                                             <option value="">{{ t('custom_fields.any_value') }}</option>
                                             <option value="1" {{ filter_value == '1' ? 'selected' : '' }}>{{ t('common.yes') }}</option>
                                             <option value="0" {{ filter_value == '0' ? 'selected' : '' }}>{{ t('common.no') }}</option>
                                         </select>
-                                    {% else %}
-                                        <input type="text" name="custom[{{ field.id }}]" value="{{ filter_value }}" placeholder="{{ t('custom_fields.filter_placeholder') }}">
+                                    {% elseif field.type == 'checkbox_list' %}
+                                        {% set selected_values = filter_value.values|default([]) %}
+                                        <fieldset class="custom-filter-checkboxes">
+                                            {% for option in field.options %}
+                                                <label class="checkbox-inline"><input type="checkbox" name="custom[{{ field.id }}][values][]" value="{{ option }}" {{ option in selected_values ? 'checked' : '' }}> {{ option }}</label>
+                                            {% endfor %}
+                                        </fieldset>
+                                        <select class="custom-filter-match" name="custom[{{ field.id }}][match]" aria-label="{{ t('custom_fields.match_mode') }}">
+                                            <option value="any" {{ filter_value.match|default('any') == 'any' ? 'selected' : '' }}>{{ t('custom_fields.match_any') }}</option>
+                                            <option value="all" {{ filter_value.match|default('any') == 'all' ? 'selected' : '' }}>{{ t('custom_fields.match_all') }}</option>
+                                        </select>
                                     {% endif %}
-                                </label>
+                                </div>
                             {% endfor %}
                         </div>
                     </details>

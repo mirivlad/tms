@@ -26,6 +26,15 @@ final class CustomFieldValueCodecTest extends TestCase
         self::assertSame('1', $this->codec->encode($this->field('checkbox'), 'on'));
     }
 
+
+    public function testMoneyHelpersNormalizeLocalizedInputAndUseExactMinorUnits(): void
+    {
+        self::assertSame('1234567.80', $this->codec->normalizeMoneyInput("1\u{00A0}234 567,8"));
+        self::assertSame('1234567.80', $this->codec->normalizeMoneyInput('1 234 567.80'));
+        self::assertSame(123456780, $this->codec->moneyMinorUnits('1 234 567,80'));
+        self::assertNull($this->codec->normalizeMoneyInput(''));
+    }
+
     public function testSelectAndCheckboxListAcceptOnlyConfiguredOptions(): void
     {
         $select = $this->field('select', ['one', 'two']);

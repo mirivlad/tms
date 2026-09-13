@@ -41,7 +41,7 @@ final class CustomFieldController
                 $this->checked($body, 'is_required'),
             );
         } catch (DomainException $error) {
-            return $this->render($request, $response, $this->domainMessage($error), 422);
+            return $this->render($request, $response, $this->domainMessage($error), 422, $body);
         } catch (PDOException $error) {
             if ($this->isUniqueViolation($error)) {
                 return $this->render(
@@ -49,6 +49,7 @@ final class CustomFieldController
                     $response,
                     $this->translator->trans('validation.custom_field_duplicate_name'),
                     422,
+                    $body,
                 );
             }
             throw $error;
@@ -84,7 +85,7 @@ final class CustomFieldController
                 $this->checked($body, 'is_required'),
             );
         } catch (DomainException $error) {
-            return $this->render($request, $response, $this->domainMessage($error), 422);
+            return $this->render($request, $response, $this->domainMessage($error), 422, null, $fieldId, $body);
         } catch (PDOException $error) {
             if ($this->isUniqueViolation($error)) {
                 return $this->render(
@@ -92,6 +93,9 @@ final class CustomFieldController
                     $response,
                     $this->translator->trans('validation.custom_field_duplicate_name'),
                     422,
+                    null,
+                    $fieldId,
+                    $body,
                 );
             }
             throw $error;
@@ -165,11 +169,18 @@ final class CustomFieldController
         return $this->fields->reorderForUser($this->userId(), $ids);
     }
 
+    /**
+     * @param array<string, mixed>|null $createForm
+     * @param array<string, mixed>|null $editForm
+     */
     private function render(
         ServerRequestInterface $request,
         ResponseInterface $response,
         ?string $error = null,
         int $status = 200,
+        ?array $createForm = null,
+        ?int $editFieldId = null,
+        ?array $editForm = null,
     ): ResponseInterface {
         return $this->view->render($response, 'custom_fields/index.twig', [
             'csrf_token' => $this->csrfToken($request),
@@ -177,6 +188,9 @@ final class CustomFieldController
             'fields' => $this->fields->listForUser($this->userId()),
             'field_types' => CustomFieldRepository::TYPES,
             'error' => $error,
+            'create_form' => $createForm ?? [],
+            'edit_field_id' => $editFieldId,
+            'edit_form' => $editForm ?? [],
         ])->withStatus($status);
     }
 

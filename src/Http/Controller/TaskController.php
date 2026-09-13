@@ -538,25 +538,94 @@ final class TaskController
     /**
      * @param array<string, mixed> $query
      * @param list<CustomFieldRecord> $fields
-     * @return array<int, string>
+     * @return array<int, mixed>
      */
     private function customFilters(array $query, array $fields): array
     {
         $raw = is_array($query['custom'] ?? null) ? $query['custom'] : [];
-        $owned = [];
+        $fieldsById = [];
         foreach ($fields as $field) {
-            $owned[$field->id] = true;
+            $fieldsById[$field->id] = $field;
         }
 
         $filters = [];
-        foreach ($raw as $fieldId => $value) {
-            if (!ctype_digit((string) $fieldId) || !is_scalar($value)) {
+        foreach ($raw as $fieldId => $rawValue) {
+            if (!ctype_digit((string) $fieldId)) {
                 continue;
             }
             $id = (int) $fieldId;
-            $value = trim((string) $value);
-            if ($value !== '' && isset($owned[$id])) {
-                $filters[$id] = $value;
+            $field = $fieldsById[$id] ?? null;
+            if (!$field instanceof CustomFieldRecord) {
+                continue;
+            }
+
+            if (in_array($field->type, ['text', 'textarea'], true)) {
+                $value = is_scalar($rawValue) ? trim((string) $rawValue) : '';
+                if ($value !== '') {
+                    $filters[$id] = $value;
+                }
+                continue;
+            }
+
+            if ($field->type === 'select') {
+                $value = is_scalar($rawValue) ? trim((string) $rawValue) : '';
+                if ($value !== '' && in_array($value, $field->options, true)) {
+                    $filters[$id] = $value;
+                }
+                continue;
+            }
+
+            if ($field->type === 'checkbox') {
+                $value = is_scalar($rawValue) ? trim((string) $rawValue) : '';
+                if (in_array($value, ['0', '1'], true)) {
+                    $filters[$id] = $value;
+                }
+                continue;
+            }
+
+            if ($field->type === 'money') {
+                $range = is_array($rawValue) ? $rawValue : ['min' => $rawValue, 'max' => $rawValue];
+                $normalized = [];
+                foreach (['min', 'max'] as $bound) {
+                    try {
+                        $value = $this->customValueCodec->normalizeMoneyInput($range[$bound] ?? null);
+                    } catch (DomainException) {
+                        $value = null;
+                    }
+                    if ($value !== null) {
+                        $normalized[$bound] = $value;
+                    }
+                }
+                if ($normalized !== []) {
+                    $filters[$id] = $normalized;
+                }
+                continue;
+            }
+
+            if ($field->type === 'checkbox_list') {
+                $payload = is_array($rawValue) ? $rawValue : ['values' => [$rawValue]];
+                $rawValues = $payload['values'] ?? [];
+                if (is_scalar($rawValues)) {
+                    $rawValues = [$rawValues];
+                }
+                $values = [];
+                if (is_array($rawValues)) {
+                    foreach ($rawValues as $value) {
+                        if (!is_scalar($value)) {
+                            continue;
+                        }
+                        $value = trim((string) $value);
+                        if (in_array($value, $field->options, true) && !in_array($value, $values, true)) {
+                            $values[] = $value;
+                        }
+                    }
+                }
+                if ($values !== []) {
+                    $filters[$id] = [
+                        'values' => $values,
+                        'match' => ($payload['match'] ?? null) === 'all' ? 'all' : 'any',
+                    ];
+                }
             }
         }
         return $filters;
@@ -566,7 +635,7 @@ final class TaskController
      * @param list<TaskRecord> $tasks
      * @param list<CustomFieldRecord> $fields
      * @param array<int, array<int, string>> $valuesByTask
-     * @param array<int, string> $filters
+     * @param array<int, mixed> $filters
      * @return list<TaskRecord>
      */
     private function filterByCustomFields(
@@ -585,13 +654,13 @@ final class TaskController
         }
 
         return array_values(array_filter($tasks, function (TaskRecord $task) use ($fieldsById, $valuesByTask, $filters): bool {
-            foreach ($filters as $fieldId => $needle) {
+            foreach ($filters as $fieldId => $filter) {
                 $field = $fieldsById[$fieldId] ?? null;
                 if (!$field instanceof CustomFieldRecord) {
                     return false;
                 }
                 $stored = $valuesByTask[$task->id][$fieldId] ?? null;
-                if (!$this->customValueMatches($field, $stored, $needle)) {
+                if (!$this->customValueMatches($field, $stored, $filter)) {
                     return false;
                 }
             }
@@ -599,17 +668,50 @@ final class TaskController
         }));
     }
 
-    private function customValueMatches(CustomFieldRecord $field, ?string $stored, string $needle): bool
+    private function customValueMatches(CustomFieldRecord $field, ?string $stored, mixed $filter): bool
     {
         if ($stored === null) {
             return false;
         }
 
-        return match ($field->type) {
-            'text', 'textarea' => mb_stripos($stored, $needle) !== false,
-            'checkbox_list' => in_array($needle, $this->customValueCodec->selectedOptions($field, $stored), true),
-            default => $stored === $needle,
-        };
+        if (in_array($field->type, ['text', 'textarea'], true)) {
+            return is_string($filter) && mb_stripos($stored, $filter) !== false;
+        }
+        if (in_array($field->type, ['select', 'checkbox'], true)) {
+            return is_string($filter) && $stored === $filter;
+        }
+        if ($field->type === 'money') {
+            if (!is_array($filter)) {
+                return false;
+            }
+            try {
+                $storedMinor = $this->customValueCodec->moneyMinorUnits($stored);
+                $min = isset($filter['min']) && is_string($filter['min'])
+                    ? $this->customValueCodec->moneyMinorUnits($filter['min'])
+                    : null;
+                $max = isset($filter['max']) && is_string($filter['max'])
+                    ? $this->customValueCodec->moneyMinorUnits($filter['max'])
+                    : null;
+            } catch (DomainException) {
+                return false;
+            }
+            return ($min === null || $storedMinor >= $min) && ($max === null || $storedMinor <= $max);
+        }
+        if ($field->type === 'checkbox_list') {
+            if (!is_array($filter) || !is_array($filter['values'] ?? null)) {
+                return false;
+            }
+            $wanted = array_values(array_filter($filter['values'], 'is_string'));
+            if ($wanted === []) {
+                return false;
+            }
+            $selected = $this->customValueCodec->selectedOptions($field, $stored);
+            if (($filter['match'] ?? 'any') === 'all') {
+                return count(array_diff($wanted, $selected)) === 0;
+            }
+            return array_intersect($wanted, $selected) !== [];
+        }
+        return false;
     }
 
     private function assertMetadataForUser(int $userId, int $statusId, ?int $typeId): void
@@ -709,7 +811,7 @@ final class TaskController
     }
 
     /**
-     * @param array<string, scalar|array<int, string>> $baseParams
+     * @param array<string, mixed> $baseParams
      * @param list<CustomFieldRecord> $fields
      * @return array<string, array{url:string,active:bool,order:string}>
      */
@@ -745,8 +847,8 @@ final class TaskController
 
     /**
      * @param array{status_id:?int,status_invert:bool,type_id:?int,priority:string,q:string,customer:string,overdue:bool,deadline_from:string,deadline_to:string,created_from:string,created_to:string} $filters
-     * @param array<int, string> $customFilters
-     * @return array<string, scalar|array<int, string>>
+     * @param array<int, mixed> $customFilters
+     * @return array<string, mixed>
      */
     private function filterQueryParams(array $filters, array $customFilters): array
     {
@@ -776,11 +878,11 @@ final class TaskController
 
     /**
      * @param array{status_id:?int,status_invert:bool,type_id:?int,priority:string,q:string,customer:string,overdue:bool,deadline_from:string,deadline_to:string,created_from:string,created_to:string} $filters
-     * @param array<int, string> $customFilters
+     * @param array<int, mixed> $customFilters
      * @param list<CustomFieldRecord> $fields
      * @param array<int, StatusRecord> $statusMap
      * @param array<int, TaskTypeRecord> $typeMap
-     * @param array<string, scalar|array<int, string>> $viewParams
+     * @param array<string, mixed> $viewParams
      * @return list<array{label:string,value:string,url:string}>
      */
     private function activeFilterChips(
@@ -842,12 +944,7 @@ final class TaskController
             if (!$field instanceof CustomFieldRecord) {
                 continue;
             }
-            $display = $value;
-            if ($field->type === 'checkbox') {
-                $display = $value === '1'
-                    ? $this->translator->trans('common.yes')
-                    : $this->translator->trans('common.no');
-            }
+            $display = $this->customFilterDisplay($field, $value);
             $params = $viewParams;
             $custom = is_array($params['custom'] ?? null) ? $params['custom'] : [];
             unset($custom[$fieldId]);
@@ -865,8 +962,53 @@ final class TaskController
         return $chips;
     }
 
+    private function customFilterDisplay(CustomFieldRecord $field, mixed $filter): string
+    {
+        if ($field->type === 'checkbox' && is_string($filter)) {
+            return $filter === '1'
+                ? $this->translator->trans('common.yes')
+                : $this->translator->trans('common.no');
+        }
+        if ($field->type === 'money' && is_array($filter)) {
+            $min = isset($filter['min']) && is_string($filter['min']) ? $this->displayMoney($filter['min']) : '';
+            $max = isset($filter['max']) && is_string($filter['max']) ? $this->displayMoney($filter['max']) : '';
+            if ($min !== '' && $max !== '') {
+                return $min . ' – ' . $max;
+            }
+            return $min !== ''
+                ? $this->translator->trans('custom_fields.money_from_value', ['value' => $min])
+                : $this->translator->trans('custom_fields.money_to_value', ['value' => $max]);
+        }
+        if ($field->type === 'checkbox_list' && is_array($filter)) {
+            $values = is_array($filter['values'] ?? null)
+                ? array_values(array_filter($filter['values'], 'is_string'))
+                : [];
+            $display = implode(', ', $values);
+            if (($filter['match'] ?? 'any') === 'all' && $display !== '') {
+                $display .= ' (' . $this->translator->trans('custom_fields.match_all_short') . ')';
+            }
+            return $display;
+        }
+        return is_scalar($filter) ? (string) $filter : '';
+    }
+
+    private function displayMoney(string $value): string
+    {
+        try {
+            $normalized = $this->customValueCodec->normalizeMoneyInput($value);
+        } catch (DomainException) {
+            return $value;
+        }
+        if ($normalized === null) {
+            return '';
+        }
+        [$whole, $fraction] = array_pad(explode('.', $normalized, 2), 2, '');
+        $whole = preg_replace('/\B(?=(\d{3})+(?!\d))/', ' ', $whole) ?? $whole;
+        return $whole . ',' . str_pad($fraction, 2, '0');
+    }
+
     /**
-     * @param array<string, scalar|array<int, string>> $viewParams
+     * @param array<string, mixed> $viewParams
      * @return array{previous:?string,next:?string,items:list<array{label:string,url:?string,active:bool}>}
      */
     private function pagination(array $viewParams, int $page, int $totalPages): array
@@ -915,7 +1057,7 @@ final class TaskController
     }
 
     /**
-     * @param array<string, scalar|array<int, string>> $viewParams
+     * @param array<string, mixed> $viewParams
      * @return list<array{value:int,url:string,active:bool}>
      */
     private function perPageLinks(array $viewParams, int $current): array

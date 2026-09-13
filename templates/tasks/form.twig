@@ -74,11 +74,13 @@
 
         <div class="field-wide form-field customer-autocomplete">
             <label for="task-customer">{{ t('task_form.customer') }}</label>
-            <input id="task-customer" type="text" name="customer" maxlength="255" autocomplete="off"
-                   value="{{ form.customer|default('') }}" placeholder="{{ t('task_form.customer_placeholder') }}"
-                   data-customer-autocomplete data-search-url="/api/customers/search"
-                   aria-autocomplete="list" aria-controls="customer-suggestions" aria-expanded="false">
-            <div id="customer-suggestions" class="autocomplete-results" role="listbox" hidden></div>
+            <div class="customer-autocomplete-control">
+                <input id="task-customer" type="text" name="customer" maxlength="255" autocomplete="off"
+                       value="{{ form.customer|default('') }}" placeholder="{{ t('task_form.customer_placeholder') }}"
+                       data-customer-autocomplete data-search-url="/api/customers/search"
+                       aria-autocomplete="list" aria-controls="customer-suggestions" aria-expanded="false">
+                <div id="customer-suggestions" class="autocomplete-results" role="listbox" hidden></div>
+            </div>
             <span class="field-help">{{ t('task_form.customer_help') }}</span>
         </div>
 
@@ -110,7 +112,7 @@
                 {% elseif field.type == 'money' %}
                     <label>
                         {{ field.name }}{{ required_mark }}
-                        <input type="text" inputmode="decimal" name="custom_fields[{{ field.id }}]" value="{{ value|default('') }}" placeholder="0.00" {{ field.isRequired ? 'required' : '' }}>
+                        <input type="text" inputmode="decimal" name="custom_fields[{{ field.id }}]" value="{{ value|default('') }}" placeholder="0,00" data-money-input {{ field.isRequired ? 'required' : '' }}>
                     </label>
                 {% elseif field.type == 'checkbox' %}
                     <label class="checkbox-inline custom-checkbox">
@@ -118,7 +120,7 @@
                         {{ field.name }}{{ required_mark }}
                     </label>
                 {% elseif field.type == 'checkbox_list' %}
-                    <fieldset class="custom-checkbox-list {{ field.isRequired ? 'is-required' : '' }}">
+                    <fieldset class="custom-checkbox-list {{ field.isRequired ? 'is-required' : '' }}"{% if field.isRequired %} data-required-checkbox-list data-required-message="{{ t('validation.custom_field_checkbox_list_required') }}"{% endif %}>
                         <legend>{{ field.name }}{{ required_mark }}</legend>
                         {% for option in field.options %}
                             <label class="checkbox-inline">

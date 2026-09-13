@@ -56,6 +56,24 @@ tags_id=$(db "SELECT id FROM custom_fields WHERE user_id=$admin_id AND name='Tag
 for id in "$reference_id" "$notes_id" "$environment_id" "$budget_id" "$billable_id" "$tags_id"; do test -n "$id"; done
 
 grep -q '"Prod","Staging"' < <(db "SELECT options_json FROM custom_fields WHERE id=$environment_id")
+test "$(db "SELECT COUNT(*) FROM custom_fields WHERE id IN ($reference_id,$notes_id,$budget_id,$billable_id) AND options_json IS NULL")" = "4"
+
+curl --fail --silent --cookie "$cookies" "$base_url/custom-fields" > /tmp/custom-fields-configured.html
+grep -q 'Single-line text' /tmp/custom-fields-configured.html
+grep -q 'Multiline text' /tmp/custom-fields-configured.html
+grep -q 'data-custom-field-options hidden' /tmp/custom-fields-configured.html
+grep -q 'textarea name="options".*disabled' /tmp/custom-fields-configured.html
+
+invalid_field_status=$(curl --silent --output /tmp/custom-field-invalid.html --write-out '%{http_code}' \
+  --cookie "$cookies" \
+  --data-urlencode "_csrf=$csrf" \
+  --data-urlencode 'name=Invalid empty select' \
+  --data-urlencode 'field_type=select' \
+  --data-urlencode 'options=' \
+  "$base_url/custom-fields")
+test "$invalid_field_status" = "422"
+grep -q 'Invalid empty select' /tmp/custom-field-invalid.html
+grep -q 'require at least one option' /tmp/custom-field-invalid.html
 
 db "INSERT INTO custom_fields (user_id,name,field_type,sort_order) VALUES ($other_id,'Foreign field','text',1)"
 foreign_field=$(db "SELECT id FROM custom_fields WHERE user_id=$other_id AND name='Foreign field' LIMIT 1")
@@ -72,7 +90,18 @@ test "$(db "SELECT name FROM custom_fields WHERE id=$foreign_field")" = "Foreign
 
 curl --fail --silent --cookie "$cookies" "$base_url/tasks/new" > /tmp/custom-task-form.html
 grep -q "custom_fields\[$reference_id\]" /tmp/custom-task-form.html
+grep -q "textarea name=\"custom_fields\[$notes_id\]\"" /tmp/custom-task-form.html
+grep -q "select name=\"custom_fields\[$environment_id\]\"" /tmp/custom-task-form.html
+grep -q "name=\"custom_fields\[$budget_id\]\".*data-money-input" /tmp/custom-task-form.html
 grep -q "custom_fields\[$tags_id\]\[\]" /tmp/custom-task-form.html
+
+curl --fail --silent --cookie "$cookies" "$base_url/tasks" > /tmp/custom-filter-controls.html
+grep -q "textarea name=\"custom\[$notes_id\]\"" /tmp/custom-filter-controls.html
+grep -q "select name=\"custom\[$environment_id\]\"" /tmp/custom-filter-controls.html
+grep -q "name=\"custom\[$budget_id\]\[min\]\".*data-money-input" /tmp/custom-filter-controls.html
+grep -q "name=\"custom\[$budget_id\]\[max\]\".*data-money-input" /tmp/custom-filter-controls.html
+grep -q "select name=\"custom\[$billable_id\]\"" /tmp/custom-filter-controls.html
+grep -q "custom\[$tags_id\]\[values\]\[\]" /tmp/custom-filter-controls.html
 task_csrf=$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' /tmp/custom-task-form.html | head -n1)
 default_status=$(sed -n 's/.*<option value="\([0-9][0-9]*\)" selected>.*/\1/p' /tmp/custom-task-form.html | head -n1)
 test -n "$task_csrf"
@@ -176,11 +205,82 @@ grep -q 'REF-42' /tmp/custom-filter.html
 grep -q 'red, blue' /tmp/custom-filter.html
 grep -q "custom%5B$environment_id%5D=Prod" /tmp/custom-filter.html
 
+curl --fail --silent --get --cookie "$cookies" \
+  --data-urlencode "custom[$reference_id]=REF-42" \
+  "$base_url/tasks" > /tmp/custom-filter-text.html
+grep -q 'CI custom field task' /tmp/custom-filter-text.html
+if grep -q 'CI low budget task' /tmp/custom-filter-text.html; then echo 'Text custom filter leaked a non-match.' >&2; exit 1; fi
+
+curl --fail --silent --get --cookie "$cookies" \
+  --data-urlencode "custom[$notes_id]=Line one" \
+  "$base_url/tasks" > /tmp/custom-filter-textarea.html
+grep -q 'CI custom field task' /tmp/custom-filter-textarea.html
+if grep -q 'CI low budget task' /tmp/custom-filter-textarea.html; then echo 'Textarea custom filter leaked a non-match.' >&2; exit 1; fi
+
+curl --fail --silent --get --cookie "$cookies" \
+  --data-urlencode "custom[$budget_id][min]=1000" \
+  --data-urlencode "custom[$budget_id][max]=1300" \
+  "$base_url/tasks" > /tmp/custom-filter-money.html
+grep -q 'CI custom field task' /tmp/custom-filter-money.html
+if grep -q 'CI low budget task' /tmp/custom-filter-money.html; then echo 'Money range filter leaked a value outside the range.' >&2; exit 1; fi
+grep -q '1 000,00' /tmp/custom-filter-money.html
+grep -q '1 300,00' /tmp/custom-filter-money.html
+
+curl --fail --silent --get --cookie "$cookies" \
+  --data-urlencode "custom[$billable_id]=1" \
+  "$base_url/tasks" > /tmp/custom-filter-checkbox.html
+grep -q 'CI custom field task' /tmp/custom-filter-checkbox.html
+if grep -q 'CI low budget task' /tmp/custom-filter-checkbox.html; then echo 'Checkbox custom filter leaked a false value.' >&2; exit 1; fi
+
+curl --fail --silent --get --cookie "$cookies" \
+  --data-urlencode "custom[$tags_id][values][]=red" \
+  --data-urlencode "custom[$tags_id][values][]=blue" \
+  --data-urlencode "custom[$tags_id][match]=all" \
+  "$base_url/tasks" > /tmp/custom-filter-checkbox-list.html
+grep -q 'CI custom field task' /tmp/custom-filter-checkbox-list.html
+if grep -q 'CI low budget task' /tmp/custom-filter-checkbox-list.html; then echo 'Checkbox-list custom filter leaked a non-match.' >&2; exit 1; fi
+grep -q 'red, blue' /tmp/custom-filter-checkbox-list.html
+grep -q '(all)' /tmp/custom-filter-checkbox-list.html
+
 curl --fail --silent --cookie "$cookies" "$base_url/tasks/$custom_task/edit" > /tmp/custom-edit.html
 grep -q 'value="REF-42"' /tmp/custom-edit.html
 grep -q 'value="Prod" selected' /tmp/custom-edit.html
 grep -q 'value="red" checked' /tmp/custom-edit.html
 grep -q 'value="blue" checked' /tmp/custom-edit.html
+
+# Updating options must preserve values that remain valid and prune only removed values.
+option_update=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --cookie "$cookies" \
+  --data-urlencode "_csrf=$csrf" \
+  --data-urlencode 'name=Environment' \
+  --data-urlencode 'field_type=select' \
+  --data-urlencode $'options=Prod\nStaging\nQA' \
+  "$base_url/custom-fields/$environment_id")
+test "$option_update" = "302"
+test "$(db "SELECT value FROM task_custom_field_values WHERE task_id=$custom_task AND field_id=$environment_id")" = "Prod"
+test "$(db "SELECT value FROM task_custom_field_values WHERE task_id=(SELECT id FROM tasks WHERE created_by=$admin_id AND title='CI low budget task' LIMIT 1) AND field_id=$environment_id")" = "Staging"
+grep -q '"Prod","Staging","QA"' < <(db "SELECT options_json FROM custom_fields WHERE id=$environment_id")
+
+option_remove=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --cookie "$cookies" \
+  --data-urlencode "_csrf=$csrf" \
+  --data-urlencode 'name=Environment' \
+  --data-urlencode 'field_type=select' \
+  --data-urlencode $'options=Prod\nQA' \
+  "$base_url/custom-fields/$environment_id")
+test "$option_remove" = "302"
+test "$(db "SELECT value FROM task_custom_field_values WHERE task_id=$custom_task AND field_id=$environment_id")" = "Prod"
+test "$(db "SELECT COUNT(*) FROM task_custom_field_values WHERE task_id=(SELECT id FROM tasks WHERE created_by=$admin_id AND title='CI low budget task' LIMIT 1) AND field_id=$environment_id")" = "0"
+
+tags_update=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --cookie "$cookies" \
+  --data-urlencode "_csrf=$csrf" \
+  --data-urlencode 'name=Tags' \
+  --data-urlencode 'field_type=checkbox_list' \
+  --data-urlencode $'options=red\ngreen' \
+  "$base_url/custom-fields/$tags_id")
+test "$tags_update" = "302"
+test "$(db "SELECT value FROM task_custom_field_values WHERE task_id=$custom_task AND field_id=$tags_id")" = '["red"]'
 
 change_type=$(curl --silent --output /dev/null --write-out '%{http_code}' \
   --cookie "$cookies" \

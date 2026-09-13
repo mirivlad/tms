@@ -163,19 +163,23 @@ final class TaskRepository
             $sql .= ' LEFT JOIN customers c ON c.id = t.customer_id AND c.user_id = t.created_by';
         }
         $sql .= ' WHERE t.created_by = :user_id AND ';
-        $params = [
-            'user_id' => $userId,
-            'range_start' => $rangeStart,
-            'range_end' => $rangeEnd,
-        ];
+        $params = ['user_id' => $userId];
 
         if ($mode === 'deadlines_only') {
-            $sql .= '(t.deadline >= :range_start AND t.deadline < :range_end)';
+            $sql .= '(t.deadline >= :deadline_range_start AND t.deadline < :deadline_range_end)';
+            $params['deadline_range_start'] = $rangeStart;
+            $params['deadline_range_end'] = $rangeEnd;
         } elseif ($mode === 'no_deadlines') {
-            $sql .= '(t.deadline IS NULL AND t.created_at >= :range_start AND t.created_at < :range_end)';
+            $sql .= '(t.deadline IS NULL AND t.created_at >= :created_range_start AND t.created_at < :created_range_end)';
+            $params['created_range_start'] = $rangeStart;
+            $params['created_range_end'] = $rangeEnd;
         } else {
-            $sql .= '((t.deadline IS NOT NULL AND t.deadline >= :range_start AND t.deadline < :range_end)
-                     OR (t.deadline IS NULL AND t.created_at >= :range_start AND t.created_at < :range_end))';
+            $sql .= '((t.deadline IS NOT NULL AND t.deadline >= :deadline_range_start AND t.deadline < :deadline_range_end)
+                     OR (t.deadline IS NULL AND t.created_at >= :created_range_start AND t.created_at < :created_range_end))';
+            $params['deadline_range_start'] = $rangeStart;
+            $params['deadline_range_end'] = $rangeEnd;
+            $params['created_range_start'] = $rangeStart;
+            $params['created_range_end'] = $rangeEnd;
         }
 
         if ($statusIds !== []) {
