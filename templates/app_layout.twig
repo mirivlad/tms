@@ -6,6 +6,7 @@
     <title>{% block title %}TMS{% endblock %}</title>
     <link rel="stylesheet" href="/assets/themes.css">
     <link rel="stylesheet" href="/assets/app.css">
+    <link rel="stylesheet" href="/assets/navigation.css">
     <link rel="stylesheet" href="/assets/custom-fields.css">
     {% block styles %}{% endblock %}
 </head>
@@ -17,21 +18,38 @@
         <a href="/tasks" data-nav-path="/tasks">{{ t('nav.tasks') }}</a>
         <a href="/board" data-nav-path="/board">{{ t('nav.board') }}</a>
         <a href="/calendar" data-nav-path="/calendar">{{ t('nav.calendar') }}</a>
-        <a href="/metadata" data-nav-path="/metadata">{{ t('nav.metadata') }}</a>
-        <a href="/custom-fields" data-nav-path="/custom-fields">{{ t('nav.custom_fields') }}</a>
-        <a href="/settings/notifications" data-nav-path="/settings/notifications">{{ t('nav.notifications') }}</a>
-        {% if current_role() == 'admin' %}<a href="/admin" data-nav-path="/admin">{{ t('admin.title') }}</a>{% endif %}
-        <a class="nav-primary" href="/tasks/new" data-quick-add-trigger>{{ t('nav.new_task') }}</a>
+        <details class="nav-dropdown nav-settings-menu" data-nav-menu>
+            <summary>{{ t('nav.settings') }} <span class="nav-dropdown-chevron" aria-hidden="true">▾</span></summary>
+            <div class="nav-dropdown-panel">
+                <a href="/metadata" data-nav-path="/metadata">{{ t('nav.metadata') }}</a>
+                <a href="/custom-fields" data-nav-path="/custom-fields">{{ t('nav.custom_fields') }}</a>
+                <a href="/settings/notifications" data-nav-path="/settings/notifications">{{ t('nav.notifications') }}</a>
+            </div>
+        </details>
     </nav>
     <div class="topbar-actions">
-        <form class="locale-switch" method="post" action="/locale" aria-label="{{ t('locale.switch_aria') }}">
-            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-            <button class="locale-choice {{ locale == 'ru' ? 'active' : '' }}" type="submit" name="locale" value="ru" title="{{ t('locale.ru') }}">RU</button>
-            <span aria-hidden="true">/</span>
-            <button class="locale-choice {{ locale == 'en' ? 'active' : '' }}" type="submit" name="locale" value="en" title="{{ t('locale.en') }}">EN</button>
-        </form>
-        <a class="muted profile-link" href="/settings/profile" title="{{ t('nav.profile') }}">{{ username }}</a>
-        <form method="post" action="/logout"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="secondary compact" type="submit">{{ t('nav.sign_out') }}</button></form>
+        <a class="nav-create-task" href="/tasks/new" data-quick-add-trigger>{{ t('nav.new_task') }}</a>
+        <details class="nav-dropdown user-menu" data-nav-menu>
+            <summary title="{{ t('nav.user_menu') }}"><span class="user-menu-name">{{ username }}</span> <span class="nav-dropdown-chevron" aria-hidden="true">▾</span></summary>
+            <div class="nav-dropdown-panel">
+                <a href="/settings/profile" data-nav-path="/settings/profile">{{ t('nav.profile') }}</a>
+                {% if current_role() == 'admin' %}<a href="/admin" data-nav-path="/admin">{{ t('admin.title') }}</a>{% endif %}
+                <div class="nav-dropdown-separator" aria-hidden="true"></div>
+                <form class="dropdown-locale-switch" method="post" action="/locale" aria-label="{{ t('locale.switch_aria') }}">
+                    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                    <span class="dropdown-locale-label">{{ t('locale.switch_aria') }}</span>
+                    <div class="dropdown-locale-choices">
+                        <button class="locale-choice {{ locale == 'ru' ? 'active' : '' }}" type="submit" name="locale" value="ru" title="{{ t('locale.ru') }}">RU</button>
+                        <button class="locale-choice {{ locale == 'en' ? 'active' : '' }}" type="submit" name="locale" value="en" title="{{ t('locale.en') }}">EN</button>
+                    </div>
+                </form>
+                <div class="nav-dropdown-separator" aria-hidden="true"></div>
+                <form method="post" action="/logout">
+                    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                    <button class="nav-dropdown-action" type="submit">{{ t('nav.sign_out') }}</button>
+                </form>
+            </div>
+        </details>
     </div>
 </header>
 {% if is_impersonating() %}<div class="impersonation-bar"><span>{{ t('admin.impersonating', {'username': username}) }}</span><form method="post" action="/admin/stop-impersonation"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="secondary compact" type="submit">{{ t('admin.stop_impersonation') }}</button></form></div>{% endif %}
