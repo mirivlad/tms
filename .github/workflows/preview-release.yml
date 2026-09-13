@@ -89,23 +89,22 @@ jobs:
           notes=$(cat <<'EOF'
           Public TMS preview intended for self-hosted feature and UI evaluation.
 
-          Included in current previews:
-          - secure login, logout and rotating persistent login;
-          - browser and local-console password recovery with hashed single-use reset tokens;
-          - owner-isolated task storage and metadata;
-          - Russian and English UI catalogs with a runtime language switch;
-          - dashboard, task list, Kanban board and calendar;
-          - rich-text task descriptions with server-side sanitization;
-          - quick-add and owner-scoped customer autocomplete;
-          - status, task-type and customer administration;
-          - owner-scoped custom fields with text, textarea, select, money, checkbox and checkbox-list types;
-          - advanced task-table filters, custom/standard sorting and 10/25/50/100 pagination;
-          - secure owner-scoped attachments stored outside the public web root;
-          - SMTP/email and Telegram notification settings plus background delivery;
-          - MariaDB migrations and first-admin CLI bootstrap;
-          - Docker Compose and an image-based Portainer Stack.
+          Included in this preview:
+          - secure login, persistent sessions and password recovery;
+          - isolated multi-user task data, metadata and attachments;
+          - dashboard counters, status distribution, stale tasks and daily tips;
+          - task list, Kanban board and calendar with advanced filtering;
+          - global quick add, task quick view and bulk task operations;
+          - rich-text descriptions, customers and owner-scoped custom fields;
+          - per-user timezone, theme and notification preferences;
+          - optional self-registration with visual CAPTCHA, email verification and administrator approval;
+          - administrator user management, quick user details and impersonation;
+          - SMTP/email and Telegram notification delivery;
+          - public landing, first-steps and privacy pages;
+          - Russian and English interface catalogs;
+          - MariaDB migrations, first-admin CLI bootstrap, Docker Compose and Portainer deployment.
 
-          This is intentionally a prerelease, not the stable v0.1.0. Remaining work is focused on feature-completeness review, integration/regression hardening and final release cleanup before broad UI polish.
+          This is intentionally a prerelease, not the stable v0.1.0. The core feature-completeness pass is closed; the next preview work will focus on UI consistency and release hardening.
 
           Container image:
           `ghcr.io/mirivlad/tms:${TAG}`

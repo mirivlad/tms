@@ -17,7 +17,7 @@ services:
       start_period: 20s
 
   app:
-    image: &tms-image ${TMS_IMAGE:-ghcr.io/mirivlad/tms:v0.1.0-preview.5}
+    image: &tms-image ${TMS_IMAGE:-ghcr.io/mirivlad/tms:v0.1.0-preview.6}
     restart: unless-stopped
     depends_on:
       db:
