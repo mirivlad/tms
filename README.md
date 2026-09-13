@@ -6,10 +6,10 @@ TMS is a lightweight, self-hosted task management system for people who want to 
 
 ## Container channels
 
-The current published preview is `v0.1.0-preview.7`:
+The current published preview is `v0.1.0-preview.8`:
 
 ```text
-ghcr.io/mirivlad/tms:v0.1.0-preview.7
+ghcr.io/mirivlad/tms:v0.1.0-preview.8
 ```
 
 For a deployment you want to keep stable while evaluating it, use a versioned preview tag. `preview` follows the newest published preview release.
@@ -57,10 +57,10 @@ Team collaboration (workspaces, projects, membership, assignees and ACLs) is pla
 - bulk task operations for status/type/priority/deadline changes and deletion;
 - advanced task-table filtering: status inversion, type, priority, literal-safe customer substring, overdue state, deadline/created ranges and custom fields;
 - sortable standard/custom columns with active-filter preservation, 10/25/50/100 per-page controls and pagination;
-- user-scoped status, task-type and customer administration;
-- six owner-scoped custom-field types: text, textarea, select, money, checkbox and checkbox list;
-- Kanban board with drag-and-drop and a no-JavaScript select fallback;
-- calendar with deadline/no-deadline/combined modes, multi-value status/type/priority filters, inversion and literal-safe customer search;
+- user-scoped status, task-type and customer administration in separate working tabs;
+- six owner-scoped custom-field types: text, textarea, select, money, checkbox and checkbox list, with type-aware option editing;
+- Kanban board with drag-and-drop, independent vertical column scrolling, wheel-assisted horizontal navigation and a no-JavaScript select fallback;
+- calendar with deadline/no-deadline/combined modes, multi-value status/type/priority filters, inversion, literal-safe customer search and day-level quick task creation;
 - per-user profile settings for username, password, timezone and theme; included themes are Graphite, Midnight, Warm Dark, Paper, Frost and System;
 - optional self-registration with a local visual CAPTCHA, hashed single-use email-verification tokens and configurable automatic/manual approval;
 - administrator user management, quick user details, pending-user approval, manual verification, resend, activation/role editing and impersonation;
@@ -153,7 +153,7 @@ TMS_IMAGE=ghcr.io/mirivlad/tms:edge
 For a reproducible deployment, use a versioned release tag or one of the immutable edge tags instead:
 
 ```text
-TMS_IMAGE=ghcr.io/mirivlad/tms:v0.1.0-preview.7
+TMS_IMAGE=ghcr.io/mirivlad/tms:v0.1.0-preview.8
 # or, after an edge publication:
 TMS_IMAGE=ghcr.io/mirivlad/tms:sha-0123456789ab
 ```
