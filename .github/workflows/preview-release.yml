@@ -98,6 +98,7 @@ jobs:
           - rich-text descriptions, customers and owner-scoped custom fields;
           - per-user timezone, notification preferences and six interface theme modes;
           - dense desktop work surfaces, semantic status/priority colors and viewport-oriented board/calendar layouts;
+          - compact footer metadata with project source, license and the running software version;
           - optional self-registration with visual CAPTCHA, email verification and administrator approval;
           - administrator user management, quick user details and impersonation;
           - SMTP/email and Telegram notification delivery;

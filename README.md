@@ -6,10 +6,10 @@ TMS is a lightweight, self-hosted task management system for people who want to 
 
 ## Container channels
 
-The current published preview is `v0.1.0-preview.6`:
+The current published preview is `v0.1.0-preview.7`:
 
 ```text
-ghcr.io/mirivlad/tms:v0.1.0-preview.6
+ghcr.io/mirivlad/tms:v0.1.0-preview.7
 ```
 
 For a deployment you want to keep stable while evaluating it, use a versioned preview tag. `preview` follows the newest published preview release.
@@ -153,7 +153,7 @@ TMS_IMAGE=ghcr.io/mirivlad/tms:edge
 For a reproducible deployment, use a versioned release tag or one of the immutable edge tags instead:
 
 ```text
-TMS_IMAGE=ghcr.io/mirivlad/tms:v0.1.0-preview.6
+TMS_IMAGE=ghcr.io/mirivlad/tms:v0.1.0-preview.7
 # or, after an edge publication:
 TMS_IMAGE=ghcr.io/mirivlad/tms:sha-0123456789ab
 ```
