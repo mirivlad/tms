@@ -37,7 +37,7 @@ test -n "$other_id"
 test "$(db "SELECT COUNT(*) FROM schema_migrations WHERE version='005_notifications.sql'")" = "1"
 test "$(db "SELECT COUNT(*) FROM schema_migrations WHERE version='010_telegram_system_settings.sql'")" = "1"
 test "$(docker compose exec -T app stat -c '%a' /var/www/html/var/secrets/notification.key)" = "600"
-test -s <(docker compose exec -T app cat /var/www/html/var/secrets/notification.key)
+docker compose exec -T app test -s /var/www/html/var/secrets/notification.key
 
 login ciadmin ci-admin-password-12345 "$admin_cookies"
 
