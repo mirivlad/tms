@@ -69,6 +69,7 @@ use Tms\Infrastructure\SmtpEmailSender;
 use Tms\Infrastructure\TelegramBotSender;
 use Tms\Security\EmailVerificationTokenRepository;
 use Tms\Security\PasswordAuthenticator;
+use Tms\Security\RegistrationCaptcha;
 use Tms\Security\PasswordResetTokenRepository;
 use Tms\Security\PersistentLoginService;
 use Tms\Security\RememberTokenRepository;
@@ -145,6 +146,8 @@ final class ApplicationFactory
         $twig->getEnvironment()->addFunction(new TwigFunction('current_role', static fn (): ?string => $sessions->currentRole()));
         $twig->getEnvironment()->addFunction(new TwigFunction('is_impersonating', static fn (): bool => $sessions->isImpersonating()));
         $passwordAuthenticator = new PasswordAuthenticator($users);
+        $registrationCaptcha = new RegistrationCaptcha();
+        $dashboardTips = new DashboardTipProvider(dirname(__DIR__, 2) . '/resources/tips');
         $rememberTokens = new RememberTokenRepository($db);
         $resetTokens = new PasswordResetTokenRepository($db);
         $verificationTokens = new EmailVerificationTokenRepository($db);
@@ -191,10 +194,10 @@ final class ApplicationFactory
         $authController = new AuthController($twig, $passwordAuthenticator, $sessions, $persistentLogin, $cookiePolicy, $rememberLifetime, $rememberCookieName, $translator);
         $passwordRecoveryController = new PasswordRecoveryController($twig, $passwordRecovery, $translator);
         $publicController = new PublicController($twig);
-        $registrationController = new RegistrationController($twig, $registration, $sessions, $translator, $registrationEnabled);
+        $registrationController = new RegistrationController($twig, $registration, $sessions, $registrationCaptcha, $translator, $registrationEnabled);
         $adminController = new AdminController($twig, $sessions, $users, $rememberTokens, $registration, $attachments, $attachmentStorage, $translator);
         $profileController = new ProfileController($twig, $sessions, $users, $preferences, $rememberTokens, $translator);
-        $dashboardController = new DashboardController($twig, $sessions, $tasks, $statuses, $translator);
+        $dashboardController = new DashboardController($twig, $sessions, $tasks, $statuses, $dashboardTips, $translator);
         $taskController = new TaskController($twig, $sessions, $tasks, $attachments, $statuses, $taskTypes, $customers, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator);
         $taskDeleteController = new TaskDeleteController($sessions, $tasks, $attachments, $attachmentStorage);
         $taskBulkController = new TaskBulkController($sessions, $tasks, $attachments, $attachmentStorage, $translator);
@@ -241,8 +244,11 @@ final class ApplicationFactory
         $requireAdmin = new RequireAdminMiddleware($sessions, $app->getResponseFactory(), $translator);
         $sanitizeTaskDescription = new SanitizeTaskDescriptionMiddleware($descriptionSanitizer);
 
-        $app->get('/', static function (ServerRequestInterface $request, ResponseInterface $response) use ($sessions): ResponseInterface {
-            return $response->withHeader('Location', $sessions->isAuthenticated() ? '/dashboard' : '/login')->withStatus(302);
+        $app->get('/', static function (ServerRequestInterface $request, ResponseInterface $response) use ($sessions, $publicController): ResponseInterface {
+            if ($sessions->isAuthenticated()) {
+                return $response->withHeader('Location', '/dashboard')->withStatus(302);
+            }
+            return $publicController->home($request, $response);
         });
         $app->get('/health', static function (ServerRequestInterface $request, ResponseInterface $response) use ($db): ResponseInterface {
             try {
@@ -267,6 +273,7 @@ final class ApplicationFactory
         $app->get('/login', [$authController, 'showLogin']);
         $app->post('/login', [$authController, 'login']);
         $app->get('/register', [$registrationController, 'show']);
+        $app->get('/captcha', [$registrationController, 'captcha']);
         $app->post('/register', [$registrationController, 'register']);
         $app->get('/register/success', [$registrationController, 'success']);
         $app->get('/verify-email', [$registrationController, 'verify']);
@@ -326,6 +333,7 @@ final class ApplicationFactory
         $app->post('/settings/notifications/telegram-disconnect', [$notificationController, 'disconnectTelegram'])->add($requireAuth);
         $app->get('/admin', [$adminController, 'dashboard'])->add($requireAdmin)->add($requireAuth);
         $app->get('/admin/users', [$adminController, 'users'])->add($requireAdmin)->add($requireAuth);
+        $app->get('/api/admin/users/{id:[0-9]+}', [$adminController, 'detailsJson'])->add($requireAdmin)->add($requireAuth);
         $app->get('/admin/pending-users', [$adminController, 'pending'])->add($requireAdmin)->add($requireAuth);
         $app->get('/admin/users/{id:[0-9]+}/edit', [$adminController, 'edit'])->add($requireAdmin)->add($requireAuth);
         $app->post('/admin/users/{id:[0-9]+}/edit', [$adminController, 'save'])->add($requireAdmin)->add($requireAuth);

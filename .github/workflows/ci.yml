@@ -54,6 +54,8 @@ jobs:
           node --check public/assets/bulk-actions.js
           node --check public/assets/profile.js
           node --check public/assets/task-preview.js
+          node --check public/assets/register.js
+          node --check public/assets/admin-users.js
 
       - name: Validate Compose configuration
         run: docker compose config --quiet

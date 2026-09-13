@@ -13,7 +13,46 @@ csrf_from() {
   sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' "$1" | head -n1
 }
 
-# Public feature/help pages remain available without authentication.
+captcha_code_from_svg() {
+  python3 - "$1" <<'PYCODE'
+import sys
+import xml.etree.ElementTree as ET
+
+rect_to_segment = {
+    ('4','0','18','5'): 'a', ('21','4','5','19'): 'b', ('21','27','5','19'): 'c',
+    ('4','45','18','5'): 'd', ('0','27','5','19'): 'e', ('0','4','5','19'): 'f',
+    ('4','23','18','5'): 'g',
+}
+digits = {
+    frozenset('abcdef'): '0', frozenset('bc'): '1', frozenset('abged'): '2',
+    frozenset('abcgd'): '3', frozenset('fgbc'): '4', frozenset('afgcd'): '5',
+    frozenset('afgecd'): '6', frozenset('abc'): '7', frozenset('abcdefg'): '8',
+    frozenset('abcdfg'): '9',
+}
+ns = '{http://www.w3.org/2000/svg}'
+root = ET.parse(sys.argv[1]).getroot()
+result = []
+for group in root.iter(ns + 'g'):
+    segments = []
+    for rect in group.findall(ns + 'rect'):
+        key = (rect.get('x'), rect.get('y'), rect.get('width'), rect.get('height'))
+        segment = rect_to_segment.get(key)
+        if segment is not None:
+            segments.append(segment)
+    digit = digits.get(frozenset(segments))
+    if digit is None:
+        raise SystemExit('unable to decode registration captcha')
+    result.append(digit)
+if len(result) != 6:
+    raise SystemExit(f'expected 6 captcha digits, got {len(result)}')
+print(''.join(result))
+PYCODE
+}
+
+# Public landing/help pages remain available without authentication.
+curl --fail --silent "$base_url/" > /tmp/tms-landing.html
+grep -q 'landing-hero' /tmp/tms-landing.html
+grep -q 'TMS' /tmp/tms-landing.html
 curl --fail --silent "$base_url/first_steps" > /tmp/tms-first-steps.html
 grep -q 'TMS' /tmp/tms-first-steps.html
 curl --fail --silent "$base_url/privacy" > /tmp/tms-privacy.html
@@ -23,6 +62,12 @@ grep -q 'TMS' /tmp/tms-privacy.html
 curl --fail --silent --cookie-jar "$user_cookies" "$base_url/register" > /tmp/tms-register.html
 register_csrf=$(csrf_from /tmp/tms-register.html)
 test -n "$register_csrf"
+grep -q 'data-registration-captcha' /tmp/tms-register.html
+grep -q '/assets/register.js' /tmp/tms-register.html
+curl --fail --silent --cookie "$user_cookies" --cookie-jar "$user_cookies" "$base_url/captcha?smoke=1" > /tmp/tms-register-captcha.svg
+grep -q '<svg' /tmp/tms-register-captcha.svg
+captcha_code=$(captcha_code_from_svg /tmp/tms-register-captcha.svg)
+test "${#captcha_code}" = "6"
 register_status=$(curl --silent --output /tmp/tms-register-post.html --write-out '%{http_code}' \
   --cookie "$user_cookies" --cookie-jar "$user_cookies" \
   --data-urlencode "_csrf=$register_csrf" \
@@ -30,6 +75,7 @@ register_status=$(curl --silent --output /tmp/tms-register-post.html --write-out
   --data-urlencode 'email=featureuser@example.invalid' \
   --data-urlencode 'password=feature-user-password-12345' \
   --data-urlencode 'password_confirm=feature-user-password-12345' \
+  --data-urlencode "captcha_code=$captcha_code" \
   "$base_url/register")
 test "$register_status" = "302"
 user_id=$(db "SELECT id FROM users WHERE username='featureuser' LIMIT 1")
@@ -42,6 +88,12 @@ test "$(db "SELECT COUNT(*) FROM users WHERE id=$user_id AND email_verified_at I
 # Administrator can inspect pending users, verify email and approve an account.
 curl --fail --silent --cookie "$admin_cookies" "$base_url/admin/pending-users" > /tmp/tms-pending.html
 grep -q 'featureuser' /tmp/tms-pending.html
+grep -q 'id="admin-user-detail-dialog"' /tmp/tms-pending.html
+grep -q '/assets/admin-users.js' /tmp/tms-pending.html
+curl --fail --silent --cookie "$admin_cookies" "$base_url/api/admin/users/$user_id" > /tmp/tms-admin-user.json
+grep -q '"username":"featureuser"' /tmp/tms-admin-user.json
+grep -q '"approved":false' /tmp/tms-admin-user.json
+grep -q "/admin/users/$user_id/edit" /tmp/tms-admin-user.json
 admin_csrf=$(csrf_from /tmp/tms-pending.html)
 test -n "$admin_csrf"
 verify_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
@@ -75,6 +127,22 @@ curl --fail --silent --cookie "$user_cookies" "$base_url/settings/profile" > /tm
 profile_csrf=$(csrf_from /tmp/tms-profile.html)
 test -n "$profile_csrf"
 grep -q '/assets/profile.js' /tmp/tms-profile.html
+
+# Validation is atomic: a failed password change must not partially save identity/preferences.
+invalid_profile_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --cookie "$user_cookies" --cookie-jar "$user_cookies" \
+  --data-urlencode "_csrf=$profile_csrf" \
+  --data-urlencode 'username=must_not_stick' \
+  --data-urlencode 'timezone=UTC' \
+  --data-urlencode 'theme=dark' \
+  --data-urlencode 'current_password=definitely-wrong' \
+  --data-urlencode 'new_password=feature-user-password-badchange' \
+  --data-urlencode 'confirm_new_password=feature-user-password-badchange' \
+  "$base_url/settings/profile")
+test "$invalid_profile_status" = "302"
+test "$(db "SELECT username FROM users WHERE id=$user_id")" = "featureuser"
+test "$(db "SELECT COUNT(*) FROM user_preferences WHERE user_id=$user_id")" = "0"
+
 profile_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
   --cookie "$user_cookies" --cookie-jar "$user_cookies" \
   --data-urlencode "_csrf=$profile_csrf" \
@@ -91,6 +159,12 @@ test "$(db "SELECT CONCAT(timezone,'|',theme) FROM user_preferences WHERE user_i
 curl --fail --silent --cookie "$user_cookies" "$base_url/dashboard" > /tmp/tms-feature-dashboard.html
 grep -q 'class="theme-light"' /tmp/tms-feature-dashboard.html
 grep -q 'featureuser2' /tmp/tms-feature-dashboard.html
+grep -q 'dashboard-tip' /tmp/tms-feature-dashboard.html
+
+root_status=$(curl --silent --output /dev/null --write-out '%{http_code}' --cookie "$user_cookies" "$base_url/")
+test "$root_status" = "302"
+non_admin_detail_status=$(curl --silent --output /dev/null --write-out '%{http_code}' --cookie "$user_cookies" "$base_url/api/admin/users/$user_id")
+test "$non_admin_detail_status" = "403"
 
 # Global quick-add exists away from the dashboard and creates tasks through JSON.
 curl --fail --silent --cookie "$user_cookies" "$base_url/tasks" > /tmp/tms-feature-tasks.html

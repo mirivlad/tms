@@ -12,6 +12,7 @@
     <nav class="public-nav">
         <a href="/first_steps">{{ t('public.first_steps') }}</a>
         <a href="/privacy">{{ t('public.privacy') }}</a>
+        {% if registration_enabled %}<a href="/register">{{ t('auth.register_link') }}</a>{% endif %}
         <a href="/login">{{ t('auth.submit') }}</a>
     </nav>
     <form class="locale-switch" method="post" action="/locale" aria-label="{{ t('locale.switch_aria') }}">

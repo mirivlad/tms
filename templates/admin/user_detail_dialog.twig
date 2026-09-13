@@ -1,0 +1,12 @@
+<dialog class="quick-add-dialog" id="admin-user-detail-dialog"
+    data-loading="{{ t('admin.details_loading') }}" data-failed="{{ t('admin.details_failed') }}"
+    data-username="{{ t('profile.username') }}" data-email="{{ t('profile.email') }}" data-role="{{ t('admin.role') }}"
+    data-active="{{ t('admin.active') }}" data-verified="{{ t('admin.email_verified') }}" data-approved="{{ t('admin.approved') }}"
+    data-created="{{ t('admin.created') }}" data-yes="{{ t('common.yes') }}" data-no="{{ t('common.no') }}">
+    <div class="task-preview-body">
+        <header class="quick-add-dialog-header"><h2>{{ t('admin.details_title') }}</h2><button class="secondary compact quick-add-close" type="button" data-admin-user-detail-close>×</button></header>
+        <dl class="admin-user-facts" data-admin-user-detail-body></dl>
+        <p class="quick-add-result error" data-admin-user-detail-error hidden></p>
+        <footer class="quick-add-dialog-actions"><a class="button-link" data-admin-user-detail-edit hidden>{{ t('common.edit') }}</a><button class="secondary" type="button" data-admin-user-detail-close>{{ t('common.cancel') }}</button></footer>
+    </div>
+</dialog>

@@ -1,0 +1,26 @@
+{% extends "public_layout.twig" %}
+{% block title %}{{ t('landing.title') }}{% endblock %}
+{% block content %}
+<section class="content-card landing-hero">
+    <p class="eyebrow">TMS</p>
+    <h1>{{ t('landing.hero') }}</h1>
+    <p class="lead">{{ t('landing.lead') }}</p>
+    <div class="landing-actions">
+        <a class="button-link" href="/login">{{ t('landing.sign_in') }}</a>
+        {% if registration_enabled %}<a class="button-link secondary-link" href="/register">{{ t('landing.create_account') }}</a>{% endif %}
+        <a class="text-link" href="/first_steps">{{ t('landing.learn') }} →</a>
+    </div>
+    {% if not registration_enabled %}<p class="field-help">{{ t('landing.no_registration') }}</p>{% endif %}
+</section>
+<section class="landing-features" aria-label="{{ t('landing.features_title') }}">
+    <h2>{{ t('landing.features_title') }}</h2>
+    <div class="landing-feature-grid">
+        <article class="content-card"><strong>{{ t('nav.overview') }}</strong><p>{{ t('landing.feature_dashboard') }}</p></article>
+        <article class="content-card"><strong>{{ t('nav.board') }}</strong><p>{{ t('landing.feature_board') }}</p></article>
+        <article class="content-card"><strong>{{ t('nav.calendar') }}</strong><p>{{ t('landing.feature_calendar') }}</p></article>
+        <article class="content-card"><strong>{{ t('nav.tasks') }}</strong><p>{{ t('landing.feature_tasks') }}</p></article>
+        <article class="content-card"><strong>{{ t('tasks.additional_fields') }}</strong><p>{{ t('landing.feature_fields') }}</p></article>
+        <article class="content-card"><strong>{{ t('public.privacy') }}</strong><p>{{ t('landing.feature_private') }}</p></article>
+    </div>
+</section>
+{% endblock %}

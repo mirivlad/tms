@@ -14,6 +14,13 @@ final class PublicController
     {
     }
 
+    public function home(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        return $this->view->render($response, 'public/landing.twig', [
+            'csrf_token' => $this->csrfToken($request),
+        ]);
+    }
+
     public function firstSteps(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         return $this->view->render($response, 'public/first_steps.twig', [

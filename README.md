@@ -47,7 +47,8 @@ Team collaboration (workspaces, projects, membership, assignees and ACLs) is pla
 - browser and local-console password recovery with single-use reset tokens;
 - CSRF protection for state-changing browser requests;
 - Russian and English interface catalogs with a runtime language switch;
-- overview dashboard;
+- public self-hosted landing/help/privacy pages;
+- overview dashboard with a stable per-user daily tip;
 - task create/edit/delete;
 - sanitized rich-text descriptions;
 - global quick-add task modal (including Alt/Cmd+N) and customer autocomplete;
@@ -61,9 +62,8 @@ Team collaboration (workspaces, projects, membership, assignees and ACLs) is pla
 - Kanban board with drag-and-drop and a no-JavaScript select fallback;
 - calendar with deadline/no-deadline/combined modes, multi-value status/type/priority filters, inversion and literal-safe customer search;
 - per-user profile settings for username, password, timezone and dark/light/system theme;
-- optional self-registration with hashed single-use email-verification tokens and configurable automatic/manual approval;
-- administrator user management, pending-user approval, manual verification, resend, activation/role editing and impersonation;
-- public first-steps and privacy pages suitable for self-hosted deployments;
+- optional self-registration with a local visual CAPTCHA, hashed single-use email-verification tokens and configurable automatic/manual approval;
+- administrator user management, quick user details, pending-user approval, manual verification, resend, activation/role editing and impersonation;
 - secure attachment upload/download/delete with persistent out-of-webroot storage;
 - SMTP/email and Telegram notifications with a background notifier service;
 - automatic MariaDB migrations;

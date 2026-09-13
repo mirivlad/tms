@@ -18,9 +18,18 @@
         <label>{{ t('registration.email') }}<input name="email" type="email" value="{{ email|default('') }}" required autocomplete="email"></label>
         <label>{{ t('auth.password') }}<input name="password" type="password" required minlength="12" autocomplete="new-password"></label>
         <label>{{ t('registration.password_confirm') }}<input name="password_confirm" type="password" required minlength="12" autocomplete="new-password"></label>
+        <label class="registration-captcha-field">
+            {{ t('registration.captcha') }}
+            <span class="registration-captcha-row">
+                <img src="/captcha" width="228" height="72" alt="{{ t('registration.captcha_alt') }}" data-registration-captcha title="{{ t('registration.captcha_refresh') }}">
+                <input name="captcha_code" type="text" inputmode="numeric" autocomplete="off" required minlength="6" maxlength="6" pattern="[0-9]{6}" aria-describedby="captcha-help">
+            </span>
+            <span class="field-help" id="captcha-help">{{ t('registration.captcha_help') }} <a class="text-link" href="#" data-registration-captcha-refresh>{{ t('registration.captcha_refresh') }}</a></span>
+        </label>
         <button type="submit">{{ t('registration.submit') }}</button>
     </form>
     <p><a class="text-link" href="/login">{{ t('registration.back_to_login') }}</a></p>
 </main>
+<script src="/assets/register.js" defer></script>
 </body>
 </html>

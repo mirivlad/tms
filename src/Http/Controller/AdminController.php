@@ -60,6 +60,26 @@ final class AdminController
     }
 
     /** @param array<string, string> $args */
+    public function detailsJson(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $user = $this->user($args);
+        if ($user === null) {
+            return $this->json($response, ['error' => $this->translator->trans('admin.user_not_found')], 404);
+        }
+        return $this->json($response, [
+            'id' => $user->id,
+            'username' => $user->username,
+            'email' => $user->email,
+            'role' => $user->role,
+            'active' => $user->isActive,
+            'email_verified' => $user->isEmailVerified,
+            'approved' => $user->isApproved,
+            'created_at' => $user->createdAt,
+            'edit_url' => '/admin/users/' . $user->id . '/edit',
+        ]);
+    }
+
+    /** @param array<string, string> $args */
     public function edit(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
     {
         $user = $this->user($args);
@@ -120,7 +140,7 @@ final class AdminController
         $user = $this->user($args);
         if ($user !== null) {
             $this->users->setApproved($user->id, true);
-            $this->notice('success', 'admin.approved');
+            $this->notice('success', 'admin.approved_notice');
         }
         return $response->withHeader('Location', $this->returnTo($request, '/admin/pending-users'))->withStatus(302);
     }
@@ -132,7 +152,7 @@ final class AdminController
         if ($user !== null) {
             $this->users->setEmailVerified($user->id, true);
             $this->registration->invalidateVerification($user->id);
-            $this->notice('success', 'admin.email_verified');
+            $this->notice('success', 'admin.email_verified_notice');
         }
         return $response->withHeader('Location', $this->returnTo($request, '/admin/users'))->withStatus(302);
     }
@@ -238,6 +258,14 @@ final class AdminController
         $body = $this->body($request);
         $return = is_string($body['return_to'] ?? null) ? (string) $body['return_to'] : '';
         return str_starts_with($return, '/') && !str_starts_with($return, '//') ? $return : $fallback;
+    }
+
+    /** @param array<string, mixed> $payload */
+    private function json(ResponseInterface $response, array $payload, int $status = 200): ResponseInterface
+    {
+        $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $response->getBody()->write($json === false ? '{}' : $json);
+        return $response->withHeader('Content-Type', 'application/json; charset=utf-8')->withStatus($status);
     }
 
     private function csrfToken(ServerRequestInterface $request): string

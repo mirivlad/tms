@@ -12,6 +12,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
 use Tms\Application\RegistrationService;
 use Tms\I18n\Translator;
+use Tms\Security\RegistrationCaptcha;
 use Tms\Security\SessionManager;
 
 final class RegistrationController
@@ -20,6 +21,7 @@ final class RegistrationController
         private readonly Twig $view,
         private readonly RegistrationService $registration,
         private readonly SessionManager $sessions,
+        private readonly RegistrationCaptcha $captcha,
         private readonly Translator $translator,
         private readonly bool $enabled,
     ) {
@@ -37,6 +39,19 @@ final class RegistrationController
         ]);
     }
 
+    public function captcha(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        if (!$this->enabled) {
+            return $response->withStatus(404);
+        }
+        $response->getBody()->write($this->captcha->issue());
+        return $response
+            ->withHeader('Content-Type', 'image/svg+xml; charset=utf-8')
+            ->withHeader('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            ->withHeader('Pragma', 'no-cache')
+            ->withStatus(200);
+    }
+
     public function register(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         if (!$this->enabled) {
@@ -48,8 +63,13 @@ final class RegistrationController
         $email = is_string($body['email'] ?? null) ? trim((string) $body['email']) : '';
         $password = is_string($body['password'] ?? null) ? (string) $body['password'] : '';
         $confirm = is_string($body['password_confirm'] ?? null) ? (string) $body['password_confirm'] : '';
+        $captchaCode = is_string($body['captcha_code'] ?? null) ? (string) $body['captcha_code'] : '';
+        $captchaValid = $this->captcha->verify($captchaCode);
 
         $error = $this->validate($username, $email, $password, $confirm);
+        if ($error === null && !$captchaValid) {
+            $error = $this->translator->trans('registration.captcha_invalid');
+        }
         if ($error !== null) {
             return $this->renderForm($request, $response, $username, $email, $error, 422);
         }

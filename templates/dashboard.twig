@@ -34,6 +34,10 @@
     </a>
 </section>
 
+{% if tip %}
+<section class="content-card dashboard-tip"><strong>{{ t('dashboard.tip_title') }}</strong><p>{{ tip }}</p></section>
+{% endif %}
+
 <div class="dashboard-grid">
     <section class="content-card dashboard-status-card">
         <div class="section-heading">

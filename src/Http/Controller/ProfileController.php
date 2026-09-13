@@ -65,16 +65,26 @@ final class ProfileController
             if (preg_match('/^[A-Za-z0-9_-]{3,64}$/D', $username) !== 1) {
                 throw new DomainException($this->translator->trans('profile.username_invalid'));
             }
+            $timezone = is_string($body['timezone'] ?? null) ? (string) $body['timezone'] : '';
+            $theme = is_string($body['theme'] ?? null) ? (string) $body['theme'] : '';
+            if (!in_array($timezone, DateTimeZone::listIdentifiers(), true)) {
+                throw new DomainException($this->translator->trans('profile.timezone_invalid'));
+            }
+            if (!in_array($theme, UserPreferenceRepository::THEMES, true)) {
+                throw new DomainException($this->translator->trans('profile.theme_invalid'));
+            }
+            $newPasswordHash = $this->validatedPasswordHash($user->passwordHash, $body);
+
             if ($username !== $user->username) {
                 $this->users->updateUsername($userId, $username);
                 $user = $this->users->findById($userId) ?? $user;
                 $this->sessions->refreshIdentity($user);
             }
-
-            $timezone = is_string($body['timezone'] ?? null) ? (string) $body['timezone'] : '';
-            $theme = is_string($body['theme'] ?? null) ? (string) $body['theme'] : '';
             $this->preferences->saveForUser($userId, $timezone, $theme);
-            $this->changePassword($userId, $user->passwordHash, $body);
+            if ($newPasswordHash !== null) {
+                $this->users->replacePasswordHash($userId, $newPasswordHash);
+                $this->rememberTokens->deleteAllForUser($userId);
+            }
 
             $_SESSION['profile_notice'] = [
                 'kind' => 'success',
@@ -88,13 +98,13 @@ final class ProfileController
     }
 
     /** @param array<string, mixed> $body */
-    private function changePassword(int $userId, string $passwordHash, array $body): void
+    private function validatedPasswordHash(string $passwordHash, array $body): ?string
     {
         $current = is_string($body['current_password'] ?? null) ? (string) $body['current_password'] : '';
         $new = is_string($body['new_password'] ?? null) ? (string) $body['new_password'] : '';
         $confirm = is_string($body['confirm_new_password'] ?? null) ? (string) $body['confirm_new_password'] : '';
         if ($current === '' && $new === '' && $confirm === '') {
-            return;
+            return null;
         }
         if ($current === '' || $new === '' || $confirm === '') {
             throw new DomainException($this->translator->trans('profile.password_all_fields'));
@@ -108,8 +118,7 @@ final class ProfileController
         if ($new !== $confirm) {
             throw new DomainException($this->translator->trans('profile.password_mismatch'));
         }
-        $this->users->replacePasswordHash($userId, password_hash($new, PASSWORD_DEFAULT));
-        $this->rememberTokens->deleteAllForUser($userId);
+        return password_hash($new, PASSWORD_DEFAULT);
     }
 
     private function csrfToken(ServerRequestInterface $request): string

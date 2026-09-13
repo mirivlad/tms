@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
+use Tms\Application\DashboardTipProvider;
 use Tms\Domain\Status\StatusRecord;
 use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRecord;
@@ -22,6 +23,7 @@ final class DashboardController
         private readonly SessionManager $sessions,
         private readonly TaskRepository $tasks,
         private readonly StatusRepository $statuses,
+        private readonly DashboardTipProvider $tips,
         private readonly Translator $translator,
     ) {
     }
@@ -106,6 +108,7 @@ final class DashboardController
             'status_chart_gradient' => $this->statusChartGradient($statusBreakdown),
             'status_map' => $statusMap,
             'priority_labels' => $this->priorityLabels(),
+            'tip' => $this->tips->forDay($this->translator->locale(), $userId, $now),
         ]);
     }
 
