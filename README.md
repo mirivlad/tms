@@ -2,17 +2,17 @@
 
 TMS is a lightweight, self-hosted task management system for people who want to keep their tasks and data on infrastructure they control.
 
-> **Preview status:** TMS is prerelease software. The current preview is runnable and focuses on a secure, self-hosted task-management baseline. Stable v0.1.0 will follow after the remaining integration, regression and release-hardening work is complete.
+> **Stable release:** TMS v0.1.0 is the first stable self-hosted release. Subsequent compatible fixes and incremental improvements will build on this baseline.
 
 ## Container channels
 
-The current published preview is `v0.1.0-preview.10`:
+The current stable release is `v0.1.0`:
 
 ```text
-ghcr.io/mirivlad/tms:v0.1.0-preview.10
+ghcr.io/mirivlad/tms:v0.1.0
 ```
 
-For a deployment you want to keep stable while evaluating it, use a versioned preview tag. `preview` follows the newest published preview release.
+`latest` follows the newest stable release. Versioned tags are recommended for reproducible deployments. The `preview` channel remains reserved for future prereleases.
 
 Development builds from `main` are published as:
 
@@ -20,13 +20,11 @@ Development builds from `main` are published as:
 ghcr.io/mirivlad/tms:edge
 ```
 
-`edge` is updated **only after the full CI workflow for `main` succeeds**. Every edge publication also receives an immutable `sha-<12 hex chars>` tag, so a tested edge build can be pinned or rolled back later. Edge and future preview images are multi-architecture images for `linux/amd64` and `linux/arm64`.
-
-`latest` is intentionally not published while TMS is prerelease software. It will be reserved for stable releases.
+`edge` is updated **only after the full CI workflow for `main` succeeds**. Every edge publication also receives an immutable `sha-<12 hex chars>` tag, so a tested edge build can be pinned or rolled back later. Edge, preview and stable images are multi-architecture images for `linux/amd64` and `linux/arm64`.
 
 ## Direction
 
-The first stable public release focuses on a solid personal/self-hosted task manager with multiple isolated users. Status/type/customer administration, rich task editing, custom fields, attachments, notifications, dashboard/table/calendar workflows, profile settings, optional registration and user administration are implemented. The current preview also includes the dense work-surface UI pass and per-user theme engine; the remaining work before stable is integration/regression verification and release hardening.
+TMS v0.1.0 focuses on a solid personal/self-hosted task manager with multiple isolated users. Status/type/customer administration, rich task editing, typed custom fields and filters, attachments, notifications, dashboard/table/calendar workflows, profile settings, optional registration and user administration are implemented, together with dense work surfaces and a per-user theme engine.
 
 Team collaboration (workspaces, projects, membership, assignees and ACLs) is planned after the secure single-user-scope foundation is complete.
 
@@ -144,7 +142,7 @@ REGISTRATION_AUTO_APPROVE_AFTER_EMAIL=true
 
 Registration is disabled by default. When enabled, verification links are built from `APP_URL`, so it must be externally correct. `REGISTRATION_AUTO_APPROVE_AFTER_EMAIL=true` is convenient for open self-registration; set it to `false` when new accounts require explicit approval in **Admin → Pending users**. Administrators can also create ready-to-use accounts directly from **Admin → Users**, including role, active state, approval and email-verification state. Email verification requires working SMTP settings in TMS; an administrator can also verify an account manually.
 
-By default the Portainer compose file stays pinned to the current versioned preview. To follow the newest CI-tested `main`, add:
+By default the Portainer compose file stays pinned to the current stable version. To follow the newest CI-tested `main`, add:
 
 ```text
 TMS_IMAGE=ghcr.io/mirivlad/tms:edge
@@ -153,7 +151,7 @@ TMS_IMAGE=ghcr.io/mirivlad/tms:edge
 For a reproducible deployment, use a versioned release tag or one of the immutable edge tags instead:
 
 ```text
-TMS_IMAGE=ghcr.io/mirivlad/tms:v0.1.0-preview.10
+TMS_IMAGE=ghcr.io/mirivlad/tms:v0.1.0
 # or, after an edge publication:
 TMS_IMAGE=ghcr.io/mirivlad/tms:sha-0123456789ab
 ```
