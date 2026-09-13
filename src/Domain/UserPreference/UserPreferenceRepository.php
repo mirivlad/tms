@@ -24,7 +24,7 @@ final class UserPreferenceRepository
         if (is_array($row)) {
             return new UserPreferenceRecord((int) $row['user_id'], (string) $row['timezone'], self::normalizeTheme((string) $row['theme']));
         }
-        return new UserPreferenceRecord($userId, $this->defaultTimezone, 'graphite');
+        return new UserPreferenceRecord($userId, $this->defaultTimezone, 'paper');
     }
 
     public static function normalizeTheme(string $theme): string

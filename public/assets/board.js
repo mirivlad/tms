@@ -6,6 +6,50 @@
 
     let dragged = null;
 
+    const canScrollVertically = (container, delta) => {
+        if (!(container instanceof HTMLElement) || container.scrollHeight <= container.clientHeight + 1) {
+            return false;
+        }
+        if (delta > 0) {
+            return container.scrollTop + container.clientHeight < container.scrollHeight - 1;
+        }
+        return delta < 0 && container.scrollTop > 1;
+    };
+
+    const canScrollHorizontally = (delta) => {
+        if (board.scrollWidth <= board.clientWidth + 1) {
+            return false;
+        }
+        if (delta > 0) {
+            return board.scrollLeft + board.clientWidth < board.scrollWidth - 1;
+        }
+        return delta < 0 && board.scrollLeft > 1;
+    };
+
+    board.addEventListener('wheel', (event) => {
+        if (event.ctrlKey || event.metaKey) {
+            return;
+        }
+        const target = event.target;
+        if (target instanceof Element && target.closest('select, input, textarea')) {
+            return;
+        }
+
+        const cards = target instanceof Element ? target.closest('.board-cards') : null;
+        const verticalDelta = event.deltaY;
+        const horizontalDelta = Math.abs(event.deltaX) > Math.abs(verticalDelta) ? event.deltaX : verticalDelta;
+
+        if (!event.shiftKey && Math.abs(event.deltaX) <= Math.abs(verticalDelta) && canScrollVertically(cards, verticalDelta)) {
+            return;
+        }
+
+        if (canScrollHorizontally(horizontalDelta)) {
+            event.preventDefault();
+            board.scrollLeft += horizontalDelta;
+        }
+    }, {passive: false});
+
+
     const updateColumn = (container) => {
         const column = container.closest('.board-column');
         if (!column) {

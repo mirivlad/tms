@@ -53,6 +53,7 @@ PYCODE
 curl --fail --silent "$base_url/" > /tmp/tms-landing.html
 grep -q 'landing-hero' /tmp/tms-landing.html
 grep -q 'TMS' /tmp/tms-landing.html
+grep -q 'data-theme="paper"' /tmp/tms-landing.html
 app_version=$(tr -d '\r\n' < VERSION)
 grep -q '© 2026 mirivlad' /tmp/tms-landing.html
 grep -q 'github.com/mirivlad/tms' /tmp/tms-landing.html
@@ -236,6 +237,12 @@ bulk_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
 test "$bulk_status" = "302"
 test "$(db "SELECT COUNT(*) FROM tasks WHERE id IN ($alpha_id,$beta_id) AND priority=2")" = "2"
 
+
+# Board keeps vertical column scrolling while board.js handles horizontal wheel fallback.
+curl --fail --silent --cookie "$user_cookies" "$base_url/board" > /tmp/tms-feature-board.html
+grep -q 'data-board' /tmp/tms-feature-board.html
+grep -q '/assets/board.js' /tmp/tms-feature-board.html
+
 # Calendar filters are exercised behaviorally, including multi-select, inversion and literal customer matching.
 calendar_month=$(TZ='Europe/Helsinki' date +%Y-%m)
 calendar_deadline="${calendar_month}-15T10:30"
@@ -281,6 +288,8 @@ grep -q 'Feature bulk beta' /tmp/tms-feature-calendar-multi.html
 grep -q 'name="status_id\[\]" multiple' /tmp/tms-feature-calendar-multi.html
 grep -q 'name="type_id\[\]" multiple' /tmp/tms-feature-calendar-multi.html
 grep -q 'name="priority\[\]" multiple' /tmp/tms-feature-calendar-multi.html
+grep -q 'data-calendar-add' /tmp/tms-feature-calendar-multi.html
+grep -q '/assets/calendar.js' /tmp/tms-feature-calendar-multi.html
 
 curl --fail --silent --get --cookie "$user_cookies" \
   --data-urlencode "month=$calendar_month" \

@@ -370,6 +370,8 @@ final class MetadataController
         ?string $section = null,
         int $status = 200,
     ): ResponseInterface {
+        $activeTab = $section ?? $this->activeTab($request);
+
         return $this->view->render($response, 'metadata/index.twig', [
             'csrf_token' => $this->csrfToken($request),
             'username' => $this->sessions->currentUsername() ?? '',
@@ -378,6 +380,7 @@ final class MetadataController
             'customers' => $this->customers->listAllForUser($this->userId()),
             'error' => $error,
             'error_section' => $section,
+            'active_tab' => $activeTab,
         ])->withStatus($status);
     }
 
@@ -427,7 +430,14 @@ final class MetadataController
 
     private function redirect(ResponseInterface $response, string $section): ResponseInterface
     {
-        return $response->withHeader('Location', '/metadata#' . $section)->withStatus(302);
+        return $response->withHeader('Location', '/metadata?tab=' . rawurlencode($section))->withStatus(302);
+    }
+
+    private function activeTab(ServerRequestInterface $request): string
+    {
+        $query = $request->getQueryParams();
+        $tab = is_string($query['tab'] ?? null) ? (string) $query['tab'] : 'statuses';
+        return in_array($tab, ['statuses', 'types', 'customers'], true) ? $tab : 'statuses';
     }
 
     /** @return array<string, mixed> */

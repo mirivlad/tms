@@ -12,6 +12,9 @@ curl --fail --silent --cookie "$cookies" "$base_url/metadata" > /tmp/metadata.ht
 grep -q 'Task metadata' /tmp/metadata.html
 grep -q '/assets/metadata.css' /tmp/metadata.html
 grep -q '/metadata/statuses/restore-defaults' /tmp/metadata.html
+grep -q 'href="/metadata?tab=statuses"' /tmp/metadata.html
+grep -q 'href="/metadata?tab=types"' /tmp/metadata.html
+grep -q 'href="/metadata?tab=customers"' /tmp/metadata.html
 csrf=$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' /tmp/metadata.html | head -n1)
 test -n "$csrf"
 admin_id=$(db "SELECT id FROM users WHERE username='ciadmin' LIMIT 1")
@@ -123,9 +126,19 @@ test "$(db "SELECT COUNT(*) FROM statuses WHERE user_id=$admin_id AND is_default
 test "$(db "SELECT COUNT(*) FROM statuses WHERE user_id=$admin_id AND is_completion=1")" = "1"
 test "$(db "SELECT is_default+is_completion FROM statuses WHERE id=$review_id")" = "2"
 
-curl --fail --silent --cookie "$cookies" "$base_url/metadata" > /tmp/metadata-final.html
-grep -q 'CI Review Updated' /tmp/metadata-final.html
-grep -q 'CI Incident Updated' /tmp/metadata-final.html
-grep -q 'CI Metadata Client Updated' /tmp/metadata-final.html
-grep -q 'CI Former In Progress' /tmp/metadata-final.html
-grep -q 'In progress' /tmp/metadata-final.html
+curl --fail --silent --cookie "$cookies" "$base_url/metadata?tab=statuses" > /tmp/metadata-final-statuses.html
+grep -q 'CI Review Updated' /tmp/metadata-final-statuses.html
+grep -q 'CI Former In Progress' /tmp/metadata-final-statuses.html
+grep -q 'In progress' /tmp/metadata-final-statuses.html
+if grep -q 'CI Metadata Client Updated' /tmp/metadata-final-statuses.html; then
+  echo "Customers leaked into the statuses tab." >&2
+  exit 1
+fi
+curl --fail --silent --cookie "$cookies" "$base_url/metadata?tab=types" > /tmp/metadata-final-types.html
+grep -q 'CI Incident Updated' /tmp/metadata-final-types.html
+if grep -q 'CI Review Updated' /tmp/metadata-final-types.html; then
+  echo "Statuses leaked into the types tab." >&2
+  exit 1
+fi
+curl --fail --silent --cookie "$cookies" "$base_url/metadata?tab=customers" > /tmp/metadata-final-customers.html
+grep -q 'CI Metadata Client Updated' /tmp/metadata-final-customers.html

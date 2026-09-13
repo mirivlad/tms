@@ -9,11 +9,12 @@
 </header>
 
 <nav class="metadata-tabs" aria-label="{{ t('metadata.sections_aria') }}">
-    <a href="#statuses">{{ t('metadata.statuses.title') }}</a>
-    <a href="#types">{{ t('metadata.types.title') }}</a>
-    <a href="#customers">{{ t('metadata.customers.title') }}</a>
+    <a class="{{ active_tab == 'statuses' ? 'active' : '' }}" href="/metadata?tab=statuses" {% if active_tab == 'statuses' %}aria-current="page"{% endif %}>{{ t('metadata.statuses.title') }}</a>
+    <a class="{{ active_tab == 'types' ? 'active' : '' }}" href="/metadata?tab=types" {% if active_tab == 'types' %}aria-current="page"{% endif %}>{{ t('metadata.types.title') }}</a>
+    <a class="{{ active_tab == 'customers' ? 'active' : '' }}" href="/metadata?tab=customers" {% if active_tab == 'customers' %}aria-current="page"{% endif %}>{{ t('metadata.customers.title') }}</a>
 </nav>
 
+{% if active_tab == 'statuses' %}
 <section class="content-card metadata-section" id="statuses">
     <div class="section-heading">
         <div>
@@ -125,7 +126,9 @@
         {% endfor %}
     </div>
 </section>
+{% endif %}
 
+{% if active_tab == 'types' %}
 <section class="content-card metadata-section" id="types">
     <div class="section-heading">
         <div>
@@ -188,7 +191,9 @@
         {% endfor %}
     </div>
 </section>
+{% endif %}
 
+{% if active_tab == 'customers' %}
 <section class="content-card metadata-section" id="customers">
     <div class="section-heading">
         <div>
@@ -233,4 +238,5 @@
         {% endfor %}
     </div>
 </section>
+{% endif %}
 {% endblock %}

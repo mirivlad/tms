@@ -301,6 +301,7 @@ return [
     'calendar.previous' => 'Previous',
     'calendar.next' => 'Next',
     'calendar.today' => 'Today',
+    'calendar.add_task_on' => 'Add task on {date}',
     'calendar.filters' => 'Filters',
     'calendar.more_tasks' => '{count} more tasks',
     'calendar.month_aria' => 'Calendar month',

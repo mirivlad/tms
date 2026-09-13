@@ -25,6 +25,6 @@ final class StatusDefaultsController
         }
 
         $this->bootstrap->restoreMissingStatuses($userId);
-        return $response->withHeader('Location', '/metadata#statuses')->withStatus(302);
+        return $response->withHeader('Location', '/metadata?tab=statuses')->withStatus(302);
     }
 }
