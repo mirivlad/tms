@@ -301,6 +301,7 @@ return [
     'calendar.previous' => 'Предыдущий',
     'calendar.next' => 'Следующий',
     'calendar.today' => 'Сегодня',
+    'calendar.add_task_on' => 'Добавить задачу на {date}',
     'calendar.filters' => 'Фильтры',
     'calendar.more_tasks' => 'Ещё задач: {count}',
     'calendar.month_aria' => 'Месяц календаря',

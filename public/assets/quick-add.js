@@ -7,6 +7,7 @@
     const form = dialog.querySelector('[data-quick-add-form]');
     const titleInput = dialog.querySelector('[data-quick-add-title-input]');
     const result = dialog.querySelector('[data-quick-add-result]');
+    const deadlineInput = dialog.querySelector('input[name="deadline"]');
     const closeButton = dialog.querySelector('[data-quick-add-close]');
 
     if (!(form instanceof HTMLFormElement) || !(titleInput instanceof HTMLInputElement)) {
@@ -21,8 +22,11 @@
         }
     };
 
-    const open = () => {
+    const open = (presetDeadline = '') => {
         form.reset();
+        if (deadlineInput instanceof HTMLInputElement && presetDeadline) {
+            deadlineInput.value = presetDeadline;
+        }
         clearResult();
         dialog.showModal();
         requestAnimationFrame(() => titleInput.focus());
@@ -33,6 +37,13 @@
             event.preventDefault();
             open();
         });
+    });
+
+    document.addEventListener('tms:quick-add', (event) => {
+        const deadline = event instanceof CustomEvent && typeof event.detail?.deadline === 'string'
+            ? event.detail.deadline
+            : '';
+        open(deadline);
     });
 
     closeButton?.addEventListener('click', () => dialog.close());

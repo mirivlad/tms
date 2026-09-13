@@ -21,7 +21,7 @@ final class UserPreferenceRepositoryTest extends TestCase
 
         $default = $repository->getForUser(7);
         self::assertSame('Europe/Helsinki', $default->timezone);
-        self::assertSame('graphite', $default->theme);
+        self::assertSame('paper', $default->theme);
 
         $repository->saveForUser(7, 'Asia/Irkutsk', 'midnight');
         $repository->saveForUser(7, 'UTC', 'light'); // legacy alias normalizes to Paper.

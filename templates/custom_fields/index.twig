@@ -1,6 +1,7 @@
 {% extends 'app_layout.twig' %}
 
 {% block title %}{{ t('custom_fields.page_title') }} · TMS{% endblock %}
+{% block scripts %}<script src="/assets/custom-fields.js" defer></script>{% endblock %}
 {% block styles %}<link rel="stylesheet" href="/assets/metadata.css">{% endblock %}
 
 {% block content %}
@@ -11,13 +12,13 @@
 <section class="content-card metadata-section">
     {% if error %}<p class="alert" role="alert">{{ error }}</p>{% endif %}
 
-    <form class="metadata-create type-create" method="post" action="/custom-fields">
+    <form class="metadata-create custom-field-create" method="post" action="/custom-fields" data-custom-field-form>
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-        <label>
+        <label class="custom-field-name">
             <span>{{ t('custom_fields.name') }}</span>
             <input type="text" name="name" maxlength="96" required>
         </label>
-        <label>
+        <label class="custom-field-type">
             <span>{{ t('custom_fields.type') }}</span>
             <select name="field_type" required>
                 {% for type in field_types %}
@@ -25,15 +26,15 @@
                 {% endfor %}
             </select>
         </label>
-        <label>
+        <label class="custom-field-options" data-custom-field-options>
             <span>{{ t('custom_fields.options') }}</span>
             <textarea name="options" rows="3" placeholder="{{ t('custom_fields.options_placeholder') }}"></textarea>
         </label>
-        <label class="checkbox-inline compact-check">
+        <label class="checkbox-inline compact-check custom-field-required">
             <input type="checkbox" name="is_required" value="1">
             {{ t('custom_fields.required') }}
         </label>
-        <button type="submit">{{ t('custom_fields.add') }}</button>
+        <button class="custom-field-submit" type="submit">{{ t('custom_fields.add') }}</button>
     </form>
     <p class="field-help">{{ t('custom_fields.options_help') }}</p>
 </section>
@@ -63,7 +64,7 @@
                     </div>
                 </div>
 
-                <form class="metadata-edit type-edit" method="post" action="/custom-fields/{{ field.id }}">
+                <form class="metadata-edit type-edit" method="post" action="/custom-fields/{{ field.id }}" data-custom-field-form>
                     <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                     <label>
                         <span>{{ t('custom_fields.name') }}</span>
@@ -77,7 +78,7 @@
                             {% endfor %}
                         </select>
                     </label>
-                    <label>
+                    <label data-custom-field-options>
                         <span>{{ t('custom_fields.options') }}</span>
                         <textarea name="options" rows="3">{{ field.options|join('\n') }}</textarea>
                     </label>

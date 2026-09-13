@@ -152,7 +152,7 @@ final class ApplicationFactory
         $sessions = new SessionManager(new NativeSessionIdRegenerator());
         $twig->getEnvironment()->addFunction(new TwigFunction('current_theme', static function () use ($sessions, $preferences): string {
             $userId = $sessions->currentUserId();
-            return $userId === null ? 'graphite' : $preferences->getForUser($userId)->theme;
+            return $userId === null ? 'paper' : $preferences->getForUser($userId)->theme;
         }));
         $twig->getEnvironment()->addFunction(new TwigFunction('current_role', static fn (): ?string => $sessions->currentRole()));
         $twig->getEnvironment()->addFunction(new TwigFunction('is_impersonating', static fn (): bool => $sessions->isImpersonating()));

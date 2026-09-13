@@ -172,3 +172,43 @@
         margin-left: 0;
     }
 }
+
+.metadata-tabs a.active {
+    border-color: var(--focus);
+    background: var(--nav-active-bg);
+    color: var(--nav-active-fg);
+    font-weight: 750;
+}
+
+.custom-field-create {
+    grid-template-columns: minmax(260px, 1.25fr) minmax(190px, 260px) minmax(320px, 1fr) auto;
+    grid-template-areas:
+        "name type options submit"
+        "required required options submit";
+    align-items: end;
+}
+.custom-field-name { grid-area: name; }
+.custom-field-type { grid-area: type; }
+.custom-field-options { grid-area: options; }
+.custom-field-required { grid-area: required; align-self: center; }
+.custom-field-submit { grid-area: submit; align-self: end; white-space: nowrap; }
+.custom-field-options textarea { min-height: 86px; }
+.custom-field-options[hidden] { display: none; }
+
+@media (max-width: 1180px) {
+    .custom-field-create {
+        grid-template-columns: minmax(220px, 1fr) minmax(180px, 240px) auto;
+        grid-template-areas:
+            "name type submit"
+            "options options options"
+            "required required required";
+    }
+}
+
+@media (max-width: 760px) {
+    .custom-field-create {
+        grid-template-columns: 1fr;
+        grid-template-areas: "name" "type" "options" "required" "submit";
+    }
+    .custom-field-submit { justify-self: stretch; }
+}

@@ -2,6 +2,7 @@
 
 {% block title %}{{ t('calendar.page_title') }} · TMS{% endblock %}
 {% block styles %}<link rel="stylesheet" href="/assets/calendar.css">{% endblock %}
+{% block scripts %}<script src="/assets/calendar.js" defer></script>{% endblock %}
 
 {% block content %}
 <div class="page-header compact-page-header calendar-page-header">
@@ -37,7 +38,7 @@
             <div class="calendar-grid calendar-days">
                 {% for day in days %}
                     <article class="calendar-day {{ day.current_month ? '' : 'outside-month' }} {{ day.today ? 'today' : '' }}">
-                        <header class="calendar-day-number"><time datetime="{{ day.date }}">{{ day.day }}</time></header>
+                        <header class="calendar-day-number"><button class="calendar-day-add" type="button" data-calendar-add data-date="{{ day.date }}" title="{{ t('calendar.add_task_on', {'date': day.date}) }}" aria-label="{{ t('calendar.add_task_on', {'date': day.date}) }}">+</button><time datetime="{{ day.date }}">{{ day.day }}</time></header>
                         <div class="calendar-task-list">
                             {% for task in day.tasks|slice(0, 3) %}
                                 <a class="calendar-task priority-border-{{ task.priority }}" href="/tasks/{{ task.id }}/edit" data-task-preview="{{ task.id }}" title="{{ task.title }}">
