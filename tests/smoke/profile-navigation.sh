@@ -25,10 +25,11 @@ for path in tasks board calendar; do
   grep -q 'href="/admin"' "/tmp/tms-nav-$path.html"
   grep -q 'dropdown-locale-switch' "/tmp/tms-nav-$path.html"
   grep -q '/assets/action-icons.js' "/tmp/tms-nav-$path.html"
+  test "$(grep -o 'href=\"/tasks/new\"' "/tmp/tms-nav-$path.html" | wc -l)" = "2"
 done
 
 curl --fail --silent "$base_url/assets/navigation.css" > /tmp/tms-navigation.css
-grep -Fq '.compact-page-header > a[href="/tasks/new"]' /tmp/tms-navigation.css
+grep -q 'nav-create-task' /tmp/tms-navigation.css
 curl --fail --silent "$base_url/assets/action-icons.js" > /tmp/tms-action-icons.js
 grep -q 'aria-label' /tmp/tms-action-icons.js
 grep -q 'row-actions' /tmp/tms-action-icons.js
