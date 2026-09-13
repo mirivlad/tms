@@ -21,13 +21,32 @@ final class UserPreferenceRepositoryTest extends TestCase
 
         $default = $repository->getForUser(7);
         self::assertSame('Europe/Helsinki', $default->timezone);
-        self::assertSame('dark', $default->theme);
+        self::assertSame('graphite', $default->theme);
 
-        $repository->saveForUser(7, 'Asia/Irkutsk', 'system');
-        $repository->saveForUser(7, 'UTC', 'light');
+        $repository->saveForUser(7, 'Asia/Irkutsk', 'midnight');
+        $repository->saveForUser(7, 'UTC', 'light'); // legacy alias normalizes to Paper.
         $saved = $repository->getForUser(7);
         self::assertSame('UTC', $saved->timezone);
-        self::assertSame('light', $saved->theme);
+        self::assertSame('paper', $saved->theme);
+    }
+
+    public function testEveryPublishedThemeCanBeSaved(): void
+    {
+        $db = new PDO('sqlite::memory:');
+        $db->exec('CREATE TABLE user_preferences (user_id INTEGER PRIMARY KEY, timezone TEXT, theme TEXT, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)');
+        $repository = new UserPreferenceRepository($db);
+
+        foreach (UserPreferenceRepository::THEMES as $index => $theme) {
+            $repository->saveForUser($index + 1, 'UTC', $theme);
+            self::assertSame($theme, $repository->getForUser($index + 1)->theme);
+        }
+    }
+
+    public function testLegacyThemeNamesNormalizeToCurrentThemes(): void
+    {
+        self::assertSame('graphite', UserPreferenceRepository::normalizeTheme('dark'));
+        self::assertSame('paper', UserPreferenceRepository::normalizeTheme('light'));
+        self::assertSame('frost', UserPreferenceRepository::normalizeTheme('frost'));
     }
 
     public function testInvalidThemeIsRejected(): void

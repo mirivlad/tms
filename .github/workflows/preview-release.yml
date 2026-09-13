@@ -96,7 +96,8 @@ jobs:
           - task list, Kanban board and calendar with advanced filtering;
           - global quick add, task quick view and bulk task operations;
           - rich-text descriptions, customers and owner-scoped custom fields;
-          - per-user timezone, theme and notification preferences;
+          - per-user timezone, notification preferences and six interface theme modes;
+          - dense desktop work surfaces, semantic status/priority colors and viewport-oriented board/calendar layouts;
           - optional self-registration with visual CAPTCHA, email verification and administrator approval;
           - administrator user management, quick user details and impersonation;
           - SMTP/email and Telegram notification delivery;
@@ -104,7 +105,7 @@ jobs:
           - Russian and English interface catalogs;
           - MariaDB migrations, first-admin CLI bootstrap, Docker Compose and Portainer deployment.
 
-          This is intentionally a prerelease, not the stable v0.1.0. The core feature-completeness pass is closed; the next preview work will focus on UI consistency and release hardening.
+          This is intentionally a prerelease, not the stable v0.1.0. The core feature and first UI/theme passes are closed; remaining work before stable focuses on real deployment validation, regression hardening and release cleanup.
 
           Container image:
           `ghcr.io/mirivlad/tms:${TAG}`

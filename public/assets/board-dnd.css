@@ -13,10 +13,10 @@
 }
 
 .board-cards.drop-target {
-    outline: 2px dashed #60758d;
+    outline: 2px dashed var(--drag-outline);
     outline-offset: -5px;
     border-radius: 9px;
-    background: #171d24;
+    background: var(--surface-2);
 }
 
 .board-empty[hidden] {

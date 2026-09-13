@@ -66,7 +66,7 @@ final class ProfileController
                 throw new DomainException($this->translator->trans('profile.username_invalid'));
             }
             $timezone = is_string($body['timezone'] ?? null) ? (string) $body['timezone'] : '';
-            $theme = is_string($body['theme'] ?? null) ? (string) $body['theme'] : '';
+            $theme = is_string($body['theme'] ?? null) ? UserPreferenceRepository::normalizeTheme((string) $body['theme']) : '';
             if (!in_array($timezone, DateTimeZone::listIdentifiers(), true)) {
                 throw new DomainException($this->translator->trans('profile.timezone_invalid'));
             }

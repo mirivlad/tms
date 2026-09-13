@@ -2,12 +2,8 @@
 {% block title %}{{ t('profile.page_title') }} · TMS{% endblock %}
 
 {% block content %}
-<div class="page-header">
-    <div>
-        <p class="eyebrow">{{ t('profile.eyebrow') }}</p>
-        <h1>{{ t('profile.title') }}</h1>
-        <p class="muted">{{ t('profile.subtitle') }}</p>
-    </div>
+<div class="page-header compact-page-header">
+    <h1>{{ t('profile.title') }}</h1>
 </div>
 
 <section class="content-card form-card profile-card">
@@ -20,7 +16,19 @@
 
         <div class="field-wide section-heading profile-section"><div><h2>{{ t('profile.regional') }}</h2></div></div>
         <label>{{ t('profile.timezone') }}<select name="timezone" data-timezone-select>{% for timezone in timezones %}<option value="{{ timezone }}" {{ preferences.timezone == timezone ? 'selected' : '' }}>{{ timezone }}</option>{% endfor %}</select><span class="field-help">{{ t('profile.current_time') }}: <span data-timezone-preview>—</span></span></label>
-        <label>{{ t('profile.theme') }}<select name="theme">{% for theme in themes %}<option value="{{ theme }}" {{ preferences.theme == theme ? 'selected' : '' }}>{{ t('theme.' ~ theme) }}</option>{% endfor %}</select><span class="field-help">{{ t('profile.theme_help') }}</span></label>
+        <fieldset class="theme-picker field-wide" data-theme-picker>
+            <legend>{{ t('profile.theme') }}</legend>
+            <span class="field-help">{{ t('profile.theme_help') }}</span>
+            <div class="theme-options">
+                {% for theme in themes %}
+                <label class="theme-option theme-option-{{ theme }}">
+                    <input type="radio" name="theme" value="{{ theme }}" {{ preferences.theme == theme ? 'checked' : '' }}>
+                    <span class="theme-swatch" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+                    <span class="theme-option-name">{{ t('theme.' ~ theme) }}</span>
+                </label>
+                {% endfor %}
+            </div>
+        </fieldset>
 
         <div class="field-wide section-heading profile-section"><div><h2>{{ t('profile.password') }}</h2><p class="muted">{{ t('profile.password_help') }}</p></div></div>
         <label>{{ t('profile.current_password') }}<input type="password" name="current_password" autocomplete="current-password"></label>

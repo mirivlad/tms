@@ -4,22 +4,23 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}TMS{% endblock %}</title>
+    <link rel="stylesheet" href="/assets/themes.css">
     <link rel="stylesheet" href="/assets/app.css">
     <link rel="stylesheet" href="/assets/custom-fields.css">
     {% block styles %}{% endblock %}
 </head>
-<body class="theme-{{ current_theme() }}">
+<body data-theme="{{ current_theme() }}">
 <header class="topbar">
     <a class="brand" href="/dashboard">TMS</a>
     <nav class="main-nav" aria-label="{{ t('nav.main_aria') }}">
-        <a href="/dashboard">{{ t('nav.overview') }}</a>
-        <a href="/tasks">{{ t('nav.tasks') }}</a>
-        <a href="/board">{{ t('nav.board') }}</a>
-        <a href="/calendar">{{ t('nav.calendar') }}</a>
-        <a href="/metadata">{{ t('nav.metadata') }}</a>
-        <a href="/custom-fields">{{ t('nav.custom_fields') }}</a>
-        <a href="/settings/notifications">{{ t('nav.notifications') }}</a>
-        {% if current_role() == 'admin' %}<a href="/admin">{{ t('admin.title') }}</a>{% endif %}
+        <a href="/dashboard" data-nav-path="/dashboard">{{ t('nav.overview') }}</a>
+        <a href="/tasks" data-nav-path="/tasks">{{ t('nav.tasks') }}</a>
+        <a href="/board" data-nav-path="/board">{{ t('nav.board') }}</a>
+        <a href="/calendar" data-nav-path="/calendar">{{ t('nav.calendar') }}</a>
+        <a href="/metadata" data-nav-path="/metadata">{{ t('nav.metadata') }}</a>
+        <a href="/custom-fields" data-nav-path="/custom-fields">{{ t('nav.custom_fields') }}</a>
+        <a href="/settings/notifications" data-nav-path="/settings/notifications">{{ t('nav.notifications') }}</a>
+        {% if current_role() == 'admin' %}<a href="/admin" data-nav-path="/admin">{{ t('admin.title') }}</a>{% endif %}
         <a class="nav-primary" href="/tasks/new" data-quick-add-trigger>{{ t('nav.new_task') }}</a>
     </nav>
     <div class="topbar-actions">
@@ -37,6 +38,7 @@
 {% include "quick_add_dialog.twig" %}
 {% include "task_preview_dialog.twig" %}
 <main class="page">{% block content %}{% endblock %}</main>
+<script src="/assets/nav-state.js" defer></script>
 <script src="/assets/quick-add.js" defer></script>
 <script src="/assets/task-preview.js" defer></script>
 {% block scripts %}{% endblock %}

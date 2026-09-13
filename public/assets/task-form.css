@@ -12,10 +12,10 @@
     flex-wrap: wrap;
     gap: 6px;
     padding: 8px;
-    border: 1px solid #303844;
+    border: 1px solid var(--border);
     border-bottom: 0;
     border-radius: 9px 9px 0 0;
-    background: #12171d;
+    background: var(--surface-subtle);
 }
 
 .rich-toolbar button {
@@ -33,28 +33,28 @@
 .rich-surface {
     overflow: auto;
     padding: 12px 13px;
-    border: 1px solid #394452;
+    border: 1px solid var(--border-strong);
     border-radius: 0 0 9px 9px;
-    background: #101419;
+    background: var(--input-bg);
     line-height: 1.55;
     outline: none;
 }
 
 .rich-surface:focus {
-    border-color: #64748b;
-    box-shadow: 0 0 0 2px rgba(100, 116, 139, .18);
+    border-color: var(--focus);
+    box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
 .rich-surface:empty::before {
     content: attr(data-placeholder);
-    color: #718096;
+    color: var(--muted-2);
     pointer-events: none;
 }
 
 .rich-surface blockquote {
     margin: 10px 0;
     padding-left: 12px;
-    border-left: 3px solid #526071;
+    border-left: 3px solid var(--border-strong);
 }
 
 .rich-surface pre,
@@ -66,7 +66,7 @@
     overflow-x: auto;
     padding: 10px;
     border-radius: 7px;
-    background: #0b0f13;
+    background: var(--code-bg);
 }
 
 .customer-autocomplete {
@@ -81,10 +81,10 @@
     right: 0;
     max-height: 240px;
     overflow-y: auto;
-    border: 1px solid #394452;
+    border: 1px solid var(--border-strong);
     border-radius: 9px;
-    background: #151b22;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, .28);
+    background: var(--surface-2);
+    box-shadow: 0 12px 30px var(--shadow);
 }
 
 .autocomplete-option {
@@ -92,7 +92,7 @@
     width: 100%;
     padding: 10px 12px;
     border: 0;
-    border-bottom: 1px solid #252d36;
+    border-bottom: 1px solid var(--row-border);
     border-radius: 0;
     background: transparent;
     color: inherit;
@@ -106,7 +106,7 @@
 
 .autocomplete-option:hover,
 .autocomplete-option.active {
-    background: #202934;
+    background: var(--surface-3);
 }
 
 .attachment-card {
@@ -144,9 +144,9 @@
     justify-content: space-between;
     gap: 16px;
     padding: 11px 12px;
-    border: 1px solid #303844;
+    border: 1px solid var(--border);
     border-radius: 9px;
-    background: #12171d;
+    background: var(--surface-subtle);
 }
 
 .attachment-details {

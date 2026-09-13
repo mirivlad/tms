@@ -134,7 +134,7 @@ invalid_profile_status=$(curl --silent --output /dev/null --write-out '%{http_co
   --data-urlencode "_csrf=$profile_csrf" \
   --data-urlencode 'username=must_not_stick' \
   --data-urlencode 'timezone=UTC' \
-  --data-urlencode 'theme=dark' \
+  --data-urlencode 'theme=graphite' \
   --data-urlencode 'current_password=definitely-wrong' \
   --data-urlencode 'new_password=feature-user-password-badchange' \
   --data-urlencode 'confirm_new_password=feature-user-password-badchange' \
@@ -148,16 +148,16 @@ profile_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
   --data-urlencode "_csrf=$profile_csrf" \
   --data-urlencode 'username=featureuser2' \
   --data-urlencode 'timezone=Europe/Helsinki' \
-  --data-urlencode 'theme=light' \
+  --data-urlencode 'theme=paper' \
   --data-urlencode 'current_password=feature-user-password-12345' \
   --data-urlencode 'new_password=feature-user-password-67890' \
   --data-urlencode 'confirm_new_password=feature-user-password-67890' \
   "$base_url/settings/profile")
 test "$profile_status" = "302"
 test "$(db "SELECT username FROM users WHERE id=$user_id")" = "featureuser2"
-test "$(db "SELECT CONCAT(timezone,'|',theme) FROM user_preferences WHERE user_id=$user_id")" = "Europe/Helsinki|light"
+test "$(db "SELECT CONCAT(timezone,'|',theme) FROM user_preferences WHERE user_id=$user_id")" = "Europe/Helsinki|paper"
 curl --fail --silent --cookie "$user_cookies" "$base_url/dashboard" > /tmp/tms-feature-dashboard.html
-grep -q 'class="theme-light"' /tmp/tms-feature-dashboard.html
+grep -q 'data-theme="paper"' /tmp/tms-feature-dashboard.html
 grep -q 'featureuser2' /tmp/tms-feature-dashboard.html
 grep -q 'dashboard-tip' /tmp/tms-feature-dashboard.html
 test -n "$(db "SELECT last_activity_at FROM users WHERE id=$user_id")"

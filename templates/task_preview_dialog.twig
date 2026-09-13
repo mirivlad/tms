@@ -7,19 +7,19 @@
     data-label-priority="{{ t('tasks.priority') }}"
     data-label-customer="{{ t('tasks.customer') }}"
     data-label-deadline="{{ t('task_form.deadline') }}"
+    data-label-created="{{ t('task_preview.created') }}"
     data-label-updated="{{ t('task_preview.updated') }}"
-    data-label-attachments="{{ t('task_preview.attachments') }}"
     data-label-delete-confirm="{{ t('task_preview.delete_confirm') }}">
     <div class="task-preview-body">
-        <header class="quick-add-dialog-header">
+        <header class="quick-add-dialog-header task-preview-header">
             <div>
-                <h2 id="task-preview-title" data-task-preview-title>{{ t('task_preview.title') }}</h2>
-                <p class="muted" data-task-preview-meta></p>
+                <span class="dialog-kicker">{{ t('task_preview.title') }}</span>
+                <div class="task-preview-title-row"><h2 id="task-preview-title" data-task-preview-title></h2><span class="task-preview-id" data-task-preview-meta></span></div>
             </div>
-            <button class="secondary compact quick-add-close" type="button" data-task-preview-close aria-label="{{ t('common.cancel') }}">×</button>
+            <button class="secondary compact quick-add-close" type="button" data-task-preview-close aria-label="{{ t('common.close') }}">×</button>
         </header>
-        <p class="task-preview-description" data-task-preview-description></p>
-        <dl class="task-preview-details" data-task-preview-details></dl>
+        <div class="task-preview-description" data-task-preview-description></div>
+        <div class="task-preview-details" data-task-preview-details></div>
         <div class="task-preview-custom" data-task-preview-custom hidden>
             <h3>{{ t('task_preview.custom_fields') }}</h3>
             <dl data-task-preview-custom-list></dl>
@@ -29,13 +29,15 @@
             <ul data-task-preview-attachment-list></ul>
         </div>
         <p class="quick-add-result error" data-task-preview-error role="alert" hidden></p>
-        <footer class="quick-add-dialog-actions">
-            <a class="button-link" href="/tasks" data-task-preview-edit>{{ t('common.edit') }}</a>
+        <footer class="quick-add-dialog-actions task-preview-actions">
             <form method="post" action="/tasks" data-task-preview-delete-form hidden>
                 <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                <button class="danger-link task-preview-delete" type="submit">{{ t('task_preview.delete') }}</button>
+                <button class="danger-button" type="submit">{{ t('task_preview.delete') }}</button>
             </form>
-            <button class="secondary" type="button" data-task-preview-close>{{ t('common.cancel') }}</button>
+            <div class="task-preview-actions-main">
+                <a class="button-link" href="/tasks" data-task-preview-edit>{{ t('common.edit') }}</a>
+                <button class="secondary" type="button" data-task-preview-close>{{ t('common.close') }}</button>
+            </div>
         </footer>
     </div>
 </dialog>
