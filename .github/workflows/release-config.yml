@@ -58,7 +58,11 @@ jobs:
           grep -Fq ':edge' .github/workflows/edge-image.yml
           grep -Fq "workflow_run.conclusion == 'success'" .github/workflows/edge-image.yml
           grep -Fq 'platforms: linux/amd64,linux/arm64' .github/workflows/preview-release.yml
+          grep -Fq 'channel=preview' .github/workflows/preview-release.yml
+          grep -Fq 'channel=latest' .github/workflows/preview-release.yml
+          grep -Fq 'prerelease=true' .github/workflows/preview-release.yml
+          grep -Fq 'steps.version.outputs.channel' .github/workflows/preview-release.yml
           if grep -Eq 'ghcr\.io/.+:latest' .github/workflows/edge-image.yml .github/workflows/preview-release.yml; then
-            echo 'latest must not be published before the stable release.' >&2
+            echo 'latest must only be selected dynamically for stable releases.' >&2
             exit 1
           fi
