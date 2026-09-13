@@ -103,7 +103,10 @@ final class ProfileController
         $current = is_string($body['current_password'] ?? null) ? (string) $body['current_password'] : '';
         $new = is_string($body['new_password'] ?? null) ? (string) $body['new_password'] : '';
         $confirm = is_string($body['confirm_new_password'] ?? null) ? (string) $body['confirm_new_password'] : '';
-        if ($current === '' && $new === '' && $confirm === '') {
+
+        // Password managers may autofill only the current-password field on a profile form.
+        // Treat password change as requested only when the user enters a new password or confirmation.
+        if ($new === '' && $confirm === '') {
             return null;
         }
         if ($current === '' || $new === '' || $confirm === '') {
