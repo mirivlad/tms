@@ -2,14 +2,14 @@
 
 TMS is a lightweight, self-hosted task management system for people who want to keep their tasks and data on infrastructure they control.
 
-> **Stable release:** TMS v0.1.0 is the first stable self-hosted release. Subsequent compatible fixes and incremental improvements will build on this baseline.
+> **Stable release:** TMS v0.1.1 is the current stable self-hosted release. It keeps the v0.1.0 baseline and adds administrator-managed system notification transport settings, Telegram proxy support and hardened secret handling.
 
 ## Container channels
 
-The current stable release is `v0.1.0`:
+The current stable release is `v0.1.1`:
 
 ```text
-ghcr.io/mirivlad/tms:v0.1.0
+ghcr.io/mirivlad/tms:v0.1.1
 ```
 
 `latest` follows the newest stable release. Versioned tags are recommended for reproducible deployments. The `preview` channel remains reserved for future prereleases.
@@ -24,7 +24,7 @@ ghcr.io/mirivlad/tms:edge
 
 ## Direction
 
-TMS v0.1.0 focuses on a solid personal/self-hosted task manager with multiple isolated users. Status/type/customer administration, rich task editing, typed custom fields and filters, attachments, notifications, dashboard/table/calendar workflows, profile settings, optional registration and user administration are implemented, together with dense work surfaces and a per-user theme engine.
+TMS v0.1.1 focuses on a solid personal/self-hosted task manager with multiple isolated users. Status/type/customer administration, rich task editing, typed custom fields and filters, attachments, notifications, dashboard/table/calendar workflows, profile settings, optional registration and user administration are implemented, together with dense work surfaces and a per-user theme engine.
 
 Team collaboration (workspaces, projects, membership, assignees and ACLs) is planned after the secure single-user-scope foundation is complete.
 
@@ -70,7 +70,7 @@ Team collaboration (workspaces, projects, membership, assignees and ACLs) is pla
 
 ## Requirements
 
-The target runtime is PHP 8.2+ with MariaDB/MySQL. The application uses Slim 4, Twig and PDO. Docker/Compose is the recommended deployment path while the project is pre-release.
+The target runtime is PHP 8.2+ with MariaDB/MySQL. The application uses Slim 4, Twig and PDO. Docker/Compose is the recommended deployment path for self-hosted installations and integration testing.
 
 ## Localization
 
@@ -159,7 +159,7 @@ TMS_IMAGE=ghcr.io/mirivlad/tms:edge
 For a reproducible deployment, use a versioned release tag or one of the immutable edge tags instead:
 
 ```text
-TMS_IMAGE=ghcr.io/mirivlad/tms:v0.1.0
+TMS_IMAGE=ghcr.io/mirivlad/tms:v0.1.1
 # or, after an edge publication:
 TMS_IMAGE=ghcr.io/mirivlad/tms:sha-0123456789ab
 ```
@@ -187,7 +187,7 @@ php -S 127.0.0.1:8080 -t public
 
 For the built-in PHP server, route fallback behavior is limited; Docker/Apache remains the reference runtime for integration testing.
 
-`composer.lock` will be committed before the stable release once the dependency baseline is finalized. It must remain tracked after that point.
+`composer.lock` is tracked so release and CI builds use the same dependency baseline.
 
 ## Security baseline already implemented
 
@@ -204,9 +204,9 @@ For the built-in PHP server, route fallback behavior is limited; Docker/Apache r
 
 See `SECURITY.md`, `docs/ARCHITECTURE.md` and `docs/PROJECT_SCOPE.md` for the release invariants and project boundaries.
 
-## Remaining work before stable v0.1.0
+## Project status
 
-The core feature set and the first dense UI/theme pass are present: dashboard workflow, quick add/quick view, bulk actions, profile settings, registration/verification, user administration, advanced task/calendar filtering, attachments, notifications, custom fields and six interface theme modes. Before stable v0.1.0 the remaining work is deployment/regression hardening, real-user UI validation and release cleanup.
+The stable v0.1 line contains the core task-management, administration, notification and deployment workflows. Subsequent releases focus on compatible fixes, usability improvements and incremental features while preserving the existing self-hosted data model and security boundaries.
 
 ## Repository policy
 
