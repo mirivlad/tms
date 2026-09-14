@@ -63,7 +63,7 @@ Team collaboration (workspaces, projects, membership, assignees and ACLs) is pla
 - optional self-registration with a local visual CAPTCHA, hashed single-use email-verification tokens and configurable automatic/manual approval;
 - administrator user management, quick user details, pending-user approval, manual verification, resend, activation/role editing and impersonation;
 - secure attachment upload/download/delete with persistent out-of-webroot storage;
-- SMTP/email and Telegram notifications with a background notifier service;
+- SMTP/email and Telegram notifications with background notifier and Telegram polling worker services;
 - automatic MariaDB migrations;
 - first-administrator CLI bootstrap;
 - Docker Compose and Portainer deployment paths.
@@ -125,9 +125,11 @@ The application container serves HTTP internally. In a normal Internet-facing de
 
 Deployment-wide transports are configured in **Administration → System notifications**. SMTP and Telegram credentials are encrypted before being stored. When `NOTIFICATION_SECRET` is empty, TMS creates a persistent encryption key in the `tms-secrets` volume; setting `NOTIFICATION_SECRET` remains available for deployments that manage this key externally. Deployments that already use `NOTIFICATION_SECRET` for encrypted SMTP data must keep the same value when upgrading; changing or removing an existing external key makes previously encrypted credentials unreadable.
 
-Telegram bot name, token and webhook secret can be configured from the web administration page. The legacy `TELEGRAM_BOT_NAME`, `TELEGRAM_BOT_TOKEN` and `TELEGRAM_WEBHOOK_SECRET` environment variables remain optional bootstrap/fallback values. The same page can test Telegram API connectivity and install the webhook. The webhook URL is `APP_URL/telegram/webhook`; the reverse proxy only needs to pass ordinary public HTTPS POST requests to TMS.
+Telegram bot name, token and webhook secret can be configured from the web administration page. The legacy `TELEGRAM_BOT_NAME`, `TELEGRAM_BOT_TOKEN` and `TELEGRAM_WEBHOOK_SECRET` environment variables remain optional bootstrap/fallback values. The same page can test Telegram API connectivity and choose how bot commands are received: **Long polling** (recommended) or **Webhook**.
 
-If the host cannot connect directly to `api.telegram.org`, enable the Telegram proxy in the administration page and enter an `http://`, `https://`, `socks5://` or `socks5h://` proxy URL. The proxy is used for webhook registration and all outgoing Telegram messages, including the background notifier. Proxy credentials, when present in the URL, are encrypted at rest.
+Long polling is handled by the `telegram-poller` service. It makes outbound `getUpdates` requests, persists the Telegram update offset in MariaDB, and automatically removes an existing webhook when polling mode becomes active. This mode does not require Telegram to reach the TMS host from the Internet and is the preferred choice behind restrictive NAT or filtering. Webhook mode remains available at `APP_URL/telegram/webhook` for deployments with a publicly reachable HTTPS endpoint.
+
+If the host cannot connect directly to `api.telegram.org`, enable the Telegram proxy in the administration page and enter an `http://`, `https://`, `socks5://` or `socks5h://` proxy URL. The proxy is used for long polling, webhook registration and all outgoing Telegram messages, including the background notifier. Proxy credentials, when present in the URL, are encrypted at rest.
 
 ## Portainer using a published image
 

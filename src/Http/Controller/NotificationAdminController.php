@@ -120,6 +120,9 @@ final class NotificationAdminController
             proxyEnabled: $existing !== null ? $existing->proxyEnabled : $current->proxyEnabled,
             proxyUrlCiphertext: $existing?->proxyUrlCiphertext,
         );
+        if ($botToken !== '') {
+            $this->telegramSettings->resetPollingOffset();
+        }
 
         $_SESSION['_notification_admin_flash'] = $this->translator->trans('notifications.telegram_settings_saved');
         return $this->redirect($response);
@@ -171,6 +174,27 @@ final class NotificationAdminController
         return $this->redirect($response);
     }
 
+    public function saveTelegramDelivery(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $body = $this->body($request);
+        $mode = (string) ($body['delivery_mode'] ?? '');
+        if (!in_array($mode, ['polling', 'webhook'], true)) {
+            return $this->render($request, $response, null, $this->translator->trans('notifications.telegram_delivery_invalid'), 422);
+        }
+        $config = $this->telegramConfiguration->get();
+        if ($config->botToken === '') {
+            return $this->render($request, $response, null, $this->translator->trans('notifications.telegram_token_required'), 422);
+        }
+        if ($mode === 'webhook' && $config->webhookSecret === '') {
+            return $this->render($request, $response, null, $this->translator->trans('notifications.telegram_webhook_secret_required'), 422);
+        }
+        $this->telegramSettings->setDeliveryMode($mode);
+        $_SESSION['_notification_admin_flash'] = $this->translator->trans(
+            $mode === 'polling' ? 'notifications.telegram_polling_saved' : 'notifications.telegram_webhook_mode_saved',
+        );
+        return $this->redirect($response);
+    }
+
     public function setupTelegramWebhook(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $config = $this->telegramConfiguration->get();
@@ -181,6 +205,7 @@ final class NotificationAdminController
         if (!$result->success) {
             return $this->render($request, $response, null, $this->telegramError($result), 502);
         }
+        $this->telegramSettings->setDeliveryMode('webhook');
         $_SESSION['_notification_admin_flash'] = $this->translator->trans('notifications.telegram_webhook_set');
         return $this->redirect($response);
     }
@@ -205,7 +230,9 @@ final class NotificationAdminController
             'telegram_webhook_secret_configured' => $telegram->webhookSecret !== '',
             'telegram_proxy_enabled' => $telegram->proxyEnabled,
             'telegram_proxy_configured' => $telegram->proxyUrl !== '',
-            'telegram_configured' => $telegram->botToken !== '' && $telegram->webhookSecret !== '',
+            'telegram_delivery_mode' => $telegram->deliveryMode,
+            'telegram_configured' => $telegram->botToken !== '',
+            'telegram_webhook_configured' => $telegram->botToken !== '' && $telegram->webhookSecret !== '',
             'telegram_webhook_url' => rtrim($this->appUrl, '/') . '/telegram/webhook',
             'csrf_token' => $this->csrfToken($request),
             'username' => $this->sessions->currentUsername(),

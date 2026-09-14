@@ -33,6 +33,22 @@ final class TelegramBotSender implements TelegramSender
         return $this->request('getMe', []);
     }
 
+    public function deleteWebhook(bool $dropPendingUpdates = false): TelegramOperationResult
+    {
+        return $this->request('deleteWebhook', [
+            'drop_pending_updates' => $dropPendingUpdates,
+        ]);
+    }
+
+    public function getUpdates(int $offset, int $timeout = 25): TelegramOperationResult
+    {
+        return $this->request('getUpdates', [
+            'offset' => max(0, $offset),
+            'timeout' => max(0, min(50, $timeout)),
+            'allowed_updates' => ['message'],
+        ], max(15, $timeout + 10));
+    }
+
     public function setWebhook(string $url): TelegramOperationResult
     {
         $config = $this->configuration->get();
@@ -48,7 +64,7 @@ final class TelegramBotSender implements TelegramSender
     }
 
     /** @param array<string, mixed> $payload */
-    private function request(string $method, array $payload): TelegramOperationResult
+    private function request(string $method, array $payload, int $timeout = 15): TelegramOperationResult
     {
         $config = $this->configuration->get();
         if ($config->botToken === '') {
@@ -60,7 +76,7 @@ final class TelegramBotSender implements TelegramSender
 
         $options = [
             'json' => $payload,
-            'timeout' => 15,
+            'timeout' => $timeout,
             'connect_timeout' => 7,
             'http_errors' => false,
         ];
@@ -78,7 +94,7 @@ final class TelegramBotSender implements TelegramSender
                 : null;
 
             if ($ok && $status >= 200 && $status < 300) {
-                return new TelegramOperationResult(true, 'ok', $status, $description);
+                return new TelegramOperationResult(true, 'ok', $status, $description, $decoded['result'] ?? null);
             }
 
             return new TelegramOperationResult(false, 'telegram_http_error', $status, $description);
