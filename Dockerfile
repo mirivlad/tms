@@ -26,7 +26,7 @@ COPY . .
 COPY docker/entrypoint.sh /usr/local/bin/tms-entrypoint
 
 RUN chmod 0755 /usr/local/bin/tms-entrypoint \
-    && mkdir -p /var/www/html/var/cache /var/www/html/var/storage/attachments \
+    && mkdir -p /var/www/html/var/cache /var/www/html/var/storage/attachments /var/www/html/var/secrets \
     && chown -R www-data:www-data /var/www/html/var
 
 ENTRYPOINT ["tms-entrypoint"]

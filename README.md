@@ -121,6 +121,14 @@ Open `APP_URL` and sign in.
 
 The application container serves HTTP internally. In a normal Internet-facing deployment, terminate TLS at nginx, Caddy, Traefik or another reverse proxy and keep `SESSION_SECURE=true`. Do not publish the MariaDB container port.
 
+### System notifications and Telegram
+
+Deployment-wide transports are configured in **Administration → System notifications**. SMTP and Telegram credentials are encrypted before being stored. When `NOTIFICATION_SECRET` is empty, TMS creates a persistent encryption key in the `tms-secrets` volume; setting `NOTIFICATION_SECRET` remains available for deployments that manage this key externally. Deployments that already use `NOTIFICATION_SECRET` for encrypted SMTP data must keep the same value when upgrading; changing or removing an existing external key makes previously encrypted credentials unreadable.
+
+Telegram bot name, token and webhook secret can be configured from the web administration page. The legacy `TELEGRAM_BOT_NAME`, `TELEGRAM_BOT_TOKEN` and `TELEGRAM_WEBHOOK_SECRET` environment variables remain optional bootstrap/fallback values. The same page can test Telegram API connectivity and install the webhook. The webhook URL is `APP_URL/telegram/webhook`; the reverse proxy only needs to pass ordinary public HTTPS POST requests to TMS.
+
+If the host cannot connect directly to `api.telegram.org`, enable the Telegram proxy in the administration page and enter an `http://`, `https://`, `socks5://` or `socks5h://` proxy URL. The proxy is used for webhook registration and all outgoing Telegram messages, including the background notifier. Proxy credentials, when present in the URL, are encrypted at rest.
+
 ## Portainer using a published image
 
 Use `compose.portainer.yaml`. It uses a prebuilt GHCR image and does not require Portainer to build the repository.
@@ -162,7 +170,7 @@ Deploy the Stack, then open the `app` container console and create the first adm
 php bin/create-admin.php admin admin@example.com
 ```
 
-Migrations run automatically on startup, so there is no SQL dump to import. Persistent database state lives in the named `tms-db` volume.
+Migrations run automatically on startup, so there is no SQL dump to import. Persistent database state lives in the named `tms-db` volume. Attachments live in `tms-attachments`, and the automatically generated notification encryption key lives in `tms-secrets`.
 
 ## Native development bootstrap
 
