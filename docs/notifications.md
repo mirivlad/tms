@@ -1,47 +1,90 @@
-# Notifications
+[English](notifications.md) | [Русский](notifications.ru.md)
 
-TMS uses one notification engine for email and Telegram.
+# Notifications and Telegram
 
-## Model
+TMS uses one notification engine for email and Telegram. System transports are configured by an administrator; delivery preferences belong to each user.
 
-SMTP is deployment-wide and is configured by an administrator in **Notification administration**. Each user independently chooses whether email and/or Telegram delivery is enabled and which rules are active: tasks due tomorrow, upcoming deadlines, overdue tasks, and a daily digest.
+## User notification rules
 
-The background notification scheduler currently evaluates delivery times in `APP_TIMEZONE`. Authenticated web requests use the timezone selected in the user profile, falling back to `APP_TIMEZONE` when no preference is stored.
+Under **Settings → Notifications**, a user can enable email and/or Telegram and choose notifications for:
 
-Successful deliveries are written to `sent_notifications` with a per-channel dedupe key. A failed email does not suppress a Telegram retry, and vice versa. Upcoming-task dedupe includes the deadline, so moving a deadline can legitimately produce a new notification.
+- tasks due tomorrow;
+- upcoming deadlines with lead time by priority;
+- overdue tasks;
+- daily digest.
 
-## SMTP secret
+Successful deliveries are journaled in `sent_notifications` with per-channel deduplication. A failure on one channel does not suppress another channel.
 
-SMTP metadata is stored in the database. The SMTP password is encrypted with libsodium before storage. Configure `NOTIFICATION_SECRET` as base64-encoded 32 random bytes:
+The background scheduler currently evaluates configured send times in `APP_TIMEZONE`.
+
+## Encryption key
+
+SMTP passwords, Telegram bot tokens, webhook secrets and proxy URLs are encrypted with libsodium before database storage.
+
+By default TMS generates a 32-byte key and stores it in `/var/www/html/var/secrets/notification.key`, backed by the `tms-secrets` volume. The file is reused by `app`, `notifier` and `telegram-poller`.
+
+An external `NOTIFICATION_SECRET` may be supplied as base64-encoded 32 random bytes:
 
 ```sh
 php -r 'echo base64_encode(random_bytes(32)), PHP_EOL;'
 ```
 
-Keep this value with the deployment secrets and back it up. Losing or changing it makes the stored SMTP password undecryptable; enter the SMTP password again after rotating the key.
+Do not change an existing key without re-entering encrypted credentials. Back it up with the database.
 
-## Telegram
+## SMTP
 
-Create a bot with BotFather and configure:
+Configure SMTP in **Administration → System notifications** and use the built-in test email before relying on scheduled notifications.
+
+## Telegram bot setup
+
+1. Create a bot with BotFather.
+2. Enter bot username and token in **Administration → System notifications**.
+3. Save and press **Test Telegram connection**.
+4. Configure a Telegram proxy if direct access to `api.telegram.org` is unavailable.
+5. Choose **Long polling** or **Webhook**.
+
+Environment variables `TELEGRAM_BOT_NAME`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `TELEGRAM_PROXY_ENABLED` and `TELEGRAM_PROXY_URL` are optional bootstrap/fallback values; the web administration page is the normal configuration path.
+
+### Long polling
+
+Long polling is recommended. `telegram-poller` calls Telegram `getUpdates` through the configured proxy when enabled. It persists the next update offset in MariaDB so restarts do not replay processed updates.
+
+When polling mode becomes active, the worker calls `deleteWebhook` without dropping pending updates, then consumes them via polling. Telegram does not need inbound access to the TMS server.
+
+Only one polling worker should operate against a database. The worker also takes a MariaDB advisory lock to prevent accidental duplicate consumers.
+
+### Webhook
+
+Webhook mode requires a public HTTPS `APP_URL`. Configure or generate a webhook secret, select Webhook and press **Set Telegram webhook**. Telegram sends updates to:
 
 ```text
-TELEGRAM_BOT_TOKEN=...
-TELEGRAM_BOT_NAME=@your_bot_name
-TELEGRAM_WEBHOOK_SECRET=<strong-random-secret>
+APP_URL/telegram/webhook
 ```
 
-`APP_URL` must be an externally reachable HTTPS URL for Telegram webhooks. An administrator then opens `/admin/notifications` and presses **Set Telegram webhook**. TMS verifies every webhook request with Telegram's `X-Telegram-Bot-Api-Secret-Token` header.
+TMS validates the `X-Telegram-Bot-Api-Secret-Token` header. If Telegram cannot reach this endpoint, use Long polling instead.
 
-Users generate a one-time command from `/settings/notifications` and send it to the bot. Link tokens expire after 24 hours, are single-use, and only a SHA-256 verifier hash is stored in the database.
+### Telegram proxy
 
-## Scheduler
+Supported schemes: `http://`, `https://`, `socks5://`, `socks5h://`.
 
-The Docker and Portainer stacks include a `notifier` service. It runs `php bin/notify.php` repeatedly; `NOTIFICATION_INTERVAL_SECONDS` defaults to 60 seconds. The runner itself is idempotent through the sent-notification journal, so running it every minute is safe.
+The scheme is the proxy protocol. For an ordinary HTTP CONNECT proxy use, for example:
 
-For a native installation, do not run the Docker notifier. Use cron instead, for example:
-
-```cron
-* * * * * cd /srv/tms && /usr/bin/php bin/notify.php >> var/notification-cron.log 2>&1
+```text
+http://172.17.0.1:1081
 ```
 
-Run only one scheduler strategy per installation. Running several workers is unnecessary; the database dedupe guard prevents duplicate successful inserts, but two workers can still race and both attempt an external delivery before either records success.
+Even though Telegram itself is HTTPS, an HTTP proxy still starts with `http://`.
+
+The proxy applies to Telegram API connection tests, outgoing messages, webhook registration/removal and Long polling.
+
+## Linking a user
+
+A user opens **Settings → Notifications**, generates a one-time `/link_...` command and sends it to the bot. The command expires after 24 hours and is single-use; only a SHA-256 verifier hash is stored.
+
+After a valid link, the bot replies with confirmation and TMS stores that chat for the user. The user should then press **Send test message** in TMS to verify end-to-end delivery.
+
+## Background notifier
+
+The Docker/Portainer `notifier` service runs `php bin/notify.php` every `NOTIFICATION_INTERVAL_SECONDS` seconds (60 by default).
+
+For a native installation, use cron for `bin/notify.php`. Do not run multiple notifier strategies unnecessarily; deduplication protects successful records, but concurrent workers may still race before success is journaled.

@@ -1,3 +1,5 @@
+[English](ACCOUNT_RECOVERY.md) | [Русский](ACCOUNT_RECOVERY.ru.md)
+
 # Account recovery
 
 TMS does not require an external service to recover access.
