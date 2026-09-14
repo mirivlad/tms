@@ -150,7 +150,7 @@ final class NotificationAdminController
         }
 
         $this->telegramSettings->save(
-            botName: $existing?->botName ?? '',
+            botName: $existing->botName ?? '',
             botTokenCiphertext: $existing?->botTokenCiphertext,
             webhookSecretCiphertext: $existing?->webhookSecretCiphertext,
             proxyEnabled: $proxyEnabled,
