@@ -30,8 +30,10 @@ final class TelegramConfigurationTest extends TestCase
             bot_name TEXT NOT NULL DEFAULT \'\',
             bot_token_ciphertext TEXT NULL,
             webhook_secret_ciphertext TEXT NULL,
+            delivery_mode TEXT NOT NULL DEFAULT \'webhook\',
             proxy_enabled INTEGER NOT NULL DEFAULT 0,
-            proxy_url_ciphertext TEXT NULL
+            proxy_url_ciphertext TEXT NULL,
+            polling_offset INTEGER NOT NULL DEFAULT 0
         )');
         $this->secretBox = new SecretBox(base64_encode(str_repeat('t', 32)));
     }
@@ -39,8 +41,8 @@ final class TelegramConfigurationTest extends TestCase
     public function testStoredConfigurationOverridesEnvironmentFallback(): void
     {
         $stmt = $this->db->prepare('INSERT INTO telegram_system_settings
-            (id, bot_name, bot_token_ciphertext, webhook_secret_ciphertext, proxy_enabled, proxy_url_ciphertext)
-            VALUES (1, :name, :token, :secret, 1, :proxy)');
+            (id, bot_name, bot_token_ciphertext, webhook_secret_ciphertext, delivery_mode, proxy_enabled, proxy_url_ciphertext)
+            VALUES (1, :name, :token, :secret, \'polling\', 1, :proxy)');
         $stmt->execute([
             'name' => '@stored_bot',
             'token' => $this->secretBox->encrypt('stored-token'),
@@ -62,6 +64,7 @@ final class TelegramConfigurationTest extends TestCase
         self::assertSame('@stored_bot', $config->botName);
         self::assertSame('stored-token', $config->botToken);
         self::assertSame('stored-secret', $config->webhookSecret);
+        self::assertSame('polling', $config->deliveryMode);
         self::assertTrue($config->proxyEnabled);
         self::assertSame('socks5h://proxy.example:1080', $config->proxyUrl);
     }
@@ -81,6 +84,8 @@ final class TelegramConfigurationTest extends TestCase
         $mock = new MockHandler([
             new Response(200, [], '{"ok":true,"result":{"id":1}}'),
             new Response(200, [], '{"ok":true,"result":true}'),
+            new Response(200, [], '{"ok":true,"result":true}'),
+            new Response(200, [], '{"ok":true,"result":[{"update_id":42,"message":{"text":"/help"}}]}'),
         ]);
         $stack = HandlerStack::create($mock);
         $stack->push(Middleware::history($history));
@@ -88,9 +93,17 @@ final class TelegramConfigurationTest extends TestCase
 
         self::assertTrue($sender->probe()->success);
         self::assertTrue($sender->setWebhook('https://tasks.example/telegram/webhook')->success);
-        self::assertCount(2, $history);
-        self::assertSame('http://proxy.example:3128', $history[0]['options']['proxy']);
-        self::assertSame('http://proxy.example:3128', $history[1]['options']['proxy']);
+        self::assertTrue($sender->deleteWebhook()->success);
+        $updates = $sender->getUpdates(40, 5);
+        self::assertTrue($updates->success);
+        self::assertIsArray($updates->result);
+        self::assertSame(42, $updates->result[0]['update_id']);
+        self::assertCount(4, $history);
+        foreach ($history as $request) {
+            self::assertSame('http://proxy.example:3128', $request['options']['proxy']);
+        }
+        self::assertStringContainsString('/deleteWebhook', (string) $history[2]['request']->getUri());
+        self::assertStringContainsString('/getUpdates', (string) $history[3]['request']->getUri());
     }
 
     public function testTelegramApiFailureReturnsSafeStructuredResult(): void

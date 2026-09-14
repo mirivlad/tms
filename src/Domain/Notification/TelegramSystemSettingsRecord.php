@@ -10,8 +10,10 @@ final readonly class TelegramSystemSettingsRecord
         public string $botName,
         public ?string $botTokenCiphertext,
         public ?string $webhookSecretCiphertext,
+        public string $deliveryMode,
         public bool $proxyEnabled,
         public ?string $proxyUrlCiphertext,
+        public int $pollingOffset,
     ) {
     }
 }

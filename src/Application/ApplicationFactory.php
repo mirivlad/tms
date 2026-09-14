@@ -260,11 +260,14 @@ final class ApplicationFactory
             $translator,
             $appUrl,
         );
-        $telegramWebhookController = new TelegramWebhookController(
+        $telegramUpdateHandler = new TelegramUpdateHandler(
             $notificationSettings,
             $telegramLinkTokens,
             $telegramSender,
             $translator,
+        );
+        $telegramWebhookController = new TelegramWebhookController(
+            $telegramUpdateHandler,
             $telegramConfiguration,
         );
         $requireAuth = new RequireAuthMiddleware($sessions);
@@ -377,6 +380,7 @@ final class ApplicationFactory
         $app->post('/admin/notifications/smtp-test', [$notificationAdminController, 'testEmail'])->add($requireAdmin)->add($requireAuth);
         $app->post('/admin/notifications/telegram', [$notificationAdminController, 'saveTelegram'])->add($requireAdmin)->add($requireAuth);
         $app->post('/admin/notifications/telegram-test', [$notificationAdminController, 'testTelegram'])->add($requireAdmin)->add($requireAuth);
+        $app->post('/admin/notifications/telegram-delivery', [$notificationAdminController, 'saveTelegramDelivery'])->add($requireAdmin)->add($requireAuth);
         $app->post('/admin/notifications/telegram-webhook', [$notificationAdminController, 'setupTelegramWebhook'])->add($requireAdmin)->add($requireAuth);
         $app->post('/telegram/webhook', [$telegramWebhookController, 'handle']);
 

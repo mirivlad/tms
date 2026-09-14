@@ -11,6 +11,7 @@ final readonly class TelegramOperationResult
         public string $code,
         public ?int $httpStatus = null,
         public ?string $description = null,
+        public mixed $result = null,
     ) {
     }
 }

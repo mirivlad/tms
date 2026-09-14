@@ -54,13 +54,27 @@
     <div class="form-actions"><button type="submit">{{ t('common.save') }}</button></div>
   </form>
 
+  <form method="post" action="/admin/notifications/telegram-delivery" class="notification-form telegram-delivery-settings">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <h3>{{ t('notifications.telegram_delivery_title') }}</h3>
+    <label>{{ t('notifications.telegram_delivery_mode') }}
+      <select name="delivery_mode">
+        <option value="polling" {{ telegram_delivery_mode == 'polling' ? 'selected' : '' }}>{{ t('notifications.telegram_delivery_polling') }}</option>
+        <option value="webhook" {{ telegram_delivery_mode == 'webhook' ? 'selected' : '' }}>{{ t('notifications.telegram_delivery_webhook') }}</option>
+      </select>
+      <span class="field-help">{{ t('notifications.telegram_delivery_help') }}</span>
+    </label>
+    <div class="form-actions"><button type="submit">{{ t('common.save') }}</button></div>
+  </form>
+
   <div class="notification-system-status">
-    <p><strong>{{ t('notifications.telegram_webhook_url') }}:</strong> <code>{{ telegram_webhook_url }}</code></p>
+    <p><strong>{{ t('notifications.telegram_delivery_active') }}:</strong> {{ telegram_delivery_mode == 'polling' ? t('notifications.telegram_delivery_polling') : t('notifications.telegram_delivery_webhook') }}</p>
+    {% if telegram_delivery_mode == 'webhook' %}<p><strong>{{ t('notifications.telegram_webhook_url') }}:</strong> <code>{{ telegram_webhook_url }}</code></p>{% endif %}
     <p class="muted">{{ telegram_configured ? t('notifications.telegram_deployment_ready') : t('notifications.telegram_deployment_incomplete') }}</p>
   </div>
   <div class="inline-actions">
     <form method="post" action="/admin/notifications/telegram-test"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button type="submit" class="secondary" {{ not telegram_token_configured ? 'disabled' : '' }}>{{ t('notifications.telegram_test_connection') }}</button></form>
-    <form method="post" action="/admin/notifications/telegram-webhook"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button type="submit" class="secondary" {{ not telegram_configured ? 'disabled' : '' }}>{{ t('notifications.telegram_set_webhook') }}</button></form>
+    {% if telegram_delivery_mode == 'webhook' %}<form method="post" action="/admin/notifications/telegram-webhook"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button type="submit" class="secondary" {{ not telegram_webhook_configured ? 'disabled' : '' }}>{{ t('notifications.telegram_set_webhook') }}</button></form>{% endif %}
   </div>
 </section>
 {% endblock %}

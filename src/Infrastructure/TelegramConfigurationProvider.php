@@ -26,8 +26,9 @@ final class TelegramConfigurationProvider
         $webhookSecret = $this->decryptOrFallback($stored?->webhookSecretCiphertext, $this->fallbackWebhookSecret);
         $proxyUrl = $this->decryptOrFallback($stored?->proxyUrlCiphertext, $this->fallbackProxyUrl);
         $proxyEnabled = $stored !== null ? $stored->proxyEnabled : $this->fallbackProxyEnabled;
+        $deliveryMode = $stored !== null ? $stored->deliveryMode : 'webhook';
 
-        return new TelegramConfiguration($botName, $botToken, $webhookSecret, $proxyEnabled, $proxyUrl);
+        return new TelegramConfiguration($botName, $botToken, $webhookSecret, $deliveryMode, $proxyEnabled, $proxyUrl);
     }
 
     private function decryptOrFallback(?string $ciphertext, string $fallback): string

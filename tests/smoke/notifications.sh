@@ -36,6 +36,7 @@ test -n "$admin_id"
 test -n "$other_id"
 test "$(db "SELECT COUNT(*) FROM schema_migrations WHERE version='005_notifications.sql'")" = "1"
 test "$(db "SELECT COUNT(*) FROM schema_migrations WHERE version='010_telegram_system_settings.sql'")" = "1"
+test "$(db "SELECT COUNT(*) FROM schema_migrations WHERE version='011_telegram_delivery_mode.sql'")" = "1"
 test "$(docker compose exec -T app stat -c '%a' /var/www/html/var/secrets/notification.key)" = "600"
 docker compose exec -T app test -s /var/www/html/var/secrets/notification.key
 
@@ -87,6 +88,9 @@ grep -q 'action="/admin/notifications/telegram"' /tmp/notify-admin.html
 grep -q 'name="proxy_enabled"' /tmp/notify-admin.html
 grep -q 'name="section" value="proxy"' /tmp/notify-admin.html
 grep -q 'type="text" name="proxy_url"' /tmp/notify-admin.html
+grep -q 'action="/admin/notifications/telegram-delivery"' /tmp/notify-admin.html
+grep -q 'option value="polling"' /tmp/notify-admin.html
+test "$(db "SELECT delivery_mode FROM telegram_system_settings WHERE id=1" 2>/dev/null || true)" != "polling"
 
 # Deployment-wide Telegram credentials and proxy settings are managed independently in the admin UI.
 telegram_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
@@ -237,6 +241,23 @@ cross_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
   "$base_url/telegram/webhook")
 test "$cross_status" = "200"
 test "$(db "SELECT COUNT(*) FROM notification_settings WHERE user_id=$other_id AND telegram_chat_id IS NOT NULL")" = "0"
+
+# Delivery mode is administrator-controlled and can switch to polling without an inbound webhook.
+polling_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --cookie "$admin_cookies" \
+  --data-urlencode "_csrf=$admin_csrf" \
+  --data-urlencode 'delivery_mode=polling' \
+  "$base_url/admin/notifications/telegram-delivery")
+test "$polling_status" = "302"
+test "$(db "SELECT delivery_mode FROM telegram_system_settings WHERE id=1")" = "polling"
+docker compose ps telegram-poller --status running | grep -q telegram-poller
+webhook_mode_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --cookie "$admin_cookies" \
+  --data-urlencode "_csrf=$admin_csrf" \
+  --data-urlencode 'delivery_mode=webhook' \
+  "$base_url/admin/notifications/telegram-delivery")
+test "$webhook_mode_status" = "302"
+test "$(db "SELECT delivery_mode FROM telegram_system_settings WHERE id=1")" = "webhook"
 
 # The ordinary user must not reach deployment-wide transport administration.
 other_hash=$(docker compose exec -T app php -r 'echo password_hash("ci-other-password-12345", PASSWORD_DEFAULT);')

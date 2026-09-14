@@ -10,6 +10,7 @@ final readonly class TelegramConfiguration
         public string $botName,
         public string $botToken,
         public string $webhookSecret,
+        public string $deliveryMode,
         public bool $proxyEnabled,
         public string $proxyUrl,
     ) {
