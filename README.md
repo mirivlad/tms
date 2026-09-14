@@ -2,7 +2,7 @@
 
 TMS is a lightweight, self-hosted task management system for people who want to keep their tasks and data on infrastructure they control.
 
-> **Stable release:** TMS v0.1.2 is the current stable self-hosted release. It keeps the v0.1.1 foundation and improves Telegram notification setup with independently saved proxy settings and an explicit per-user delivery test.
+> **Stable release:** TMS v0.1.3 is the current stable self-hosted release. It adds selectable Telegram long polling and webhook delivery, including proxy-aware polling for restricted networks.
 
 ## Container channels
 
@@ -24,7 +24,7 @@ ghcr.io/mirivlad/tms:edge
 
 ## Direction
 
-TMS v0.1.2 focuses on a solid personal/self-hosted task manager with multiple isolated users. Status/type/customer administration, rich task editing, typed custom fields and filters, attachments, notifications, dashboard/table/calendar workflows, profile settings, optional registration and user administration are implemented, together with dense work surfaces and a per-user theme engine.
+TMS v0.1.3 focuses on a solid personal/self-hosted task manager with multiple isolated users. Status/type/customer administration, rich task editing, typed custom fields and filters, attachments, notifications, dashboard/table/calendar workflows, profile settings, optional registration and user administration are implemented, together with dense work surfaces and a per-user theme engine.
 
 Team collaboration (workspaces, projects, membership, assignees and ACLs) is planned after the secure single-user-scope foundation is complete.
 
