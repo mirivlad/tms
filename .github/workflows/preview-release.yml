@@ -119,7 +119,7 @@ jobs:
           - calendar day quick-add, customer autocomplete and wheel-aware wide-board navigation;
           - optional self-registration with visual CAPTCHA, email verification and administrator approval;
           - administrator user management, direct account creation, quick user details and impersonation;
-          - SMTP/email and Telegram notification delivery with administrator-managed Telegram credentials, webhook setup and optional HTTP/SOCKS proxy;
+          - SMTP/email and Telegram notification delivery with administrator-managed Telegram credentials, webhook setup, independently saved HTTP/SOCKS proxy settings and per-user Telegram delivery testing;
           - Russian and English interface catalogs;
           - MariaDB migrations, first-admin CLI bootstrap, Docker Compose and Portainer deployment.
 

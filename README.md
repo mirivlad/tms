@@ -2,14 +2,14 @@
 
 TMS is a lightweight, self-hosted task management system for people who want to keep their tasks and data on infrastructure they control.
 
-> **Stable release:** TMS v0.1.1 is the current stable self-hosted release. It keeps the v0.1.0 baseline and adds administrator-managed system notification transport settings, Telegram proxy support and hardened secret handling.
+> **Stable release:** TMS v0.1.2 is the current stable self-hosted release. It keeps the v0.1.1 foundation and improves Telegram notification setup with independently saved proxy settings and an explicit per-user delivery test.
 
 ## Container channels
 
-The current stable release is `v0.1.1`:
+The current stable release is `v0.1.2`:
 
 ```text
-ghcr.io/mirivlad/tms:v0.1.1
+ghcr.io/mirivlad/tms:v0.1.2
 ```
 
 `latest` follows the newest stable release. Versioned tags are recommended for reproducible deployments. The `preview` channel remains reserved for future prereleases.
@@ -24,7 +24,7 @@ ghcr.io/mirivlad/tms:edge
 
 ## Direction
 
-TMS v0.1.1 focuses on a solid personal/self-hosted task manager with multiple isolated users. Status/type/customer administration, rich task editing, typed custom fields and filters, attachments, notifications, dashboard/table/calendar workflows, profile settings, optional registration and user administration are implemented, together with dense work surfaces and a per-user theme engine.
+TMS v0.1.2 focuses on a solid personal/self-hosted task manager with multiple isolated users. Status/type/customer administration, rich task editing, typed custom fields and filters, attachments, notifications, dashboard/table/calendar workflows, profile settings, optional registration and user administration are implemented, together with dense work surfaces and a per-user theme engine.
 
 Team collaboration (workspaces, projects, membership, assignees and ACLs) is planned after the secure single-user-scope foundation is complete.
 
@@ -159,7 +159,7 @@ TMS_IMAGE=ghcr.io/mirivlad/tms:edge
 For a reproducible deployment, use a versioned release tag or one of the immutable edge tags instead:
 
 ```text
-TMS_IMAGE=ghcr.io/mirivlad/tms:v0.1.1
+TMS_IMAGE=ghcr.io/mirivlad/tms:v0.1.2
 # or, after an edge publication:
 TMS_IMAGE=ghcr.io/mirivlad/tms:sha-0123456789ab
 ```
