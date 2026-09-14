@@ -29,7 +29,13 @@
 {% if telegram_link_command %}<div class="link-command"><code>{{ telegram_link_command }}</code><p>{{ t('notifications.telegram_link_expires') }}</p></div>{% endif %}
 <div class="inline-actions">
 <form method="post" action="/settings/notifications/telegram-link"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button type="submit" class="secondary" {{ not telegram_available ? 'disabled' : '' }}>{{ t('notifications.telegram_generate_link') }}</button></form>
-{% if settings.telegramChatId %}<form method="post" action="/settings/notifications/telegram-test"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button type="submit" class="secondary">{{ t('notifications.telegram_test') }}</button></form><form method="post" action="/settings/notifications/telegram-disconnect"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button type="submit" class="secondary">{{ t('notifications.telegram_disconnect') }}</button></form>{% endif %}
+{% if settings.telegramChatId %}
+<form method="post" action="/settings/notifications/telegram-test"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button type="submit" class="secondary" {{ not telegram_available ? 'disabled' : '' }}>{{ t('notifications.telegram_test') }}</button></form>
+<form method="post" action="/settings/notifications/telegram-disconnect"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button type="submit" class="secondary">{{ t('notifications.telegram_disconnect') }}</button></form>
+{% else %}
+<button type="button" class="secondary" disabled>{{ t('notifications.telegram_test') }}</button>
+{% endif %}
 </div>
+{% if not settings.telegramChatId %}<p class="field-help">{{ t('notifications.telegram_test_requires_link') }}</p>{% endif %}
 </section>
 {% endblock %}

@@ -44,6 +44,7 @@ login ciadmin ci-admin-password-12345 "$admin_cookies"
 curl --fail --silent --cookie "$admin_cookies" "$base_url/settings/notifications" > /tmp/notify-settings.html
 grep -q '>Notifications<' /tmp/notify-settings.html
 grep -q 'name="notify_upcoming"' /tmp/notify-settings.html
+grep -q 'Send test message' /tmp/notify-settings.html
 if grep -q '/admin/notifications' /tmp/notify-settings.html; then
   echo 'User notification settings must not link to system notification administration.' >&2
   exit 1
@@ -84,30 +85,54 @@ admin_csrf=$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' /tmp/notify-admi
 test -n "$admin_csrf"
 grep -q 'action="/admin/notifications/telegram"' /tmp/notify-admin.html
 grep -q 'name="proxy_enabled"' /tmp/notify-admin.html
-grep -q 'name="proxy_url"' /tmp/notify-admin.html
+grep -q 'name="section" value="proxy"' /tmp/notify-admin.html
+grep -q 'type="text" name="proxy_url"' /tmp/notify-admin.html
 
-# Deployment-wide Telegram credentials and proxy settings are managed in the admin UI.
+# Deployment-wide Telegram credentials and proxy settings are managed independently in the admin UI.
 telegram_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
   --cookie "$admin_cookies" \
   --data-urlencode "_csrf=$admin_csrf" \
   --data-urlencode 'bot_name=@ci_tms_bot' \
   --data-urlencode 'bot_token=123456:ci-fake-token' \
   --data-urlencode "webhook_secret=$webhook_secret" \
-  --data-urlencode 'proxy_enabled=1' \
-  --data-urlencode 'proxy_url=http://ciuser:cipass@127.0.0.1:9' \
   "$base_url/admin/notifications/telegram")
 test "$telegram_status" = "302"
 test "$(db "SELECT bot_name FROM telegram_system_settings WHERE id=1")" = "@ci_tms_bot"
-test "$(db "SELECT proxy_enabled FROM telegram_system_settings WHERE id=1")" = "1"
 token_ciphertext=$(db "SELECT bot_token_ciphertext FROM telegram_system_settings WHERE id=1")
 secret_ciphertext=$(db "SELECT webhook_secret_ciphertext FROM telegram_system_settings WHERE id=1")
-proxy_ciphertext=$(db "SELECT proxy_url_ciphertext FROM telegram_system_settings WHERE id=1")
 test -n "$token_ciphertext"
 test -n "$secret_ciphertext"
-test -n "$proxy_ciphertext"
 test "$token_ciphertext" != "123456:ci-fake-token"
 test "$secret_ciphertext" != "$webhook_secret"
+
+proxy_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --cookie "$admin_cookies" \
+  --data-urlencode "_csrf=$admin_csrf" \
+  --data-urlencode 'section=proxy' \
+  --data-urlencode 'proxy_enabled=1' \
+  --data-urlencode 'proxy_url=http://ciuser:cipass@127.0.0.1:9' \
+  "$base_url/admin/notifications/telegram")
+test "$proxy_status" = "302"
+test "$(db "SELECT proxy_enabled FROM telegram_system_settings WHERE id=1")" = "1"
+proxy_ciphertext=$(db "SELECT proxy_url_ciphertext FROM telegram_system_settings WHERE id=1")
+test -n "$proxy_ciphertext"
 test "$proxy_ciphertext" != "http://ciuser:cipass@127.0.0.1:9"
+# Saving only proxy settings must not disturb the bot credentials.
+test "$(db "SELECT bot_name FROM telegram_system_settings WHERE id=1")" = "@ci_tms_bot"
+test "$(db "SELECT bot_token_ciphertext FROM telegram_system_settings WHERE id=1")" = "$token_ciphertext"
+test "$(db "SELECT webhook_secret_ciphertext FROM telegram_system_settings WHERE id=1")" = "$secret_ciphertext"
+
+# Saving bot credentials separately must keep the proxy state intact.
+telegram_resave=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --cookie "$admin_cookies" \
+  --data-urlencode "_csrf=$admin_csrf" \
+  --data-urlencode 'bot_name=@ci_tms_bot_renamed' \
+  "$base_url/admin/notifications/telegram")
+test "$telegram_resave" = "302"
+test "$(db "SELECT proxy_enabled FROM telegram_system_settings WHERE id=1")" = "1"
+test "$(db "SELECT proxy_url_ciphertext FROM telegram_system_settings WHERE id=1")" = "$proxy_ciphertext"
+test "$(db "SELECT bot_token_ciphertext FROM telegram_system_settings WHERE id=1")" = "$token_ciphertext"
+test "$(db "SELECT webhook_secret_ciphertext FROM telegram_system_settings WHERE id=1")" = "$secret_ciphertext"
 
 # A deliberately unreachable local proxy must produce a useful, bounded diagnostic
 # rather than exposing the token or proxy credentials.
@@ -182,6 +207,18 @@ link_webhook=$(curl --silent --output /dev/null --write-out '%{http_code}' \
 test "$link_webhook" = "200"
 test "$(db "SELECT telegram_chat_id FROM notification_settings WHERE user_id=$admin_id")" = "123456789"
 test "$(db "SELECT telegram_enabled FROM notification_settings WHERE user_id=$admin_id")" = "1"
+curl --fail --silent --cookie "$admin_cookies" "$base_url/settings/notifications" > /tmp/notify-linked.html
+grep -q 'action="/settings/notifications/telegram-test"' /tmp/notify-linked.html
+user_test_status=$(curl --silent --output /tmp/notify-user-test.html --write-out '%{http_code}' \
+  --cookie "$admin_cookies" \
+  --data-urlencode "_csrf=$csrf" \
+  "$base_url/settings/notifications/telegram-test")
+test "$user_test_status" = "502"
+grep -q 'test message could not be sent' /tmp/notify-user-test.html
+if grep -q 'ci-fake-token\|ciuser:cipass' /tmp/notify-user-test.html; then
+  echo 'User Telegram test exposed protected credentials.' >&2
+  exit 1
+fi
 test "$(db "SELECT COUNT(*) FROM telegram_link_tokens WHERE selector='$selector' AND consumed_at IS NOT NULL")" = "1"
 
 # New token belonging to admin must not be usable by changing only the user id.

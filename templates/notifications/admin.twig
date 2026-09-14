@@ -42,12 +42,16 @@
       <button type="submit">{{ t('common.save') }}</button>
       <button type="submit" name="generate_webhook_secret" value="1" class="secondary">{{ t('notifications.telegram_generate_secret') }}</button>
     </div>
+  </form>
 
-    <div class="notification-rule vertical telegram-proxy-settings">
-      <label class="checkbox-inline"><input type="checkbox" name="proxy_enabled" value="1" {{ telegram_proxy_enabled ? 'checked' : '' }}> {{ t('notifications.telegram_proxy_enabled') }}</label>
-      <label>{{ t('notifications.telegram_proxy_url') }}<input type="password" name="proxy_url" autocomplete="off" placeholder="{{ telegram_proxy_configured ? t('notifications.secret_keep') : 'socks5h://user:pass@proxy.example:1080' }}"><span class="field-help">{{ t('notifications.telegram_proxy_help') }}</span></label>
-      <span class="field-help">{{ telegram_proxy_configured ? t('notifications.telegram_proxy_stored') : t('notifications.telegram_proxy_not_stored') }}</span>
-    </div>
+  <form method="post" action="/admin/notifications/telegram" class="notification-form telegram-proxy-settings">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <input type="hidden" name="section" value="proxy">
+    <h3>{{ t('notifications.telegram_proxy_title') }}</h3>
+    <label class="checkbox-inline"><input type="checkbox" name="proxy_enabled" value="1" {{ telegram_proxy_enabled ? 'checked' : '' }}> {{ t('notifications.telegram_proxy_enabled') }}</label>
+    <label>{{ t('notifications.telegram_proxy_url') }}<input type="text" name="proxy_url" autocomplete="off" spellcheck="false" placeholder="{{ telegram_proxy_configured ? t('notifications.secret_keep') : 'http://proxy.example:1080' }}"><span class="field-help">{{ t('notifications.telegram_proxy_help') }}</span></label>
+    <span class="field-help">{{ telegram_proxy_configured ? t('notifications.telegram_proxy_stored') : t('notifications.telegram_proxy_not_stored') }}</span>
+    <div class="form-actions"><button type="submit">{{ t('common.save') }}</button></div>
   </form>
 
   <div class="notification-system-status">

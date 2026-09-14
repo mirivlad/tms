@@ -88,15 +88,17 @@ final class NotificationAdminController
     public function saveTelegram(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $body = $this->body($request);
+        if (($body['section'] ?? '') === 'proxy') {
+            return $this->saveTelegramProxy($request, $response, $body);
+        }
+
         $existing = $this->telegramSettings->get();
+        $current = $this->telegramConfiguration->get();
         $botTokenCiphertext = $existing?->botTokenCiphertext;
         $webhookSecretCiphertext = $existing?->webhookSecretCiphertext;
-        $proxyUrlCiphertext = $existing?->proxyUrlCiphertext;
 
         $botToken = trim((string) ($body['bot_token'] ?? ''));
         $webhookSecret = trim((string) ($body['webhook_secret'] ?? ''));
-        $proxyUrl = trim((string) ($body['proxy_url'] ?? ''));
-        $proxyEnabled = $this->checked($body, 'proxy_enabled');
 
         if ($this->checked($body, 'generate_webhook_secret')) {
             $webhookSecret = bin2hex(random_bytes(24));
@@ -110,27 +112,52 @@ final class NotificationAdminController
             }
             $webhookSecretCiphertext = $this->secretBox->encrypt($webhookSecret);
         }
+
+        $this->telegramSettings->save(
+            botName: trim((string) ($body['bot_name'] ?? '')),
+            botTokenCiphertext: $botTokenCiphertext,
+            webhookSecretCiphertext: $webhookSecretCiphertext,
+            proxyEnabled: $existing !== null ? $existing->proxyEnabled : $current->proxyEnabled,
+            proxyUrlCiphertext: $existing?->proxyUrlCiphertext,
+        );
+
+        $_SESSION['_notification_admin_flash'] = $this->translator->trans('notifications.telegram_settings_saved');
+        return $this->redirect($response);
+    }
+
+    /** @param array<string, mixed> $body */
+    private function saveTelegramProxy(
+        ServerRequestInterface $request,
+        ResponseInterface $response,
+        array $body,
+    ): ResponseInterface {
+        $existing = $this->telegramSettings->get();
+        $current = $this->telegramConfiguration->get();
+        $proxyUrlCiphertext = $existing?->proxyUrlCiphertext;
+        $proxyUrl = trim((string) ($body['proxy_url'] ?? ''));
+        $proxyEnabled = $this->checked($body, 'proxy_enabled');
+
         if ($proxyUrl !== '') {
             if (!$this->validProxyUrl($proxyUrl)) {
                 return $this->render($request, $response, null, $this->translator->trans('notifications.telegram_proxy_invalid'), 422);
             }
             $proxyUrlCiphertext = $this->secretBox->encrypt($proxyUrl);
         }
-        $current = $this->telegramConfiguration->get();
+
         $effectiveProxyUrl = $proxyUrl !== '' ? $proxyUrl : $current->proxyUrl;
         if ($proxyEnabled && $effectiveProxyUrl === '') {
             return $this->render($request, $response, null, $this->translator->trans('notifications.telegram_proxy_required'), 422);
         }
 
         $this->telegramSettings->save(
-            botName: trim((string) ($body['bot_name'] ?? '')),
-            botTokenCiphertext: $botTokenCiphertext,
-            webhookSecretCiphertext: $webhookSecretCiphertext,
+            botName: $existing->botName ?? '',
+            botTokenCiphertext: $existing?->botTokenCiphertext,
+            webhookSecretCiphertext: $existing?->webhookSecretCiphertext,
             proxyEnabled: $proxyEnabled,
             proxyUrlCiphertext: $proxyUrlCiphertext,
         );
 
-        $_SESSION['_notification_admin_flash'] = $this->translator->trans('notifications.telegram_settings_saved');
+        $_SESSION['_notification_admin_flash'] = $this->translator->trans('notifications.telegram_proxy_saved');
         return $this->redirect($response);
     }
 
