@@ -2,7 +2,7 @@
 
 ## Supported versions
 
-TMS is currently pre-release. Until the first tagged release, security fixes are applied to the default branch only.
+Security fixes are developed on the default branch and included in supported stable releases. Users should run the newest stable version unless they are deliberately testing `edge`.
 
 ## Reporting a vulnerability
 
