@@ -111,7 +111,7 @@ jobs:
           - isolated multi-user task data, metadata and attachments;
           - dashboard counters, status distribution, stale tasks and daily tips;
           - task list, Kanban board and calendar with advanced filtering;
-          - global quick add, task quick view and bulk task operations;
+          - global quick add, task quick view with inline status/description/deadline editing and bulk task operations;
           - rich-text descriptions, customers and owner-scoped custom fields;
           - type-aware custom-field editing, money formatting and typed task filters;
           - per-user timezone, notification preferences and six interface theme modes;

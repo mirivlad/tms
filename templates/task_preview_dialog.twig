@@ -9,7 +9,8 @@
     data-label-deadline="{{ t('task_form.deadline') }}"
     data-label-created="{{ t('task_preview.created') }}"
     data-label-updated="{{ t('task_preview.updated') }}"
-    data-label-delete-confirm="{{ t('task_preview.delete_confirm') }}">
+    data-label-delete-confirm="{{ t('task_preview.delete_confirm') }}"
+    data-label-saved="{{ t('task_preview.saved') }}">
     <div class="task-preview-body">
         <header class="quick-add-dialog-header task-preview-header">
             <div>
@@ -18,7 +19,32 @@
             </div>
             <button class="secondary compact quick-add-close" type="button" data-task-preview-close aria-label="{{ t('common.close') }}">×</button>
         </header>
-        <div class="task-preview-description" data-task-preview-description></div>
+        <form class="task-preview-quick-edit" method="post" action="/api/tasks/0/quick-edit" data-task-preview-quick-edit hidden>
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <div class="task-preview-edit-grid">
+                <label>
+                    <span>{{ t('task_form.status') }}</span>
+                    <select name="status_id" data-task-preview-status required></select>
+                </label>
+                <label>
+                    <span>{{ t('task_form.deadline') }}</span>
+                    <input type="datetime-local" name="deadline" data-task-preview-deadline>
+                </label>
+            </div>
+            <div class="task-preview-description-field">
+                <span class="task-preview-edit-label">{{ t('task_form.description') }}</span>
+                <div class="task-preview-description task-preview-description-editor"
+                     data-task-preview-description
+                     contenteditable="true"
+                     role="textbox"
+                     aria-multiline="true"
+                     data-placeholder="{{ t('task_form.description_placeholder') }}"></div>
+            </div>
+            <div class="task-preview-save-row">
+                <button type="submit">{{ t('task_preview.save_changes') }}</button>
+                <span class="quick-add-result" data-task-preview-save-result role="status" hidden></span>
+            </div>
+        </form>
         <div class="task-preview-details" data-task-preview-details></div>
         <div class="task-preview-custom" data-task-preview-custom hidden>
             <h3>{{ t('task_preview.custom_fields') }}</h3>

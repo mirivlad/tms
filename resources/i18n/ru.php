@@ -187,6 +187,8 @@ return [
     'task_preview.attachments' => 'Вложения',
     'task_preview.delete' => 'Удалить задачу',
     'task_preview.delete_confirm' => 'Удалить эту задачу безвозвратно?',
+    'task_preview.save_changes' => 'Сохранить быстрые изменения',
+    'task_preview.saved' => 'Задача обновлена.',
     'task.no_status' => 'Без статуса',
     'task.no_deadline' => 'Без срока',
     'task.no_type' => 'Без типа',

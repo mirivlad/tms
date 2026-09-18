@@ -225,7 +225,7 @@ final class ApplicationFactory
         $adminController = new AdminController($twig, $sessions, $users, $rememberTokens, $registration, $userBootstrap, $attachments, $attachmentStorage, $translator);
         $profileController = new ProfileController($twig, $sessions, $users, $preferences, $rememberTokens, $translator);
         $dashboardController = new DashboardController($twig, $sessions, $tasks, $statuses, $dashboardTips, $translator);
-        $taskController = new TaskController($twig, $sessions, $tasks, $attachments, $statuses, $taskTypes, $customers, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator);
+        $taskController = new TaskController($twig, $sessions, $tasks, $attachments, $statuses, $taskTypes, $customers, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator, $descriptionSanitizer);
         $taskDeleteController = new TaskDeleteController($sessions, $tasks, $attachments, $attachmentStorage);
         $taskBulkController = new TaskBulkController($sessions, $tasks, $attachments, $attachmentStorage, $translator);
         $attachmentController = new AttachmentController($sessions, $tasks, $attachments, $attachmentPolicy, $attachmentStorage, $translator);
@@ -320,6 +320,7 @@ final class ApplicationFactory
         $app->post('/tasks', [$taskController, 'create'])->add($sanitizeTaskDescription)->add($requireAuth);
         $app->post('/tasks/quick-add', [$quickTaskController, 'create'])->add($requireAuth);
         $app->get('/api/tasks/{id:[0-9]+}', [$taskController, 'showJson'])->add($requireAuth);
+        $app->post('/api/tasks/{id:[0-9]+}/quick-edit', [$taskController, 'quickUpdate'])->add($sanitizeTaskDescription)->add($requireAuth);
         $app->get('/tasks/{id:[0-9]+}/edit', [$taskController, 'edit'])->add($requireAuth);
         $app->post('/tasks/{id:[0-9]+}', [$taskController, 'update'])->add($sanitizeTaskDescription)->add($requireAuth);
         $app->post('/tasks/{id:[0-9]+}/delete', [$taskDeleteController, 'delete'])->add($requireAuth);
