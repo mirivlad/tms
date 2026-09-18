@@ -13,7 +13,7 @@
 
 Use **New task** or the global quick-add action. The quick-add dialog is also available with `Alt+N` or `Cmd+N` where supported by the browser/OS.
 
-A task can contain title, description, priority, status, type, customer, deadline and custom fields. Rich descriptions are sanitized server-side. Attachments are stored separately from the public web root and are available only through authorized application routes.
+A task can contain title, description, priority, status, type, customer, deadline and custom fields. Open the quick-view dialog from a task card or row to change status, description and deadline without opening the full edit page. Rich descriptions are sanitized server-side. Attachments are stored separately from the public web root and are available only through authorized application routes.
 
 ## Filters and bulk work
 
