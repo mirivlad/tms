@@ -13,6 +13,7 @@ use Slim\Views\Twig;
 use Tms\Application\RegistrationService;
 use Tms\Application\UserBootstrapService;
 use Tms\Domain\Attachment\AttachmentRepository;
+use Tms\Domain\Project\ProjectAttachmentRepository;
 use Tms\Domain\User\UserRecord;
 use Tms\Domain\User\UserRepository;
 use Tms\I18n\Translator;
@@ -30,6 +31,7 @@ final class AdminController
         private readonly RegistrationService $registration,
         private readonly UserBootstrapService $bootstrap,
         private readonly AttachmentRepository $attachments,
+        private readonly ProjectAttachmentRepository $projectAttachments,
         private readonly AttachmentStorage $storage,
         private readonly Translator $translator,
     ) {
@@ -244,9 +246,10 @@ final class AdminController
             return $response->withHeader('Location', '/admin/users')->withStatus(302);
         }
         $stored = $this->attachments->listForUser($user->id);
+        $projectStored = $this->projectAttachments->listForProjectsOwnedByUser($user->id);
         try {
             if ($this->users->deleteByAdmin($user->id)) {
-                foreach ($stored as $attachment) {
+                foreach ([...$stored, ...$projectStored] as $attachment) {
                     if (!$this->storage->delete($attachment->storageName)) {
                         error_log('TMS attachment cleanup failed after admin user deletion: ' . $attachment->storageName);
                     }
