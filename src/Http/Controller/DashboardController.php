@@ -32,7 +32,7 @@ final class DashboardController
     {
         $userId = $this->sessions->currentUserId() ?? 0;
         $tasks = $this->tasks->listForUser($userId);
-        $statuses = $this->statuses->listForUser($userId);
+        $statuses = $this->statuses->listAccessibleForUser($userId);
 
         $completionIds = [];
         $statusMap = [];
