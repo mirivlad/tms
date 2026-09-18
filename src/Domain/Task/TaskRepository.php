@@ -16,7 +16,7 @@ final class TaskRepository
     public function findForUser(int $userId, int $taskId): ?TaskRecord
     {
         $stmt = $this->db->prepare(
-            'SELECT id, created_by, title, description, deadline, status_id, type_id, priority, customer_id, created_at, updated_at
+            'SELECT id, created_by, title, description, deadline, status_id, type_id, priority, customer_id, project_id, created_at, updated_at
              FROM tasks
              WHERE id = :task_id AND created_by = :user_id
              LIMIT 1'
@@ -51,10 +51,12 @@ final class TaskRepository
         string $deadlineTo = '',
         string $createdFrom = '',
         string $createdTo = '',
+        ?int $projectId = null,
+        bool $withoutProject = false,
     ): array {
         $customerQuery = trim($customerQuery);
         $sql = 'SELECT t.id, t.created_by, t.title, t.description, t.deadline, t.status_id, t.type_id,
-                       t.priority, t.customer_id, t.created_at, t.updated_at
+                       t.priority, t.customer_id, t.project_id, t.created_at, t.updated_at
                 FROM tasks t';
         if ($overdue) {
             $sql .= ' LEFT JOIN statuses s ON s.id = t.status_id AND s.user_id = t.created_by';
@@ -74,6 +76,12 @@ final class TaskRepository
         if ($typeId !== null) {
             $sql .= ' AND t.type_id = :type_id';
             $params['type_id'] = $typeId;
+        }
+        if ($projectId !== null) {
+            $sql .= ' AND t.project_id = :project_id';
+            $params['project_id'] = $projectId;
+        } elseif ($withoutProject) {
+            $sql .= ' AND t.project_id IS NULL';
         }
         if ($customerId !== null) {
             $sql .= ' AND t.customer_id = :customer_id';
@@ -144,6 +152,8 @@ final class TaskRepository
         bool $typeInvert = false,
         bool $priorityInvert = false,
         string $customerQuery = '',
+        ?int $projectId = null,
+        bool $withoutProject = false,
     ): array {
         if (!in_array($mode, ['deadlines_only', 'no_deadlines', 'all'], true)) {
             throw new DomainException('Unsupported calendar mode.');
@@ -157,7 +167,7 @@ final class TaskRepository
 
         $customerQuery = trim($customerQuery);
         $sql = 'SELECT t.id, t.created_by, t.title, t.description, t.deadline, t.status_id, t.type_id,
-                       t.priority, t.customer_id, t.created_at, t.updated_at
+                       t.priority, t.customer_id, t.project_id, t.created_at, t.updated_at
                 FROM tasks t';
         if ($customerQuery !== '') {
             $sql .= ' LEFT JOIN customers c ON c.id = t.customer_id AND c.user_id = t.created_by';
@@ -189,6 +199,12 @@ final class TaskRepository
         if ($typeIds !== []) {
             $condition = $this->calendarInCondition('t.type_id', 'type', $typeIds, $params, $typeInvert, true);
             $sql .= ' AND ' . $condition;
+        }
+        if ($projectId !== null) {
+            $sql .= ' AND t.project_id = :project_id';
+            $params['project_id'] = $projectId;
+        } elseif ($withoutProject) {
+            $sql .= ' AND t.project_id IS NULL';
         }
         if ($customerId !== null) {
             $sql .= ' AND t.customer_id = :customer_id';
@@ -248,17 +264,19 @@ final class TaskRepository
         ?int $typeId,
         int $priority,
         ?int $customerId,
+        ?int $projectId = null,
     ): int {
         $title = $this->validateTitle($title);
         $this->assertPriority($priority);
         $this->assertOwnedMetadata($userId, $statusId, $typeId, $customerId);
+        $this->assertOwnedProject($userId, $projectId);
 
         $stmt = $this->db->prepare(
             'INSERT INTO tasks (
-                created_by, title, description, deadline, status_id, type_id, priority, customer_id,
+                created_by, title, description, deadline, status_id, type_id, priority, customer_id, project_id,
                 created_at, updated_at
              ) VALUES (
-                :user_id, :title, :description, :deadline, :status_id, :type_id, :priority, :customer_id,
+                :user_id, :title, :description, :deadline, :status_id, :type_id, :priority, :customer_id, :project_id,
                 CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
              )'
         );
@@ -271,6 +289,7 @@ final class TaskRepository
             'type_id' => $typeId,
             'priority' => $priority,
             'customer_id' => $customerId,
+            'project_id' => $projectId,
         ]);
 
         return (int) $this->db->lastInsertId();
@@ -286,6 +305,7 @@ final class TaskRepository
         ?int $typeId,
         int $priority,
         ?int $customerId,
+        ?int $projectId = null,
     ): bool {
         if ($this->findForUser($userId, $taskId) === null) {
             return false;
@@ -294,6 +314,7 @@ final class TaskRepository
         $title = $this->validateTitle($title);
         $this->assertPriority($priority);
         $this->assertOwnedMetadata($userId, $statusId, $typeId, $customerId);
+        $this->assertOwnedProject($userId, $projectId);
 
         $stmt = $this->db->prepare(
             'UPDATE tasks
@@ -304,6 +325,7 @@ final class TaskRepository
                  type_id = :type_id,
                  priority = :priority,
                  customer_id = :customer_id,
+                 project_id = :project_id,
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = :task_id AND created_by = :user_id'
         );
@@ -315,10 +337,21 @@ final class TaskRepository
             'type_id' => $typeId,
             'priority' => $priority,
             'customer_id' => $customerId,
+            'project_id' => $projectId,
             'task_id' => $taskId,
             'user_id' => $userId,
         ]);
         return true;
+    }
+
+    /** @return list<TaskRecord> */
+    public function listForProjectForUser(int $userId, int $projectId): array
+    {
+        if (!$this->projectOwned($userId, $projectId)) {
+            return [];
+        }
+
+        return $this->listFilteredForUser($userId, projectId: $projectId);
     }
 
     public function quickUpdateForUser(
@@ -453,6 +486,25 @@ final class TaskRepository
         return $matched;
     }
 
+    private function assertOwnedProject(int $userId, ?int $projectId): void
+    {
+        if ($projectId !== null && !$this->projectOwned($userId, $projectId)) {
+            throw new DomainException('Selected project does not belong to the current user.');
+        }
+    }
+
+    private function projectOwned(int $userId, int $projectId): bool
+    {
+        $stmt = $this->db->prepare(
+            'SELECT 1
+             FROM projects
+             WHERE id = :id AND owner_user_id = :user_id AND owner_team_id IS NULL
+             LIMIT 1'
+        );
+        $stmt->execute(['id' => $projectId, 'user_id' => $userId]);
+        return $stmt->fetchColumn() !== false;
+    }
+
     private function metadataOwned(string $table, int $userId, int $id): bool
     {
         if (!in_array($table, ['statuses', 'task_types'], true)) {
@@ -542,6 +594,7 @@ final class TaskRepository
             typeId: $row['type_id'] !== null ? (int) $row['type_id'] : null,
             priority: (int) ($row['priority'] ?? 0),
             customerId: $row['customer_id'] !== null ? (int) $row['customer_id'] : null,
+            projectId: $row['project_id'] !== null ? (int) $row['project_id'] : null,
             createdAt: (string) $row['created_at'],
             updatedAt: (string) $row['updated_at'],
         );
