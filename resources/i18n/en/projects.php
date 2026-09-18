@@ -35,6 +35,8 @@ return [
     'projects.open_task_list' => 'Open filtered task list',
     'projects.no_tasks' => 'No tasks in this project yet.',
     'projects.no_tasks_help' => 'Create a task here or assign an existing task to this project.',
+    'projects.files' => 'Project files',
+    'projects.files_empty' => 'No files attached to this project yet.',
 
     'validation.project_name' => 'Project name must contain 1-160 characters.',
     'validation.project_description' => 'Project description cannot exceed 20000 characters.',
