@@ -259,6 +259,9 @@ jobs:
       - name: Exercise project task integration
         run: bash tests/smoke/project-tasks.sh
 
+      - name: Exercise project file workflow
+        run: bash tests/smoke/project-files.sh
+
       - name: Exercise navigation and profile regression
         run: bash tests/smoke/profile-navigation.sh
 

@@ -15,6 +15,12 @@ Use **New task** or the global quick-add action. The quick-add dialog is also av
 
 A task can contain title, description, priority, status, type, customer, deadline and custom fields. Open the quick-view dialog from a task card or row to change status, description and deadline without opening the full edit page. Rich descriptions are sanitized server-side. Attachments are stored separately from the public web root and are available only through authorized application routes.
 
+## Projects
+
+Create a project when several tasks need shared context. Tasks may stay unassigned (**No project**) or belong to one of your projects. Project filters are available in the task list, board and calendar, and a project page shows the tasks that belong to it.
+
+Project files use the same private upload policy as task attachments: they are stored outside the public web root and downloaded only through authorized application routes. Deleting a project keeps its tasks by returning them to **No project**, while the project's own files are deleted.
+
 ## Filters and bulk work
 
 The task table supports filters by status, type, priority, customer, overdue state, date ranges and custom-field values. Multiple status/type/priority values and status inversion are available where shown by the UI.

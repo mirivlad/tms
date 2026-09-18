@@ -8,10 +8,12 @@ use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
+use Tms\Domain\Project\ProjectAttachmentRepository;
 use Tms\Domain\Project\ProjectRepository;
 use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRepository;
 use Tms\I18n\Translator;
+use Tms\Infrastructure\AttachmentStorage;
 use Tms\Security\SessionManager;
 
 final class ProjectController
@@ -20,6 +22,8 @@ final class ProjectController
         private readonly Twig $view,
         private readonly SessionManager $sessions,
         private readonly ProjectRepository $projects,
+        private readonly ProjectAttachmentRepository $attachments,
+        private readonly AttachmentStorage $storage,
         private readonly TaskRepository $tasks,
         private readonly StatusRepository $statuses,
         private readonly Translator $translator,
@@ -54,6 +58,7 @@ final class ProjectController
             'username' => $this->sessions->currentUsername() ?? '',
             'project' => $project,
             'tasks' => $this->tasks->listForProjectForUser($userId, $project->id),
+            'attachments' => $this->attachments->listForProject($userId, $project->id),
             'status_map' => $statusMap,
         ]);
     }
@@ -122,13 +127,30 @@ final class ProjectController
         ResponseInterface $response,
         array $args,
     ): ResponseInterface {
-        if (!$this->projects->deleteForUser($this->userId(), $this->routeId($args))) {
+        $userId = $this->userId();
+        $projectId = $this->routeId($args);
+        if ($this->projects->findForUser($userId, $projectId) === null) {
             return $this->render(
                 $request,
                 $response,
                 $this->translator->trans('validation.project_not_found'),
                 404,
             );
+        }
+
+        $stored = $this->attachments->listForProject($userId, $projectId);
+        if (!$this->projects->deleteForUser($userId, $projectId)) {
+            return $this->render(
+                $request,
+                $response,
+                $this->translator->trans('validation.project_not_found'),
+                404,
+            );
+        }
+        foreach ($stored as $attachment) {
+            if (!$this->storage->delete($attachment->storageName)) {
+                error_log('TMS project attachment cleanup failed after project deletion: ' . $attachment->storageName);
+            }
         }
 
         return $this->redirect($response);
