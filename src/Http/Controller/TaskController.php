@@ -982,6 +982,7 @@ final class TaskController
      * @param list<CustomFieldRecord> $fields
      * @param array<int, StatusRecord> $statusMap
      * @param array<int, TaskTypeRecord> $typeMap
+     * @param array<int, ProjectRecord> $projectMap
      * @param array<string, mixed> $viewParams
      * @return list<array{label:string,value:string,url:string}>
      */
