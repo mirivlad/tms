@@ -6,6 +6,7 @@ namespace Tms\Domain\Project;
 
 use DomainException;
 use PDO;
+use Throwable;
 
 final class ProjectRepository
 {
@@ -73,24 +74,48 @@ final class ProjectRepository
         $description = $this->normalizeDescription($description);
         $lifecycleStatus = $this->normalizeLifecycleStatus($lifecycleStatus);
 
-        $stmt = $this->db->prepare(
-            'INSERT INTO projects (
-                owner_user_id, owner_team_id, created_by, name, description,
-                lifecycle_status, created_at, updated_at
-             ) VALUES (
-                :user_id, NULL, :created_by, :name, :description,
-                :lifecycle_status, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-             )'
-        );
-        $stmt->execute([
-            'user_id' => $userId,
-            'created_by' => $userId,
-            'name' => $name,
-            'description' => $description,
-            'lifecycle_status' => $lifecycleStatus,
-        ]);
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare(
+                'INSERT INTO projects (
+                    owner_user_id, owner_team_id, created_by, name, description,
+                    lifecycle_status, created_at, updated_at
+                 ) VALUES (
+                    :user_id, NULL, :created_by, :name, :description,
+                    :lifecycle_status, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                 )'
+            );
+            $stmt->execute([
+                'user_id' => $userId,
+                'created_by' => $userId,
+                'name' => $name,
+                'description' => $description,
+                'lifecycle_status' => $lifecycleStatus,
+            ]);
+            $projectId = (int) $this->db->lastInsertId();
 
-        return (int) $this->db->lastInsertId();
+            $clone = $this->db->prepare(
+                'INSERT INTO statuses (
+                    user_id, project_id, source_status_id, name, description, color, sort_order,
+                    is_default, is_completion, show_on_board, created_at, updated_at
+                 )
+                 SELECT
+                    NULL, :project_id, id, name, description, color, sort_order,
+                    is_default, is_completion, show_on_board, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                 FROM statuses
+                 WHERE user_id = :user_id AND project_id IS NULL
+                 ORDER BY sort_order ASC, id ASC'
+            );
+            $clone->execute(['project_id' => $projectId, 'user_id' => $userId]);
+
+            $this->db->commit();
+            return $projectId;
+        } catch (Throwable $error) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $error;
+        }
     }
 
     public function updateForUser(
