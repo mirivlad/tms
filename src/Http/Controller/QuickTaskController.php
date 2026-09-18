@@ -9,6 +9,7 @@ use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Tms\Domain\Project\ProjectRepository;
+use Tms\Domain\Project\ProjectStatusRepository;
 use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRepository;
 use Tms\I18n\Translator;
@@ -22,6 +23,7 @@ final class QuickTaskController
         private readonly TaskRepository $tasks,
         private readonly StatusRepository $statuses,
         private readonly ProjectRepository $projects,
+        private readonly ProjectStatusRepository $projectStatuses,
         private readonly TaskDescriptionSanitizer $sanitizer,
         private readonly Translator $translator,
     ) {
@@ -40,16 +42,17 @@ final class QuickTaskController
             }
 
             $userId = $this->sessions->currentUserId() ?? 0;
-            $statusId = $this->defaultStatusId($userId);
+            $projectId = $this->bodyInt($body, 'project_id');
+            if ($projectId !== null && $this->projects->findForUser($userId, $projectId) === null) {
+                throw new DomainException($this->translator->trans('validation.selected_project_unavailable'));
+            }
+
+            $statusId = $this->defaultStatusId($userId, $projectId);
             if ($statusId === null) {
                 throw new DomainException($this->translator->trans('validation.task_status_required'));
             }
 
             $deadline = $this->normalizeDeadline($body['deadline'] ?? null);
-            $projectId = $this->bodyInt($body, 'project_id');
-            if ($projectId !== null && $this->projects->findForUser($userId, $projectId) === null) {
-                throw new DomainException($this->translator->trans('validation.selected_project_unavailable'));
-            }
             $safeDescription = $description === ''
                 ? ''
                 : $this->sanitizer->sanitize(nl2br(htmlspecialchars(
@@ -117,10 +120,13 @@ final class QuickTaskController
         return str_contains(strtolower($request->getHeaderLine('Accept')), 'application/json');
     }
 
-    private function defaultStatusId(int $userId): ?int
+    private function defaultStatusId(int $userId, ?int $projectId): ?int
     {
         $fallback = null;
-        foreach ($this->statuses->listForUser($userId) as $status) {
+        $statuses = $projectId === null
+            ? $this->statuses->listForUser($userId)
+            : $this->projectStatuses->listForProject($userId, $projectId);
+        foreach ($statuses as $status) {
             $fallback ??= $status->id;
             if ($status->isDefault) {
                 return $status->id;
