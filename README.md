@@ -4,10 +4,10 @@
 
 TMS is a lightweight, self-hosted task management system for people who want to keep tasks and data on infrastructure they control.
 
-> **Current stable release:** `v0.1.3`
+> **Current stable release:** `v0.1.4`
 
 ```text
-ghcr.io/mirivlad/tms:v0.1.3
+ghcr.io/mirivlad/tms:v0.1.4
 ```
 
 `latest` follows the newest stable release. For reproducible deployments, pin a versioned tag. CI-tested development builds from `main` are published as `edge` and immutable `sha-<commit>` tags.
@@ -39,6 +39,7 @@ ghcr.io/mirivlad/tms:v0.1.3
 | Account recovery | [Account recovery](docs/ACCOUNT_RECOVERY.md) | [Восстановление доступа](docs/ACCOUNT_RECOVERY.ru.md) |
 | Architecture | [Architecture](docs/ARCHITECTURE.md) | — |
 | Project scope | [Project scope](docs/PROJECT_SCOPE.md) | — |
+| Roadmap | [Roadmap](docs/ROADMAP.md) | — |
 | Security policy | [Security](SECURITY.md) | — |
 
 ## Quick start with the published image
