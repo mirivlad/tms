@@ -26,6 +26,7 @@ use Tms\Domain\Notification\NotificationSettingsRepository;
 use Tms\Domain\Notification\SmtpSettingsRepository;
 use Tms\Domain\Notification\TelegramLinkTokenRepository;
 use Tms\Domain\Notification\TelegramSystemSettingsRepository;
+use Tms\Domain\Project\ProjectRepository;
 use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRepository;
 use Tms\Domain\TaskType\TaskTypeRepository;
@@ -46,6 +47,7 @@ use Tms\Http\Controller\NotificationSettingsController;
 use Tms\Http\Controller\PasswordRecoveryController;
 use Tms\Http\Controller\PublicController;
 use Tms\Http\Controller\ProfileController;
+use Tms\Http\Controller\ProjectController;
 use Tms\Http\Controller\QuickTaskController;
 use Tms\Http\Controller\RegistrationController;
 use Tms\Http\Controller\StatusDefaultsController;
@@ -148,6 +150,7 @@ final class ApplicationFactory
         $customers = new CustomerRepository($db);
         $customFields = new CustomFieldRepository($db);
         $customValues = new TaskCustomFieldValueRepository($db);
+        $projects = new ProjectRepository($db);
         $tasks = new TaskRepository($db);
         $attachments = new AttachmentRepository($db);
         $notificationSettings = new NotificationSettingsRepository($db);
@@ -224,6 +227,7 @@ final class ApplicationFactory
         $registrationController = new RegistrationController($twig, $registration, $sessions, $registrationCaptcha, $translator, $registrationEnabled);
         $adminController = new AdminController($twig, $sessions, $users, $rememberTokens, $registration, $userBootstrap, $attachments, $attachmentStorage, $translator);
         $profileController = new ProfileController($twig, $sessions, $users, $preferences, $rememberTokens, $translator);
+        $projectController = new ProjectController($twig, $sessions, $projects, $translator);
         $dashboardController = new DashboardController($twig, $sessions, $tasks, $statuses, $dashboardTips, $translator);
         $taskController = new TaskController($twig, $sessions, $tasks, $attachments, $statuses, $taskTypes, $customers, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator, $descriptionSanitizer);
         $taskDeleteController = new TaskDeleteController($sessions, $tasks, $attachments, $attachmentStorage);
@@ -315,6 +319,10 @@ final class ApplicationFactory
         $app->post('/locale', [$localeController, 'switch']);
 
         $app->get('/dashboard', [$dashboardController, 'show'])->add($requireAuth);
+        $app->get('/projects', [$projectController, 'index'])->add($requireAuth);
+        $app->post('/projects', [$projectController, 'create'])->add($requireAuth);
+        $app->post('/projects/{id:[0-9]+}', [$projectController, 'update'])->add($requireAuth);
+        $app->post('/projects/{id:[0-9]+}/delete', [$projectController, 'delete'])->add($requireAuth);
         $app->get('/tasks', [$taskController, 'index'])->add($requireAuth);
         $app->get('/tasks/new', [$taskController, 'new'])->add($requireAuth);
         $app->post('/tasks', [$taskController, 'create'])->add($sanitizeTaskDescription)->add($requireAuth);
