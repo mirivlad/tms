@@ -65,7 +65,7 @@
             {% set lifecycle = values.lifecycle_status|default(project.lifecycleStatus) %}
             <article class="metadata-item">
                 <div class="metadata-item-heading">
-                    <strong>{{ project.name }}</strong>
+                    <strong><a class="text-link" href="/projects/{{ project.id }}">{{ project.name }}</a></strong>
                     <div class="metadata-badges">
                         <span class="metadata-badge">{{ t('projects.status.' ~ project.lifecycleStatus) }}</span>
                         <span class="metadata-badge">{{ t('projects.personal') }}</span>

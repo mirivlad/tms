@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Tms\Domain\Project\ProjectRepository;
 use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRepository;
 use Tms\I18n\Translator;
@@ -20,6 +21,7 @@ final class QuickTaskController
         private readonly SessionManager $sessions,
         private readonly TaskRepository $tasks,
         private readonly StatusRepository $statuses,
+        private readonly ProjectRepository $projects,
         private readonly TaskDescriptionSanitizer $sanitizer,
         private readonly Translator $translator,
     ) {
@@ -44,6 +46,10 @@ final class QuickTaskController
             }
 
             $deadline = $this->normalizeDeadline($body['deadline'] ?? null);
+            $projectId = $this->bodyInt($body, 'project_id');
+            if ($projectId !== null && $this->projects->findForUser($userId, $projectId) === null) {
+                throw new DomainException($this->translator->trans('validation.selected_project_unavailable'));
+            }
             $safeDescription = $description === ''
                 ? ''
                 : $this->sanitizer->sanitize(nl2br(htmlspecialchars(
@@ -61,6 +67,7 @@ final class QuickTaskController
                 null,
                 1,
                 null,
+                $projectId,
             );
 
             $message = $this->translator->trans('quick_add.created');
@@ -120,6 +127,16 @@ final class QuickTaskController
             }
         }
         return $fallback;
+    }
+
+    /** @param array<string, mixed> $body */
+    private function bodyInt(array $body, string $key): ?int
+    {
+        $value = $body[$key] ?? null;
+        if ($value === '' || $value === null) {
+            return null;
+        }
+        return is_scalar($value) && ctype_digit((string) $value) && (int) $value > 0 ? (int) $value : null;
     }
 
     private function normalizeDeadline(mixed $value): ?string

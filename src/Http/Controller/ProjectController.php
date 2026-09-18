@@ -9,6 +9,8 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
 use Tms\Domain\Project\ProjectRepository;
+use Tms\Domain\Status\StatusRepository;
+use Tms\Domain\Task\TaskRepository;
 use Tms\I18n\Translator;
 use Tms\Security\SessionManager;
 
@@ -18,6 +20,8 @@ final class ProjectController
         private readonly Twig $view,
         private readonly SessionManager $sessions,
         private readonly ProjectRepository $projects,
+        private readonly TaskRepository $tasks,
+        private readonly StatusRepository $statuses,
         private readonly Translator $translator,
     ) {
     }
@@ -25,6 +29,33 @@ final class ProjectController
     public function index(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         return $this->render($request, $response);
+    }
+
+    /** @param array<string, string> $args */
+    public function show(
+        ServerRequestInterface $request,
+        ResponseInterface $response,
+        array $args,
+    ): ResponseInterface {
+        $userId = $this->userId();
+        $project = $this->projects->findForUser($userId, $this->routeId($args));
+        if ($project === null) {
+            $response->getBody()->write($this->translator->trans('validation.project_not_found'));
+            return $response->withStatus(404)->withHeader('Content-Type', 'text/plain; charset=utf-8');
+        }
+
+        $statusMap = [];
+        foreach ($this->statuses->listForUser($userId) as $status) {
+            $statusMap[$status->id] = $status;
+        }
+
+        return $this->view->render($response, 'projects/show.twig', [
+            'csrf_token' => $this->csrfToken($request),
+            'username' => $this->sessions->currentUsername() ?? '',
+            'project' => $project,
+            'tasks' => $this->tasks->listForProjectForUser($userId, $project->id),
+            'status_map' => $statusMap,
+        ]);
     }
 
     public function create(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface

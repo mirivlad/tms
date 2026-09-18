@@ -1,0 +1,54 @@
+{% extends 'app_layout.twig' %}
+
+{% block title %}{{ project.name }} · TMS{% endblock %}
+
+{% block content %}
+<header class="page-header compact-page-header">
+    <div>
+        <h1>{{ project.name }}</h1>
+        <p class="muted">{{ t('projects.status.' ~ project.lifecycleStatus) }} · {{ t('projects.personal') }}</p>
+    </div>
+    <div class="page-header-actions">
+        <a class="button-link" href="/tasks/new?project_id={{ project.id }}">{{ t('projects.add_task') }}</a>
+        <a class="text-link" href="/projects">{{ t('projects.back') }}</a>
+    </div>
+</header>
+
+{% if project.description %}
+<section class="content-card">
+    <p class="project-description">{{ project.description|nl2br }}</p>
+</section>
+{% endif %}
+
+<section class="content-card task-table-card">
+    <div class="section-heading">
+        <div>
+            <h2>{{ t('projects.tasks') }}</h2>
+            <p class="muted">{{ t('projects.tasks_help') }}</p>
+        </div>
+        <a class="text-link" href="/tasks?project={{ project.id }}">{{ t('projects.open_task_list') }}</a>
+    </div>
+
+    {% if tasks is empty %}
+        <div class="empty-state">
+            <strong>{{ t('projects.no_tasks') }}</strong>
+            <span>{{ t('projects.no_tasks_help') }}</span>
+        </div>
+    {% else %}
+        <div class="table-wrap">
+            <table class="task-table">
+                <thead><tr><th>{{ t('tasks.table.task') }}</th><th>{{ t('tasks.table.status') }}</th><th>{{ t('tasks.table.deadline') }}</th></tr></thead>
+                <tbody>
+                {% for task in tasks %}
+                    <tr>
+                        <td><a class="task-title" href="/tasks/{{ task.id }}/edit" data-task-preview="{{ task.id }}">{{ task.title }}</a></td>
+                        <td>{{ status_map[task.statusId].name|default('—') }}</td>
+                        <td class="nowrap">{{ task.deadline ? task.deadline|date('Y-m-d H:i') : '—' }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% endif %}
+</section>
+{% endblock %}

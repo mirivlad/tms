@@ -16,6 +16,7 @@ final readonly class TaskRecord
         public ?int $typeId,
         public int $priority,
         public ?int $customerId,
+        public ?int $projectId,
         public string $createdAt,
         public string $updatedAt,
     ) {

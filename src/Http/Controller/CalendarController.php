@@ -9,6 +9,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
 use Tms\Domain\Customer\CustomerRepository;
+use Tms\Domain\Project\ProjectRepository;
 use Tms\Domain\Status\StatusRecord;
 use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRecord;
@@ -33,6 +34,7 @@ final class CalendarController
         private readonly StatusRepository $statuses,
         private readonly TaskTypeRepository $taskTypes,
         private readonly CustomerRepository $customers,
+        private readonly ProjectRepository $projects,
         private readonly Translator $translator,
     ) {
     }
@@ -61,6 +63,9 @@ final class CalendarController
         ));
         $priorityInvert = $priorities !== [] && ($query['priority_invert'] ?? null) === '1';
 
+        $userId = $this->sessions->currentUserId() ?? 0;
+        [$projectId, $withoutProject, $projectFilter] = $this->projectFilter($query, $userId);
+
         $firstDay = DateTimeImmutable::createFromFormat('!Y-m-d', $month . '-01');
         if ($firstDay === false) {
             $firstDay = new DateTimeImmutable('first day of this month midnight');
@@ -69,8 +74,6 @@ final class CalendarController
 
         $gridStart = $firstDay->modify('-' . ((int) $firstDay->format('N') - 1) . ' days');
         $gridEnd = $gridStart->modify('+42 days');
-        $userId = $this->sessions->currentUserId() ?? 0;
-
         $tasks = $this->tasks->listCalendarForUser(
             $userId,
             $gridStart->format('Y-m-d H:i:s'),
@@ -84,6 +87,8 @@ final class CalendarController
             $typeInvert,
             $priorityInvert,
             $customerQuery,
+            $projectId,
+            $withoutProject,
         );
 
         $tasksByDay = [];
@@ -117,6 +122,7 @@ final class CalendarController
             'customer' => $customerQuery,
             'priority' => $priorityNames,
             'priority_invert' => $priorityInvert,
+            'project' => $projectFilter,
         ];
 
         $monthLabel = $this->translator->trans('month.' . $firstDay->format('m')) . ' ' . $firstDay->format('Y');
@@ -134,6 +140,7 @@ final class CalendarController
             'statuses' => $this->statuses->listForUser($userId),
             'types' => $this->taskTypes->listForUser($userId),
             'customers' => $this->customers->listForUser($userId, 500),
+            'projects' => $this->projects->listForUser($userId),
             'status_map' => $this->statusMap($userId),
             'priority_labels' => $this->priorityLabels(),
         ]);
@@ -206,7 +213,7 @@ final class CalendarController
     }
 
     /**
-     * @param array{mode:string,status_id:list<int>,status_invert:bool,type_id:list<int>,type_invert:bool,customer_id:?int,customer:string,priority:list<string>,priority_invert:bool} $filters
+     * @param array{mode:string,status_id:list<int>,status_invert:bool,type_id:list<int>,type_invert:bool,customer_id:?int,customer:string,priority:list<string>,priority_invert:bool,project:string} $filters
      */
     private function monthQuery(DateTimeImmutable $month, array $filters): string
     {
@@ -215,6 +222,9 @@ final class CalendarController
             if ($filters[$key] !== []) {
                 $params[$key] = $filters[$key];
             }
+        }
+        if ($filters['project'] !== '') {
+            $params['project'] = $filters['project'];
         }
         foreach (['customer_id', 'customer'] as $key) {
             if ($filters[$key] !== null && $filters[$key] !== '') {
@@ -225,6 +235,25 @@ final class CalendarController
         if ($filters['type_invert']) { $params['type_invert'] = '1'; }
         if ($filters['priority_invert']) { $params['priority_invert'] = '1'; }
         return http_build_query($params);
+    }
+
+    /**
+     * @param array<string, mixed> $query
+     * @return array{0:?int,1:bool,2:string}
+     */
+    private function projectFilter(array $query, int $userId): array
+    {
+        $value = is_scalar($query['project'] ?? null) ? trim((string) $query['project']) : '';
+        if ($value === 'none') {
+            return [null, true, 'none'];
+        }
+        if (ctype_digit($value) && (int) $value > 0) {
+            $projectId = (int) $value;
+            if ($this->projects->findForUser($userId, $projectId) !== null) {
+                return [$projectId, false, (string) $projectId];
+            }
+        }
+        return [null, false, ''];
     }
 
     /** @return array<int, StatusRecord> */

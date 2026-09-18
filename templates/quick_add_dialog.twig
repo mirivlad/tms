@@ -13,6 +13,14 @@
             {{ t('task_form.title') }}
             <input type="text" name="title" maxlength="255" required autocomplete="off" placeholder="{{ t('quick_add.title_placeholder') }}" data-quick-add-title-input>
         </label>
+        {% set quick_projects = current_projects() %}
+        <label>
+            {{ t('projects.task_project') }}
+            <select name="project_id">
+                <option value="">{{ t('projects.no_project') }}</option>
+                {% for project in quick_projects %}<option value="{{ project.id }}">{{ project.name }}</option>{% endfor %}
+            </select>
+        </label>
         <label>
             {{ t('task_form.deadline') }}
             <input type="datetime-local" name="deadline">
