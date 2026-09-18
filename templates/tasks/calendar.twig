@@ -16,6 +16,7 @@
             <form method="get" action="/calendar" class="month-jump">
                 <input type="month" name="month" value="{{ month }}" min="1970-01" max="2100-12" aria-label="{{ t('calendar.month_aria') }}">
                 <input type="hidden" name="mode" value="{{ filters.mode }}">
+                {% if filters.project %}<input type="hidden" name="project" value="{{ filters.project }}">{% endif %}
                 {% for id in filters.status_id %}<input type="hidden" name="status_id[]" value="{{ id }}">{% endfor %}
                 {% if filters.status_invert %}<input type="hidden" name="status_invert" value="1">{% endif %}
                 {% for id in filters.type_id %}<input type="hidden" name="type_id[]" value="{{ id }}">{% endfor %}
@@ -68,6 +69,15 @@
                     <option value="deadlines_only" {{ filters.mode == 'deadlines_only' ? 'selected' : '' }}>{{ t('calendar.mode.deadlines') }}</option>
                     <option value="no_deadlines" {{ filters.mode == 'no_deadlines' ? 'selected' : '' }}>{{ t('calendar.mode.no_deadline') }}</option>
                     <option value="all" {{ filters.mode == 'all' ? 'selected' : '' }}>{{ t('calendar.mode.all') }}</option>
+                </select>
+            </label>
+            <label>{{ t('projects.task_project') }}
+                <select name="project">
+                    <option value="">{{ t('projects.all_projects') }}</option>
+                    <option value="none" {{ filters.project == 'none' ? 'selected' : '' }}>{{ t('projects.no_project') }}</option>
+                    {% for project in projects %}
+                        <option value="{{ project.id }}" {{ filters.project == (project.id ~ '') ? 'selected' : '' }}>{{ project.name }}</option>
+                    {% endfor %}
                 </select>
             </label>
             <div class="calendar-filter-group">
