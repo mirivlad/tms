@@ -30,6 +30,12 @@ final class TaskCrudRepositoryTest extends TestCase
         $this->db->exec('CREATE TABLE customers (
             id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, name TEXT NOT NULL
         )');
+        $this->db->exec('CREATE TABLE projects (
+            id INTEGER PRIMARY KEY,
+            owner_user_id INTEGER NULL,
+            owner_team_id INTEGER NULL,
+            name TEXT NOT NULL
+        )');
         $this->db->exec('CREATE TABLE tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             created_by INTEGER NOT NULL,
@@ -40,6 +46,7 @@ final class TaskCrudRepositoryTest extends TestCase
             type_id INTEGER NULL,
             priority INTEGER NOT NULL DEFAULT 0,
             customer_id INTEGER NULL,
+            project_id INTEGER NULL,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )');
@@ -48,6 +55,8 @@ final class TaskCrudRepositoryTest extends TestCase
             (10,1,'Inbox',0),(11,1,'Done',1),(20,2,'Foreign',0)");
         $this->db->exec("INSERT INTO task_types (id,user_id,name) VALUES (30,1,'General'),(40,2,'Foreign')");
         $this->db->exec("INSERT INTO customers (id,user_id,name) VALUES (50,1,'Acme 100%'),(60,2,'Foreign')");
+        $this->db->exec("INSERT INTO projects (id,owner_user_id,owner_team_id,name) VALUES
+            (70,1,NULL,'Owned project'),(80,2,NULL,'Foreign project')");
         $this->db->exec("INSERT INTO tasks (id,created_by,title,description,status_id,type_id,priority,customer_id) VALUES
             (200,2,'Other user task','',20,40,1,60)");
 
@@ -68,6 +77,26 @@ final class TaskCrudRepositoryTest extends TestCase
         self::assertTrue($this->tasks->updateForUser(1, $id, 'Renamed', 'Updated', null, 11, null, 3, null));
         self::assertSame('Renamed', $this->tasks->findForUser(1, $id)?->title);
         self::assertSame(11, $this->tasks->findForUser(1, $id)?->statusId);
+    }
+
+    public function testProjectAssignmentIsOwnedOptionalAndFilterable(): void
+    {
+        $assigned = $this->tasks->createForUser(1, 'Assigned', '', null, 10, null, 1, null, 70);
+        $unassigned = $this->tasks->createForUser(1, 'Loose', '', null, 10, null, 1, null);
+
+        self::assertSame(70, $this->tasks->findForUser(1, $assigned)?->projectId);
+        self::assertNull($this->tasks->findForUser(1, $unassigned)?->projectId);
+        self::assertSame([$assigned], array_map(
+            static fn ($task): int => $task->id,
+            $this->tasks->listFilteredForUser(1, projectId: 70),
+        ));
+        self::assertSame([$unassigned], array_map(
+            static fn ($task): int => $task->id,
+            $this->tasks->listFilteredForUser(1, withoutProject: true),
+        ));
+
+        $this->expectException(DomainException::class);
+        $this->tasks->updateForUser(1, $assigned, 'Assigned', '', null, 10, null, 1, null, 80);
     }
 
     public function testQuickUpdateChangesOnlyPreviewFieldsAndKeepsOwnerScope(): void
