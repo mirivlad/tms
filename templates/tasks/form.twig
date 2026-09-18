@@ -39,6 +39,16 @@
         </div>
 
         <label>
+            {{ t('projects.task_project') }}
+            <select name="project_id">
+                <option value="">{{ t('projects.no_project') }}</option>
+                {% for project in projects %}
+                    <option value="{{ project.id }}" {{ form.project_id == project.id ? 'selected' : '' }}>{{ project.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+
+        <label>
             {{ t('task_form.status') }}
             <select name="status_id" required>
                 {% for status in statuses %}
