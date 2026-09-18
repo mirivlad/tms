@@ -34,15 +34,31 @@ The 0.2 line is the transition from isolated personal task management to optiona
 
 ### Stage B — Project configuration
 
-Projects gain their own working context rather than inheriting every account-wide setting:
+Projects gain their own working context rather than inheriting every account-wide setting. This stage is deliberately split so storage changes do not get mixed with workflow-data migrations:
+
+#### B1 — Project files
 
 - project files/attachments;
-- project-specific task statuses;
-- project-specific custom fields;
-- safe migration/fallback behavior for existing global statuses and custom fields;
-- project settings UI.
+- reuse the existing private file policy and storage;
+- project-scoped authorization and cleanup;
+- keep uploader identity separate from project ownership for the future Teams stage.
 
-The exact status/custom-field migration must preserve existing tasks and must not silently change their meaning.
+#### B2 — Project statuses
+
+- project-specific task statuses;
+- initialize a project's workflow from the owner's existing statuses;
+- preserve the meaning/status of tasks already assigned to projects;
+- make project status ownership compatible with future team-owned projects;
+- project workflow settings UI.
+
+#### B3 — Project custom fields
+
+- project-specific custom fields;
+- migrate/preserve existing values on tasks already assigned to projects;
+- make project-field ownership compatible with future team-owned projects;
+- project field settings UI.
+
+Status/custom-field migrations must preserve existing tasks and must not silently change their meaning. Only after B1-B3 are stable does the roadmap move to Teams.
 
 ### Stage C — Teams
 
