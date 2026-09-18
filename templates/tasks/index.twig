@@ -26,6 +26,16 @@
                     <input type="search" name="q" value="{{ filters.q }}" placeholder="{{ t('tasks.search_placeholder') }}">
                 </label>
                 <label>
+                    {{ t('projects.task_project') }}
+                    <select name="project">
+                        <option value="">{{ t('projects.all_projects') }}</option>
+                        <option value="none" {{ filters.project == 'none' ? 'selected' : '' }}>{{ t('projects.no_project') }}</option>
+                        {% for project in projects %}
+                            <option value="{{ project.id }}" {{ filters.project == (project.id ~ '') ? 'selected' : '' }}>{{ project.name }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>
                     {{ t('tasks.status') }}
                     <select name="status_id">
                         <option value="">{{ t('tasks.all_statuses') }}</option>
@@ -232,6 +242,7 @@
                     <tr>
                         <th class="bulk-select-cell"><input type="checkbox" data-bulk-select-all aria-label="{{ t('bulk.select_all') }}"></th>
                         <th>{{ sorting.head(sort_links.title, t('tasks.table.task')) }}</th>
+                        <th>{{ t('projects.task_project') }}</th>
                         <th>{{ sorting.head(sort_links.status_name, t('tasks.table.status')) }}</th>
                         <th>{{ sorting.head(sort_links.type_name, t('tasks.table.type')) }}</th>
                         <th>{{ sorting.head(sort_links.priority, t('tasks.table.priority')) }}</th>
@@ -254,6 +265,7 @@
                             <a class="task-title" href="/tasks/{{ task.id }}/edit">{{ task.title }}</a>
                             {% if task.description %}<div class="muted task-preview">{{ task.description|striptags }}</div>{% endif %}
                         </td>
+                        <td>{{ project_map[task.projectId].name|default(t('projects.no_project')) }}</td>
                         <td>
                             <span class="status-pill" style="--status-color: {{ status_map[task.statusId].color|default('var(--status-neutral)') }}">
                                 <span class="status-dot"></span>
