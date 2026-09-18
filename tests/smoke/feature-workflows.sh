@@ -240,6 +240,27 @@ grep -q 'Feature bulk alpha' /tmp/tms-task-preview.json
 grep -q '"name":"preview.txt"' /tmp/tms-task-preview.json
 grep -q "/tasks/$alpha_id/attachments/$preview_attachment_id" /tmp/tms-task-preview.json
 grep -q "/tasks/$alpha_id/delete" /tmp/tms-task-preview.json
+grep -q "/api/tasks/$alpha_id/quick-edit" /tmp/tms-task-preview.json
+grep -q '"status_options":' /tmp/tms-task-preview.json
+
+quick_status=$(db "SELECT id FROM statuses WHERE user_id=$user_id AND is_default=1 LIMIT 1")
+test -n "$quick_status"
+quick_edit_response=$(curl --fail --silent --header 'Accept: application/json' \
+  --cookie "$user_cookies" \
+  --data-urlencode "_csrf=$task_csrf" \
+  --data-urlencode "status_id=$quick_status" \
+  --data-urlencode 'deadline=2026-09-30T12:34' \
+  --data-urlencode 'description=<p>Quick preview note</p>' \
+  "$base_url/api/tasks/$alpha_id/quick-edit")
+printf '%s' "$quick_edit_response" | grep -q '"success":true'
+test "$(db "SELECT status_id FROM tasks WHERE id=$alpha_id AND created_by=$user_id")" = "$quick_status"
+test "$(db "SELECT deadline FROM tasks WHERE id=$alpha_id AND created_by=$user_id")" = '2026-09-30 12:34:00'
+test "$(db "SELECT description FROM tasks WHERE id=$alpha_id AND created_by=$user_id")" = '<p>Quick preview note</p>'
+
+curl --fail --silent --cookie "$user_cookies" "$base_url/api/tasks/$alpha_id" > /tmp/tms-task-preview-after-quick-edit.json
+grep -q 'Quick preview note' /tmp/tms-task-preview-after-quick-edit.json
+grep -q '"deadline_input":"2026-09-30T12:34"' /tmp/tms-task-preview-after-quick-edit.json
+
 curl --fail --silent --cookie "$user_cookies" \
   "$base_url/tasks/$alpha_id/attachments/$preview_attachment_id" > /tmp/tms-feature-preview-download.txt
 cmp /tmp/tms-feature-preview.txt /tmp/tms-feature-preview-download.txt
@@ -247,6 +268,14 @@ admin_task_id=$(db "SELECT id FROM tasks WHERE created_by != $user_id ORDER BY i
 if [ -n "$admin_task_id" ]; then
   preview_status=$(curl --silent --output /dev/null --write-out '%{http_code}' --cookie "$user_cookies" "$base_url/api/tasks/$admin_task_id")
   test "$preview_status" = "404"
+  quick_edit_foreign_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+    --header 'Accept: application/json' \
+    --cookie "$user_cookies" \
+    --data-urlencode "_csrf=$task_csrf" \
+    --data-urlencode "status_id=$quick_status" \
+    --data-urlencode 'description=must not write' \
+    "$base_url/api/tasks/$admin_task_id/quick-edit")
+  test "$quick_edit_foreign_status" = "404"
 fi
 
 # Bulk actions operate only on selected tasks owned by the current user.
