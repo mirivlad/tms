@@ -321,6 +321,38 @@ final class TaskRepository
         return true;
     }
 
+    public function quickUpdateForUser(
+        int $userId,
+        int $taskId,
+        string $description,
+        ?string $deadline,
+        int $statusId,
+    ): bool {
+        if ($this->findForUser($userId, $taskId) === null) {
+            return false;
+        }
+        if (!$this->metadataOwned('statuses', $userId, $statusId)) {
+            throw new DomainException('Selected status is unavailable.');
+        }
+
+        $stmt = $this->db->prepare(
+            'UPDATE tasks
+             SET description = :description,
+                 deadline = :deadline,
+                 status_id = :status_id,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = :task_id AND created_by = :user_id'
+        );
+        $stmt->execute([
+            'description' => trim($description),
+            'deadline' => $deadline,
+            'status_id' => $statusId,
+            'task_id' => $taskId,
+            'user_id' => $userId,
+        ]);
+        return true;
+    }
+
     public function updateStatusForUser(int $userId, int $taskId, int $statusId): bool
     {
         $stmt = $this->db->prepare(
