@@ -1,0 +1,109 @@
+{% extends 'app_layout.twig' %}
+
+{% block title %}{{ t('projects.page_title') }} · TMS{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/assets/metadata.css">{% endblock %}
+
+{% block content %}
+<header class="page-header compact-page-header">
+    <div>
+        <h1>{{ t('projects.title') }}</h1>
+        <p class="muted">{{ t('projects.subtitle') }}</p>
+    </div>
+</header>
+
+<section class="content-card metadata-section">
+    <div class="section-heading">
+        <div>
+            <h2>{{ t('projects.create_title') }}</h2>
+            <p class="muted">{{ t('projects.create_help') }}</p>
+        </div>
+    </div>
+
+    {% if error and not edit_project_id %}<p class="alert" role="alert">{{ error }}</p>{% endif %}
+
+    <form class="metadata-create" method="post" action="/projects">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label>
+            <span>{{ t('projects.name') }}</span>
+            <input type="text" name="name" maxlength="160" required value="{{ create_form.name|default('') }}">
+        </label>
+        <label>
+            <span>{{ t('projects.status') }}</span>
+            {% set create_status = create_form.lifecycle_status|default('active') %}
+            <select name="lifecycle_status">
+                {% for status in lifecycle_statuses %}
+                    <option value="{{ status }}" {{ create_status == status ? 'selected' : '' }}>{{ t('projects.status.' ~ status) }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="field-wide">
+            <span>{{ t('projects.description') }}</span>
+            <textarea name="description" rows="5" maxlength="20000" placeholder="{{ t('projects.description_placeholder') }}">{{ create_form.description|default('') }}</textarea>
+        </label>
+        <button type="submit">{{ t('projects.create') }}</button>
+    </form>
+</section>
+
+<section class="content-card metadata-section">
+    <div class="section-heading">
+        <div>
+            <h2>{{ t('projects.yours') }}</h2>
+            <p class="muted">{{ t('projects.owner_help') }}</p>
+        </div>
+    </div>
+
+    {% if projects is empty %}
+        <div class="empty-state">
+            <strong>{{ t('projects.empty') }}</strong>
+            <span>{{ t('projects.empty_help') }}</span>
+        </div>
+    {% else %}
+        <div class="metadata-list">
+        {% for project in projects %}
+            {% set editing = edit_project_id == project.id %}
+            {% set values = editing ? edit_form : {} %}
+            {% set lifecycle = values.lifecycle_status|default(project.lifecycleStatus) %}
+            <article class="metadata-item">
+                <div class="metadata-item-heading">
+                    <strong>{{ project.name }}</strong>
+                    <div class="metadata-badges">
+                        <span class="metadata-badge">{{ t('projects.status.' ~ project.lifecycleStatus) }}</span>
+                        <span class="metadata-badge">{{ t('projects.personal') }}</span>
+                    </div>
+                </div>
+
+                {% if editing and error %}<p class="alert" role="alert">{{ error }}</p>{% endif %}
+
+                <form class="metadata-edit" method="post" action="/projects/{{ project.id }}">
+                    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                    <label>
+                        <span>{{ t('projects.name') }}</span>
+                        <input type="text" name="name" maxlength="160" required value="{{ values.name|default(project.name) }}">
+                    </label>
+                    <label>
+                        <span>{{ t('projects.status') }}</span>
+                        <select name="lifecycle_status">
+                            {% for status in lifecycle_statuses %}
+                                <option value="{{ status }}" {{ lifecycle == status ? 'selected' : '' }}>{{ t('projects.status.' ~ status) }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label class="field-wide">
+                        <span>{{ t('projects.description') }}</span>
+                        <textarea name="description" rows="5" maxlength="20000">{{ values.description|default(project.description) }}</textarea>
+                    </label>
+                    <button class="secondary compact" type="submit">{{ t('common.save') }}</button>
+                </form>
+
+                <div class="metadata-actions">
+                    <form method="post" action="/projects/{{ project.id }}/delete" onsubmit="return confirm('{{ t('projects.delete_confirm')|e('js') }}')">
+                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                        <button class="danger-link compact" type="submit">{{ t('common.delete') }}</button>
+                    </form>
+                </div>
+            </article>
+        {% endfor %}
+        </div>
+    {% endif %}
+</section>
+{% endblock %}
