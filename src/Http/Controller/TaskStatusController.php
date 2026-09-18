@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tms\Http\Controller;
 
+use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRepository;
 use Tms\I18n\Translator;
 use Tms\Security\SessionManager;
@@ -16,7 +16,6 @@ final class TaskStatusController
     public function __construct(
         private readonly SessionManager $sessions,
         private readonly TaskRepository $tasks,
-        private readonly StatusRepository $statuses,
         private readonly Translator $translator,
     ) {
     }
@@ -32,12 +31,16 @@ final class TaskStatusController
         }
 
         $statusId = $this->statusId($request);
-        if ($statusId === null || $this->statuses->findForUser($userId, $statusId) === null) {
+        if ($statusId === null) {
             return $this->result($request, $response, 422, $this->translator->trans('validation.selected_status_unavailable'));
         }
 
-        if ($task->statusId !== $statusId && !$this->tasks->updateStatusForUser($userId, $taskId, $statusId)) {
-            return $this->result($request, $response, 409, $this->translator->trans('validation.task_status_not_changed'));
+        try {
+            if ($task->statusId !== $statusId && !$this->tasks->updateStatusForUser($userId, $taskId, $statusId)) {
+                return $this->result($request, $response, 409, $this->translator->trans('validation.task_status_not_changed'));
+            }
+        } catch (DomainException) {
+            return $this->result($request, $response, 422, $this->translator->trans('validation.selected_status_unavailable'));
         }
 
         if ($this->wantsJson($request)) {
