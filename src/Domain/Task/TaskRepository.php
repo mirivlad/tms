@@ -59,7 +59,7 @@ final class TaskRepository
                        t.priority, t.customer_id, t.project_id, t.created_at, t.updated_at
                 FROM tasks t';
         if ($overdue) {
-            $sql .= ' LEFT JOIN statuses s ON s.id = t.status_id AND s.user_id = t.created_by';
+            $sql .= ' LEFT JOIN statuses s ON s.id = t.status_id';
         }
         if ($customerQuery !== '') {
             $sql .= ' LEFT JOIN customers c ON c.id = t.customer_id AND c.user_id = t.created_by';
@@ -268,8 +268,9 @@ final class TaskRepository
     ): int {
         $title = $this->validateTitle($title);
         $this->assertPriority($priority);
-        $this->assertOwnedMetadata($userId, $statusId, $typeId, $customerId);
         $this->assertOwnedProject($userId, $projectId);
+        $this->assertStatusForScope($userId, $statusId, $projectId);
+        $this->assertOwnedMetadata($userId, $typeId, $customerId);
 
         $stmt = $this->db->prepare(
             'INSERT INTO tasks (
@@ -313,8 +314,9 @@ final class TaskRepository
 
         $title = $this->validateTitle($title);
         $this->assertPriority($priority);
-        $this->assertOwnedMetadata($userId, $statusId, $typeId, $customerId);
         $this->assertOwnedProject($userId, $projectId);
+        $this->assertStatusForScope($userId, $statusId, $projectId);
+        $this->assertOwnedMetadata($userId, $typeId, $customerId);
 
         $stmt = $this->db->prepare(
             'UPDATE tasks
@@ -361,12 +363,11 @@ final class TaskRepository
         ?string $deadline,
         int $statusId,
     ): bool {
-        if ($this->findForUser($userId, $taskId) === null) {
+        $task = $this->findForUser($userId, $taskId);
+        if ($task === null) {
             return false;
         }
-        if (!$this->metadataOwned('statuses', $userId, $statusId)) {
-            throw new DomainException('Selected status is unavailable.');
-        }
+        $this->assertStatusForScope($userId, $statusId, $task->projectId);
 
         $stmt = $this->db->prepare(
             'UPDATE tasks
@@ -388,26 +389,24 @@ final class TaskRepository
 
     public function updateStatusForUser(int $userId, int $taskId, int $statusId): bool
     {
+        $task = $this->findForUser($userId, $taskId);
+        if ($task === null) {
+            return false;
+        }
+        $this->assertStatusForScope($userId, $statusId, $task->projectId);
+
         $stmt = $this->db->prepare(
             'UPDATE tasks
              SET status_id = :status_id, updated_at = CURRENT_TIMESTAMP
-             WHERE id = :task_id
-               AND created_by = :user_id
-               AND EXISTS (
-                   SELECT 1
-                   FROM statuses
-                   WHERE id = :owned_status_id AND user_id = :status_user_id
-               )'
+             WHERE id = :task_id AND created_by = :user_id'
         );
         $stmt->execute([
             'status_id' => $statusId,
             'task_id' => $taskId,
             'user_id' => $userId,
-            'owned_status_id' => $statusId,
-            'status_user_id' => $userId,
         ]);
 
-        return $stmt->rowCount() === 1;
+        return true;
     }
 
     public function deleteForUser(int $userId, int $taskId): bool
@@ -420,9 +419,43 @@ final class TaskRepository
     /** @param list<int> $taskIds */
     public function bulkUpdateStatusForUser(int $userId, array $taskIds, int $statusId): int
     {
-        if (!$this->metadataOwned('statuses', $userId, $statusId)) {
+        $taskIds = array_values(array_unique(array_filter($taskIds, static fn (int $id): bool => $id > 0)));
+        if ($taskIds === []) {
+            return 0;
+        }
+
+        $statusScope = $this->statusScopeForUser($userId, $statusId);
+        if ($statusScope === null) {
             throw new DomainException('Selected status is unavailable.');
         }
+
+        $params = ['user_id' => $userId];
+        $placeholders = [];
+        foreach ($taskIds as $index => $taskId) {
+            $key = 'task_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $taskId;
+        }
+
+        $scopeSql = $statusScope === 0
+            ? 'project_id IS NULL'
+            : 'project_id = :project_id';
+        if ($statusScope !== 0) {
+            $params['project_id'] = $statusScope;
+        }
+
+        $check = $this->db->prepare(
+            'SELECT COUNT(*)
+             FROM tasks
+             WHERE created_by = :user_id
+               AND id IN (' . implode(', ', $placeholders) . ')
+               AND ' . $scopeSql
+        );
+        $check->execute($params);
+        if ((int) $check->fetchColumn() !== count($taskIds)) {
+            throw new DomainException('Selected status is unavailable for one or more tasks.');
+        }
+
         return $this->bulkUpdateForUser($userId, $taskIds, 'status_id', $statusId);
     }
 
@@ -507,7 +540,7 @@ final class TaskRepository
 
     private function metadataOwned(string $table, int $userId, int $id): bool
     {
-        if (!in_array($table, ['statuses', 'task_types'], true)) {
+        if (!in_array($table, ['task_types'], true)) {
             throw new DomainException('Unsupported metadata table.');
         }
         $stmt = $this->db->prepare('SELECT 1 FROM ' . $table . ' WHERE id = :id AND user_id = :user_id LIMIT 1');
@@ -515,11 +548,8 @@ final class TaskRepository
         return $stmt->fetchColumn() !== false;
     }
 
-    private function assertOwnedMetadata(int $userId, int $statusId, ?int $typeId, ?int $customerId): void
+    private function assertOwnedMetadata(int $userId, ?int $typeId, ?int $customerId): void
     {
-        if (!$this->ownedReferenceExists('statuses', $userId, $statusId)) {
-            throw new DomainException('Selected status does not belong to the current user.');
-        }
         if ($typeId !== null && !$this->ownedReferenceExists('task_types', $userId, $typeId)) {
             throw new DomainException('Selected task type does not belong to the current user.');
         }
@@ -528,9 +558,51 @@ final class TaskRepository
         }
     }
 
+    private function assertStatusForScope(int $userId, int $statusId, ?int $projectId): void
+    {
+        $scope = $this->statusScopeForUser($userId, $statusId);
+        $expected = $projectId ?? 0;
+        if ($scope === null || $scope !== $expected) {
+            throw new DomainException('Selected status is unavailable for this task scope.');
+        }
+    }
+
+    /**
+     * Returns 0 for a personal status, a positive project id for a project
+     * status, or null when the status is not accessible to the user.
+     */
+    private function statusScopeForUser(int $userId, int $statusId): ?int
+    {
+        $stmt = $this->db->prepare(
+            'SELECT s.user_id, s.project_id
+             FROM statuses s
+             LEFT JOIN projects p ON p.id = s.project_id
+             WHERE s.id = :status_id
+               AND (
+                    (s.user_id = :personal_user_id AND s.project_id IS NULL)
+                    OR
+                    (s.user_id IS NULL
+                     AND s.project_id IS NOT NULL
+                     AND p.owner_user_id = :project_user_id
+                     AND p.owner_team_id IS NULL)
+               )
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'status_id' => $statusId,
+            'personal_user_id' => $userId,
+            'project_user_id' => $userId,
+        ]);
+        $row = $stmt->fetch();
+        if (!is_array($row)) {
+            return null;
+        }
+        return $row['project_id'] === null ? 0 : (int) $row['project_id'];
+    }
+
     private function ownedReferenceExists(string $table, int $userId, int $id): bool
     {
-        if (!in_array($table, ['statuses', 'task_types', 'customers'], true)) {
+        if (!in_array($table, ['task_types', 'customers'], true)) {
             throw new DomainException('Unsupported task metadata reference.');
         }
 
