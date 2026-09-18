@@ -187,6 +187,8 @@ return [
     'task_preview.attachments' => 'Attachments',
     'task_preview.delete' => 'Delete task',
     'task_preview.delete_confirm' => 'Delete this task permanently?',
+    'task_preview.save_changes' => 'Save quick changes',
+    'task_preview.saved' => 'Task updated.',
     'task.no_status' => 'No status',
     'task.no_deadline' => 'No deadline',
     'task.no_type' => 'No type',
