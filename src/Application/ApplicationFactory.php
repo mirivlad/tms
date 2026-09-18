@@ -164,6 +164,10 @@ final class ApplicationFactory
             $userId = $sessions->currentUserId();
             return $userId === null ? 'paper' : $preferences->getForUser($userId)->theme;
         }));
+        $twig->getEnvironment()->addFunction(new TwigFunction('current_projects', static function () use ($sessions, $projects): array {
+            $userId = $sessions->currentUserId();
+            return $userId === null ? [] : $projects->listForUser($userId);
+        }));
         $twig->getEnvironment()->addFunction(new TwigFunction('current_role', static fn (): ?string => $sessions->currentRole()));
         $twig->getEnvironment()->addFunction(new TwigFunction('is_impersonating', static fn (): bool => $sessions->isImpersonating()));
         $passwordAuthenticator = new PasswordAuthenticator($users);
@@ -227,16 +231,16 @@ final class ApplicationFactory
         $registrationController = new RegistrationController($twig, $registration, $sessions, $registrationCaptcha, $translator, $registrationEnabled);
         $adminController = new AdminController($twig, $sessions, $users, $rememberTokens, $registration, $userBootstrap, $attachments, $attachmentStorage, $translator);
         $profileController = new ProfileController($twig, $sessions, $users, $preferences, $rememberTokens, $translator);
-        $projectController = new ProjectController($twig, $sessions, $projects, $translator);
+        $projectController = new ProjectController($twig, $sessions, $projects, $tasks, $statuses, $translator);
         $dashboardController = new DashboardController($twig, $sessions, $tasks, $statuses, $dashboardTips, $translator);
-        $taskController = new TaskController($twig, $sessions, $tasks, $attachments, $statuses, $taskTypes, $customers, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator, $descriptionSanitizer);
+        $taskController = new TaskController($twig, $sessions, $tasks, $attachments, $statuses, $taskTypes, $customers, $projects, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator, $descriptionSanitizer);
         $taskDeleteController = new TaskDeleteController($sessions, $tasks, $attachments, $attachmentStorage);
         $taskBulkController = new TaskBulkController($sessions, $tasks, $attachments, $attachmentStorage, $translator);
         $attachmentController = new AttachmentController($sessions, $tasks, $attachments, $attachmentPolicy, $attachmentStorage, $translator);
-        $quickTaskController = new QuickTaskController($sessions, $tasks, $statuses, $descriptionSanitizer, $translator);
+        $quickTaskController = new QuickTaskController($sessions, $tasks, $statuses, $projects, $descriptionSanitizer, $translator);
         $customerSearchController = new CustomerSearchController($sessions, $customers);
         $taskStatusController = new TaskStatusController($sessions, $tasks, $statuses, $translator);
-        $calendarController = new CalendarController($twig, $sessions, $tasks, $statuses, $taskTypes, $customers, $translator);
+        $calendarController = new CalendarController($twig, $sessions, $tasks, $statuses, $taskTypes, $customers, $projects, $translator);
         $localeController = new LocaleController($translator);
         $metadataController = new MetadataController($twig, $sessions, $statuses, $taskTypes, $customers, $translator);
         $customFieldController = new CustomFieldController($twig, $sessions, $customFields, $translator);
@@ -320,6 +324,7 @@ final class ApplicationFactory
 
         $app->get('/dashboard', [$dashboardController, 'show'])->add($requireAuth);
         $app->get('/projects', [$projectController, 'index'])->add($requireAuth);
+        $app->get('/projects/{id:[0-9]+}', [$projectController, 'show'])->add($requireAuth);
         $app->post('/projects', [$projectController, 'create'])->add($requireAuth);
         $app->post('/projects/{id:[0-9]+}', [$projectController, 'update'])->add($requireAuth);
         $app->post('/projects/{id:[0-9]+}/delete', [$projectController, 'delete'])->add($requireAuth);
