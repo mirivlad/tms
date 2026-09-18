@@ -8,6 +8,22 @@
     <h1>{{ t('board.title') }}</h1>
 </div>
 
+<section class="content-card filters-card">
+    <form class="filters" method="get" action="/board">
+        <label>
+            {{ t('projects.task_project') }}
+            <select name="project" onchange="this.form.submit()">
+                <option value="">{{ t('projects.all_projects') }}</option>
+                <option value="none" {{ project_filter == 'none' ? 'selected' : '' }}>{{ t('projects.no_project') }}</option>
+                {% for project in projects %}
+                    <option value="{{ project.id }}" {{ project_filter == (project.id ~ '') ? 'selected' : '' }}>{{ project.name }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <noscript><button type="submit">{{ t('common.apply') }}</button></noscript>
+    </form>
+</section>
+
 <div class="board" role="list" data-board>
     {% for status in statuses %}
         <section class="board-column" role="listitem" data-status-id="{{ status.id }}" style="--status-color: {{ status.color }}">
@@ -29,6 +45,7 @@
                         <a class="task-card-title" href="/tasks/{{ task.id }}/edit" data-task-preview="{{ task.id }}">{{ task.title }}</a>
                         {% if task.description %}<p class="task-card-description">{{ task.description|striptags }}</p>{% endif %}
                         <div class="task-card-meta">
+                            {% if project_map[task.projectId] is defined %}<span>{{ project_map[task.projectId].name }}</span>{% endif %}
                             {% if type_map[task.typeId] is defined %}<span>{{ type_map[task.typeId].name }}</span>{% endif %}
                             {% if customer_map[task.customerId] is defined %}<span>{{ customer_map[task.customerId].name }}</span>{% endif %}
                         </div>
