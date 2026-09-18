@@ -9,7 +9,7 @@ return [
     'projects.title' => 'Projects',
     'projects.subtitle' => 'Keep related work together without changing how unassigned tasks work.',
     'projects.create_title' => 'New project',
-    'projects.create_help' => 'Start with the project itself. Task assignment, project-specific fields and files arrive in the next 0.2 stages.',
+    'projects.create_help' => 'Create the project, attach its tasks and files, then adapt project-specific workflow settings as the 0.2 line evolves.',
     'projects.name' => 'Name',
     'projects.description' => 'Description',
     'projects.description_placeholder' => 'Purpose, context, constraints or notes…',
