@@ -26,6 +26,7 @@ use Tms\Domain\TaskType\TaskTypeRecord;
 use Tms\Domain\TaskType\TaskTypeRepository;
 use Tms\I18n\Translator;
 use Tms\Security\SessionManager;
+use Tms\Security\TaskDescriptionSanitizer;
 
 final class TaskController
 {
@@ -49,6 +50,7 @@ final class TaskController
         private readonly CustomFieldValueCodec $customValueCodec,
         private readonly TaskListSorter $taskListSorter,
         private readonly Translator $translator,
+        private readonly TaskDescriptionSanitizer $descriptionSanitizer,
     ) {
     }
 
@@ -231,20 +233,67 @@ final class TaskController
             'id' => $task->id,
             'title' => $task->title,
             'description' => trim(strip_tags($task->description)),
+            'description_html' => $this->descriptionSanitizer->sanitize($task->description),
             'status' => $status?->name,
+            'status_id' => $task->statusId,
+            'status_options' => array_map(
+                static fn (StatusRecord $option): array => [
+                    'id' => $option->id,
+                    'name' => $option->name,
+                    'color' => $option->color,
+                ],
+                $this->statuses->listForUser($userId),
+            ),
             'status_color' => $status?->color,
             'type' => $type?->name,
             'priority' => $this->priorityLabels()[$task->priority] ?? $this->translator->trans('priority.medium'),
             'priority_value' => $task->priority,
             'customer' => $customer?->name,
             'deadline' => $task->deadline,
+            'deadline_input' => $this->deadlineForForm($task->deadline),
             'created_at' => $task->createdAt,
             'updated_at' => $task->updatedAt,
             'custom_fields' => $custom,
             'attachments' => $attachments,
             'edit_url' => '/tasks/' . $task->id . '/edit',
+            'quick_update_url' => '/api/tasks/' . $task->id . '/quick-edit',
             'delete_url' => '/tasks/' . $task->id . '/delete',
         ]);
+    }
+
+    /** @param array<string, string> $args */
+    public function quickUpdate(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $userId = $this->userId();
+        $taskId = $this->taskId($args);
+        if ($this->tasks->findForUser($userId, $taskId) === null) {
+            return $this->json($response, ['error' => $this->translator->trans('task_preview.not_found')], 404);
+        }
+
+        $body = $this->body($request);
+        try {
+            $statusId = $this->bodyInt($body, 'status_id');
+            if ($statusId === null) {
+                throw new DomainException($this->translator->trans('validation.task_status_required'));
+            }
+            $this->assertMetadataForUser($userId, $statusId, null);
+            $description = is_string($body['description'] ?? null) ? (string) $body['description'] : '';
+            $deadline = $this->normalizeDeadline($body['deadline'] ?? null);
+
+            if (!$this->tasks->quickUpdateForUser($userId, $taskId, $description, $deadline, $statusId)) {
+                return $this->json($response, ['error' => $this->translator->trans('task_preview.not_found')], 404);
+            }
+
+            return $this->json($response, [
+                'success' => true,
+                'message' => $this->translator->trans('task_preview.saved'),
+            ]);
+        } catch (DomainException $error) {
+            return $this->json($response, [
+                'success' => false,
+                'message' => $error->getMessage(),
+            ], 422);
+        }
     }
 
     public function board(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
