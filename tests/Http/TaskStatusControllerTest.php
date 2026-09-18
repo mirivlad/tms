@@ -46,6 +46,7 @@ final class TaskStatusControllerTest extends TestCase
             type_id INTEGER NULL,
             priority INTEGER NOT NULL DEFAULT 0,
             customer_id INTEGER NULL,
+            project_id INTEGER NULL,
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )');
