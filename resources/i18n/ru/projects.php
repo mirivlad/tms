@@ -35,6 +35,8 @@ return [
     'projects.open_task_list' => 'Открыть отфильтрованный список',
     'projects.no_tasks' => 'В проекте пока нет задач.',
     'projects.no_tasks_help' => 'Создайте задачу отсюда или назначьте проект существующей задаче.',
+    'projects.files' => 'Файлы проекта',
+    'projects.files_empty' => 'К проекту пока не приложено файлов.',
 
     'validation.project_name' => 'Название проекта должно содержать от 1 до 160 символов.',
     'validation.project_description' => 'Описание проекта не может быть длиннее 20000 символов.',
