@@ -18,6 +18,8 @@ use Tms\Domain\CustomField\CustomFieldRecord;
 use Tms\Domain\CustomField\CustomFieldRepository;
 use Tms\Domain\CustomField\CustomFieldValueCodec;
 use Tms\Domain\CustomField\TaskCustomFieldValueRepository;
+use Tms\Domain\Project\ProjectRecord;
+use Tms\Domain\Project\ProjectRepository;
 use Tms\Domain\Status\StatusRecord;
 use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRecord;
@@ -45,6 +47,7 @@ final class TaskController
         private readonly StatusRepository $statuses,
         private readonly TaskTypeRepository $taskTypes,
         private readonly CustomerRepository $customers,
+        private readonly ProjectRepository $projects,
         private readonly CustomFieldRepository $customFields,
         private readonly TaskCustomFieldValueRepository $customValues,
         private readonly CustomFieldValueCodec $customValueCodec,
@@ -73,6 +76,7 @@ final class TaskController
         $deadlineTo = $this->queryDate($query, 'deadline_to');
         $createdFrom = $this->queryDate($query, 'created_from');
         $createdTo = $this->queryDate($query, 'created_to');
+        [$projectId, $withoutProject, $projectFilter] = $this->projectFilter($query, $userId);
 
         $fields = $this->customFields->listForUser($userId);
         $customFilters = $this->customFilters($query, $fields);
@@ -89,6 +93,8 @@ final class TaskController
             deadlineTo: $deadlineTo,
             createdFrom: $createdFrom,
             createdTo: $createdTo,
+            projectId: $projectId,
+            withoutProject: $withoutProject,
         );
 
         $taskIds = array_map(static fn (TaskRecord $task): int => $task->id, $tasks);
@@ -98,6 +104,7 @@ final class TaskController
         $statusMap = $this->statusMap($userId);
         $typeMap = $this->typeMap($userId);
         $customerMap = $this->customerMap($userId);
+        $projectMap = $this->projectMap($userId);
         $statusNames = [];
         foreach ($statusMap as $id => $status) {
             $statusNames[$id] = $status->name;
@@ -148,6 +155,7 @@ final class TaskController
             'deadline_to' => $deadlineTo,
             'created_from' => $createdFrom,
             'created_to' => $createdTo,
+            'project' => $projectFilter,
         ];
         $baseParams = $this->filterQueryParams($filters, $customFilters);
         $viewParams = $baseParams + [
@@ -167,6 +175,8 @@ final class TaskController
             'status_map' => $statusMap,
             'type_map' => $typeMap,
             'customer_map' => $customerMap,
+            'project_map' => $projectMap,
+            'projects' => array_values($projectMap),
             'custom_fields' => $fields,
             'custom_values' => $valuesByTask,
             'custom_filters' => $customFilters,
@@ -177,6 +187,7 @@ final class TaskController
                 $fields,
                 $statusMap,
                 $typeMap,
+                $projectMap,
                 $viewParams,
             ),
             'sort_field' => $sortField,
@@ -205,6 +216,7 @@ final class TaskController
         $status = $task->statusId === null ? null : ($this->statusMap($userId)[$task->statusId] ?? null);
         $type = $task->typeId === null ? null : ($this->typeMap($userId)[$task->typeId] ?? null);
         $customer = $task->customerId === null ? null : ($this->customerMap($userId)[$task->customerId] ?? null);
+        $project = $task->projectId === null ? null : ($this->projectMap($userId)[$task->projectId] ?? null);
         $fields = $this->customFields->listForUser($userId);
         $values = $this->customValues->listForTasks($userId, [$task->id])[$task->id] ?? [];
         $custom = [];
@@ -249,6 +261,8 @@ final class TaskController
             'priority' => $this->priorityLabels()[$task->priority] ?? $this->translator->trans('priority.medium'),
             'priority_value' => $task->priority,
             'customer' => $customer?->name,
+            'project' => $project?->name,
+            'project_id' => $task->projectId,
             'deadline' => $task->deadline,
             'deadline_input' => $this->deadlineForForm($task->deadline),
             'created_at' => $task->createdAt,
@@ -299,6 +313,7 @@ final class TaskController
     public function board(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $userId = $this->userId();
+        [$projectId, $withoutProject, $projectFilter] = $this->projectFilter($request->getQueryParams(), $userId);
         $statuses = $this->statuses->listForUser($userId, true);
         $tasksByStatus = [];
         foreach ($statuses as $status) {
@@ -311,7 +326,7 @@ final class TaskController
             $statusById[$status->id] = $status;
         }
 
-        foreach ($this->tasks->listForUser($userId) as $task) {
+        foreach ($this->tasks->listFilteredForUser($userId, projectId: $projectId, withoutProject: $withoutProject) as $task) {
             if ($task->statusId === null || !isset($statusById[$task->statusId])) {
                 continue;
             }
@@ -327,6 +342,9 @@ final class TaskController
             'tasks_by_status' => $tasksByStatus,
             'type_map' => $this->typeMap($userId),
             'customer_map' => $this->customerMap($userId),
+            'project_map' => $this->projectMap($userId),
+            'projects' => $this->projects->listForUser($userId),
+            'project_filter' => $projectFilter,
             'priority_labels' => $this->priorityLabels(),
         ]);
     }
@@ -342,6 +360,10 @@ final class TaskController
                 break;
             }
         }
+        $projectId = $this->queryInt($request->getQueryParams(), 'project_id');
+        if ($projectId !== null && $this->projects->findForUser($userId, $projectId) === null) {
+            $projectId = null;
+        }
 
         return $this->renderForm($request, $response, [
             'title' => '',
@@ -351,6 +373,7 @@ final class TaskController
             'type_id' => null,
             'priority' => 'medium',
             'customer' => '',
+            'project_id' => $projectId,
         ], null, null);
     }
 
@@ -379,6 +402,7 @@ final class TaskController
             'type_id' => $task->typeId,
             'priority' => array_search($task->priority, self::PRIORITIES, true) ?: 'medium',
             'customer' => $customer,
+            'project_id' => $task->projectId,
         ], null, $task);
     }
 
@@ -389,6 +413,7 @@ final class TaskController
             $input = $this->taskInput($body);
             $userId = $this->userId();
             $this->assertMetadataForUser($userId, $input['status_id'], $input['type_id']);
+            $this->assertProjectForUser($userId, $input['project_id']);
             $customInput = $this->customInput($body, $this->customFields->listForUser($userId));
             $customerId = $this->resolveCustomer($userId, $input['customer']);
 
@@ -401,6 +426,7 @@ final class TaskController
                 $input['type_id'],
                 $input['priority'],
                 $customerId,
+                $input['project_id'],
             );
             $this->customValues->replaceForTask($userId, $taskId, $customInput);
 
@@ -424,6 +450,7 @@ final class TaskController
         try {
             $input = $this->taskInput($body);
             $this->assertMetadataForUser($userId, $input['status_id'], $input['type_id']);
+            $this->assertProjectForUser($userId, $input['project_id']);
             $customInput = $this->customInput($body, $this->customFields->listForUser($userId));
             $customerId = $this->resolveCustomer($userId, $input['customer']);
 
@@ -437,6 +464,7 @@ final class TaskController
                 $input['type_id'],
                 $input['priority'],
                 $customerId,
+                $input['project_id'],
             );
             $this->customValues->replaceForTask($userId, $taskId, $customInput);
 
@@ -483,6 +511,7 @@ final class TaskController
             'error' => $error,
             'statuses' => $this->statuses->listForUser($userId),
             'types' => $this->taskTypes->listForUser($userId),
+            'projects' => $this->projects->listForUser($userId),
             'custom_fields' => $fields,
             'custom_form_values' => $this->customFormValues($formData, $task, $fields),
         ]);
@@ -490,7 +519,7 @@ final class TaskController
 
     /**
      * @param array<string, mixed> $body
-     * @return array{title:string,description:string,deadline:?string,status_id:int,type_id:?int,priority:int,customer:string}
+     * @return array{title:string,description:string,deadline:?string,status_id:int,type_id:?int,priority:int,customer:string,project_id:?int}
      */
     private function taskInput(array $body): array
     {
@@ -499,6 +528,7 @@ final class TaskController
         $customer = is_string($body['customer'] ?? null) ? trim((string) $body['customer']) : '';
         $statusId = $this->bodyInt($body, 'status_id');
         $typeId = $this->bodyInt($body, 'type_id');
+        $projectId = $this->bodyInt($body, 'project_id');
         $priorityName = is_string($body['priority'] ?? null) ? (string) $body['priority'] : 'medium';
 
         if (trim($title) === '') {
@@ -522,6 +552,7 @@ final class TaskController
             'type_id' => $typeId,
             'priority' => self::PRIORITIES[$priorityName],
             'customer' => $customer,
+            'project_id' => $projectId,
         ];
     }
 
@@ -773,6 +804,13 @@ final class TaskController
         }
     }
 
+    private function assertProjectForUser(int $userId, ?int $projectId): void
+    {
+        if ($projectId !== null && $this->projects->findForUser($userId, $projectId) === null) {
+            throw new DomainException($this->translator->trans('validation.selected_project_unavailable'));
+        }
+    }
+
     private function resolveCustomer(int $userId, string $name): ?int
     {
         $name = trim($name);
@@ -859,6 +897,16 @@ final class TaskController
         return $map;
     }
 
+    /** @return array<int, ProjectRecord> */
+    private function projectMap(int $userId): array
+    {
+        $map = [];
+        foreach ($this->projects->listForUser($userId) as $project) {
+            $map[$project->id] = $project;
+        }
+        return $map;
+    }
+
     /**
      * @param array<string, mixed> $baseParams
      * @param list<CustomFieldRecord> $fields
@@ -895,7 +943,7 @@ final class TaskController
     }
 
     /**
-     * @param array{status_id:?int,status_invert:bool,type_id:?int,priority:string,q:string,customer:string,overdue:bool,deadline_from:string,deadline_to:string,created_from:string,created_to:string} $filters
+     * @param array{status_id:?int,status_invert:bool,type_id:?int,priority:string,q:string,customer:string,overdue:bool,deadline_from:string,deadline_to:string,created_from:string,created_to:string,project:string} $filters
      * @param array<int, mixed> $customFilters
      * @return array<string, mixed>
      */
@@ -910,6 +958,9 @@ final class TaskController
         }
         if ($filters['type_id'] !== null) {
             $params['type_id'] = $filters['type_id'];
+        }
+        if ($filters['project'] !== '') {
+            $params['project'] = $filters['project'];
         }
         foreach (['priority', 'q', 'customer', 'deadline_from', 'deadline_to', 'created_from', 'created_to'] as $key) {
             if ($filters[$key] !== '') {
@@ -926,7 +977,7 @@ final class TaskController
     }
 
     /**
-     * @param array{status_id:?int,status_invert:bool,type_id:?int,priority:string,q:string,customer:string,overdue:bool,deadline_from:string,deadline_to:string,created_from:string,created_to:string} $filters
+     * @param array{status_id:?int,status_invert:bool,type_id:?int,priority:string,q:string,customer:string,overdue:bool,deadline_from:string,deadline_to:string,created_from:string,created_to:string,project:string} $filters
      * @param array<int, mixed> $customFilters
      * @param list<CustomFieldRecord> $fields
      * @param array<int, StatusRecord> $statusMap
@@ -940,6 +991,7 @@ final class TaskController
         array $fields,
         array $statusMap,
         array $typeMap,
+        array $projectMap,
         array $viewParams,
     ): array {
         $chips = [];
@@ -962,6 +1014,12 @@ final class TaskController
         if ($filters['type_id'] !== null) {
             $name = $typeMap[$filters['type_id']]->name ?? (string) $filters['type_id'];
             $add('type_id', $this->translator->trans('tasks.type'), $name);
+        }
+        if ($filters['project'] !== '') {
+            $value = $filters['project'] === 'none'
+                ? $this->translator->trans('projects.no_project')
+                : ($projectMap[(int) $filters['project']]->name ?? $filters['project']);
+            $add('project', $this->translator->trans('projects.task_project'), $value);
         }
         if ($filters['priority'] !== '') {
             $priority = self::PRIORITIES[$filters['priority']] ?? 1;
@@ -1142,6 +1200,25 @@ final class TaskController
             2 => $this->translator->trans('priority.high'),
             3 => $this->translator->trans('priority.urgent'),
         ];
+    }
+
+    /**
+     * @param array<string, mixed> $query
+     * @return array{0:?int,1:bool,2:string}
+     */
+    private function projectFilter(array $query, int $userId): array
+    {
+        $value = $this->queryString($query, 'project');
+        if ($value === 'none') {
+            return [null, true, 'none'];
+        }
+        if (ctype_digit($value) && (int) $value > 0) {
+            $projectId = (int) $value;
+            if ($this->projects->findForUser($userId, $projectId) !== null) {
+                return [$projectId, false, (string) $projectId];
+            }
+        }
+        return [null, false, ''];
     }
 
     /** @param array<string, mixed> $query */
