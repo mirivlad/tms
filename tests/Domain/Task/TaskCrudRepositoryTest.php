@@ -70,6 +70,40 @@ final class TaskCrudRepositoryTest extends TestCase
         self::assertSame(11, $this->tasks->findForUser(1, $id)?->statusId);
     }
 
+    public function testQuickUpdateChangesOnlyPreviewFieldsAndKeepsOwnerScope(): void
+    {
+        $id = $this->tasks->createForUser(1, 'Quick edit', '<p>Old</p>', null, 10, 30, 2, 50);
+
+        self::assertTrue($this->tasks->quickUpdateForUser(
+            1,
+            $id,
+            '<p>New note</p>',
+            '2026-09-30 12:34:00',
+            11,
+        ));
+
+        $task = $this->tasks->findForUser(1, $id);
+        self::assertNotNull($task);
+        self::assertSame('Quick edit', $task->title);
+        self::assertSame('<p>New note</p>', $task->description);
+        self::assertSame('2026-09-30 12:34:00', $task->deadline);
+        self::assertSame(11, $task->statusId);
+        self::assertSame(30, $task->typeId);
+        self::assertSame(2, $task->priority);
+        self::assertSame(50, $task->customerId);
+
+        self::assertFalse($this->tasks->quickUpdateForUser(1, 200, 'Stolen', null, 10));
+        self::assertSame('Other user task', $this->tasks->findForUser(2, 200)?->title);
+    }
+
+    public function testQuickUpdateRejectsAnotherUsersStatus(): void
+    {
+        $id = $this->tasks->createForUser(1, 'Owned quick edit', '', null, 10, null, 1, null);
+
+        $this->expectException(DomainException::class);
+        $this->tasks->quickUpdateForUser(1, $id, 'Blocked', null, 20);
+    }
+
     public function testCreateRejectsAnotherUsersStatus(): void
     {
         $this->expectException(DomainException::class);
