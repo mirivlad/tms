@@ -15,23 +15,83 @@ Scope:
 
 No schema migration is required.
 
-## v0.2.0 — Projects
+## v0.2.0 — Projects, Teams and Discussions
 
-Projects are the next level above individual tasks:
+The 0.2 line is the transition from isolated personal task management to optional project-based collaboration. The stages are intentionally ordered so each layer has a clear authorization model before the next one depends on it.
+
+### Stage A — Projects Core
+
+1. Project model and CRUD:
+   - project name and description;
+   - lifecycle status: `active`, `paused`, `done`, `archived`;
+   - ownership model prepared for either a user or a team, while only personal ownership is active initially.
+2. Task integration:
+   - nullable project assignment so existing tasks remain valid as “No project”;
+   - project assignment in task create/edit and compact workflows where it stays usable;
+   - project filter in task list, Kanban board and calendar;
+   - project detail view with its tasks.
+3. Keep all personal-project access owner-scoped with negative cross-user tests.
+
+### Stage B — Project configuration
+
+Projects gain their own working context rather than inheriting every account-wide setting:
+
+- project files/attachments;
+- project-specific task statuses;
+- project-specific custom fields;
+- safe migration/fallback behavior for existing global statuses and custom fields;
+- project settings UI.
+
+The exact status/custom-field migration must preserve existing tasks and must not silently change their meaning.
+
+### Stage C — Teams
+
+Teams add collaboration without weakening personal ownership:
+
+- create a team; the creator becomes Team Lead;
+- roles start deliberately small: `lead` and `member`;
+- invite existing users to a team;
+- invitations are visible in TMS and may additionally be delivered through configured Telegram/email channels;
+- invitation state: `pending`, `accepted`, `declined`, `revoked`, `expired`;
+- team-owned projects;
+- team members can see and work with the team’s projects and tasks;
+- task assignee is separate from access: membership grants project access, assignee says who is responsible for the task;
+- tasks may remain unassigned.
+
+No Workspace layer is required for 0.2. It can be introduced later only if a real use case appears.
+
+### Stage D — Discussions
+
+Discussions are added only after Teams because discussion visibility depends on the team/project authorization model:
+
+- project-level discussion;
+- task-level discussion;
+- comments remain attached to their work context instead of moving into external chats or email threads;
+- replies are shallow rather than an unlimited discussion tree;
+- `@mentions` and direct replies create TMS notifications;
+- Telegram/email act as notification transports linking back to TMS, not as a second source of discussion state;
+- system activity and human comments may share a chronological UI but remain different data types.
+
+### Stage E — Hardening and v0.2.0 stable
+
+Before the 0.2 stable release:
+
+- permission matrix and cross-user/cross-team negative tests;
+- behavior for member removal, lead changes, team/project archival and orphaned assignees;
+- migration and rollback/update-path coverage;
+- notification and unread-state edge cases;
+- documentation and Docker smoke coverage for the complete collaboration flow.
+
+The intended hierarchy at the end of 0.2 is:
 
 ```text
-Project
-└── Tasks
+User
+├── personal tasks
+├── personal projects
+└── team membership
+    └── Team
+        └── Project
+            └── Tasks
 ```
 
-Initial scope:
-
-- user-owned projects with a name, description and lifecycle status;
-- lifecycle statuses: `active`, `paused`, `done`, `archived`;
-- optional project assignment on a task so existing tasks can remain unassigned;
-- a project list and project detail view;
-- project filtering in the task list, Kanban board and calendar;
-- project assignment in task create/edit and quick workflows where it remains compact;
-- owner-scoped repository and database constraints, migration coverage and negative cross-user tests.
-
-The first Projects release is deliberately not a team-management system. Workspaces, memberships, assignees, project ACLs and other collaboration layers remain outside the v0.2.0 scope. They can be considered later without making Projects depend on them.
+Discussions attach to Project and Task once team collaboration exists.

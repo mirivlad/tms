@@ -253,6 +253,9 @@ jobs:
       - name: Exercise password recovery workflow
         run: bash tests/smoke/password-recovery.sh
 
+      - name: Exercise projects core workflow
+        run: bash tests/smoke/projects.sh
+
       - name: Exercise navigation and profile regression
         run: bash tests/smoke/profile-navigation.sh
 
