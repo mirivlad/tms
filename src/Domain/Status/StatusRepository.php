@@ -14,14 +14,13 @@ final class StatusRepository
     {
     }
 
-    /**
-     * @return list<StatusRecord>
-     */
+    /** @return list<StatusRecord> */
     public function listForUser(int $userId, bool $boardOnly = false): array
     {
-        $sql = 'SELECT id, user_id, name, description, color, sort_order, is_default, is_completion, show_on_board
+        $sql = 'SELECT id, user_id, project_id, source_status_id, name, description, color, sort_order,
+                       is_default, is_completion, show_on_board
                 FROM statuses
-                WHERE user_id = :user_id';
+                WHERE user_id = :user_id AND project_id IS NULL';
         if ($boardOnly) {
             $sql .= ' AND show_on_board = 1';
         }
@@ -29,27 +28,75 @@ final class StatusRepository
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute(['user_id' => $userId]);
+        return $this->fetchAll($stmt);
+    }
 
-        $records = [];
-        while (($row = $stmt->fetch()) !== false) {
-            if (is_array($row)) {
-                $records[] = $this->hydrate($row);
-            }
-        }
-
-        return $records;
+    /**
+     * Personal statuses plus statuses of personal projects currently accessible
+     * to the user. Teams will extend the project-access half without changing
+     * status ownership.
+     *
+     * @return list<StatusRecord>
+     */
+    public function listAccessibleForUser(int $userId): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT s.id, s.user_id, s.project_id, s.source_status_id, s.name, s.description,
+                    s.color, s.sort_order, s.is_default, s.is_completion, s.show_on_board
+             FROM statuses s
+             LEFT JOIN projects p ON p.id = s.project_id
+             WHERE (s.user_id = :personal_user_id AND s.project_id IS NULL)
+                OR (s.user_id IS NULL
+                    AND s.project_id IS NOT NULL
+                    AND p.owner_user_id = :project_user_id
+                    AND p.owner_team_id IS NULL)
+             ORDER BY CASE WHEN s.project_id IS NULL THEN 0 ELSE 1 END,
+                      s.project_id ASC, s.sort_order ASC, s.id ASC'
+        );
+        $stmt->execute([
+            'personal_user_id' => $userId,
+            'project_user_id' => $userId,
+        ]);
+        return $this->fetchAll($stmt);
     }
 
     public function findForUser(int $userId, int $statusId): ?StatusRecord
     {
         $stmt = $this->db->prepare(
-            'SELECT id, user_id, name, description, color, sort_order, is_default, is_completion, show_on_board
+            'SELECT id, user_id, project_id, source_status_id, name, description, color, sort_order,
+                    is_default, is_completion, show_on_board
              FROM statuses
-             WHERE id = :id AND user_id = :user_id
+             WHERE id = :id AND user_id = :user_id AND project_id IS NULL
              LIMIT 1'
         );
         $stmt->execute(['id' => $statusId, 'user_id' => $userId]);
+        $row = $stmt->fetch();
+        return is_array($row) ? $this->hydrate($row) : null;
+    }
 
+    public function findAccessibleForUser(int $userId, int $statusId): ?StatusRecord
+    {
+        $stmt = $this->db->prepare(
+            'SELECT s.id, s.user_id, s.project_id, s.source_status_id, s.name, s.description,
+                    s.color, s.sort_order, s.is_default, s.is_completion, s.show_on_board
+             FROM statuses s
+             LEFT JOIN projects p ON p.id = s.project_id
+             WHERE s.id = :id
+               AND (
+                    (s.user_id = :personal_user_id AND s.project_id IS NULL)
+                    OR
+                    (s.user_id IS NULL
+                     AND s.project_id IS NOT NULL
+                     AND p.owner_user_id = :project_user_id
+                     AND p.owner_team_id IS NULL)
+               )
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'id' => $statusId,
+            'personal_user_id' => $userId,
+            'project_user_id' => $userId,
+        ]);
         $row = $stmt->fetch();
         return is_array($row) ? $this->hydrate($row) : null;
     }
@@ -63,10 +110,7 @@ final class StatusRepository
         bool $isCompletion = false,
         bool $showOnBoard = true,
     ): int {
-        $name = trim($name);
-        if ($name === '') {
-            throw new DomainException('Status name cannot be empty.');
-        }
+        $name = $this->normalizeName($name);
 
         $this->db->beginTransaction();
         try {
@@ -79,10 +123,10 @@ final class StatusRepository
 
             $stmt = $this->db->prepare(
                 'INSERT INTO statuses (
-                    user_id, name, description, color, sort_order,
+                    user_id, project_id, source_status_id, name, description, color, sort_order,
                     is_default, is_completion, show_on_board, created_at, updated_at
                  ) VALUES (
-                    :user_id, :name, :description, :color, :sort_order,
+                    :user_id, NULL, NULL, :name, :description, :color, :sort_order,
                     :is_default, :is_completion, :show_on_board, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                  )'
             );
@@ -116,11 +160,6 @@ final class StatusRepository
         string $color,
         bool $showOnBoard,
     ): bool {
-        $name = trim($name);
-        if ($name === '') {
-            throw new DomainException('Status name cannot be empty.');
-        }
-
         if ($this->findForUser($userId, $statusId) === null) {
             return false;
         }
@@ -132,10 +171,10 @@ final class StatusRepository
                  color = :color,
                  show_on_board = :show_on_board,
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = :id AND user_id = :user_id'
+             WHERE id = :id AND user_id = :user_id AND project_id IS NULL'
         );
         $stmt->execute([
-            'name' => $name,
+            'name' => $this->normalizeName($name),
             'description' => trim($description),
             'color' => $this->normalizeColor($color),
             'show_on_board' => $showOnBoard ? 1 : 0,
@@ -163,21 +202,23 @@ final class StatusRepository
         }
 
         $used = $this->db->prepare(
-            'SELECT 1 FROM tasks WHERE status_id = :status_id AND created_by = :user_id LIMIT 1'
+            'SELECT 1 FROM tasks
+             WHERE status_id = :status_id AND created_by = :user_id AND project_id IS NULL
+             LIMIT 1'
         );
         $used->execute(['status_id' => $statusId, 'user_id' => $userId]);
         if ($used->fetchColumn() !== false) {
             return false;
         }
 
-        $stmt = $this->db->prepare('DELETE FROM statuses WHERE id = :id AND user_id = :user_id');
+        $stmt = $this->db->prepare(
+            'DELETE FROM statuses WHERE id = :id AND user_id = :user_id AND project_id IS NULL'
+        );
         $stmt->execute(['id' => $statusId, 'user_id' => $userId]);
         return $stmt->rowCount() === 1;
     }
 
-    /**
-     * @param list<int> $statusIds
-     */
+    /** @param list<int> $statusIds */
     public function reorderForUser(int $userId, array $statusIds): bool
     {
         $owned = array_map(
@@ -196,7 +237,7 @@ final class StatusRepository
         try {
             $stmt = $this->db->prepare(
                 'UPDATE statuses SET sort_order = :sort_order, updated_at = CURRENT_TIMESTAMP
-                 WHERE id = :id AND user_id = :user_id'
+                 WHERE id = :id AND user_id = :user_id AND project_id IS NULL'
             );
             foreach ($statusIds as $index => $statusId) {
                 $stmt->execute([
@@ -226,12 +267,14 @@ final class StatusRepository
 
         $this->db->beginTransaction();
         try {
-            $clear = $this->db->prepare("UPDATE statuses SET {$column} = 0 WHERE user_id = :user_id");
+            $clear = $this->db->prepare(
+                "UPDATE statuses SET {$column} = 0 WHERE user_id = :user_id AND project_id IS NULL"
+            );
             $clear->execute(['user_id' => $userId]);
 
             $set = $this->db->prepare(
                 "UPDATE statuses SET {$column} = 1, updated_at = CURRENT_TIMESTAMP
-                 WHERE id = :id AND user_id = :user_id"
+                 WHERE id = :id AND user_id = :user_id AND project_id IS NULL"
             );
             $set->execute(['id' => $statusId, 'user_id' => $userId]);
 
@@ -247,21 +290,41 @@ final class StatusRepository
 
     private function clearDefault(int $userId): void
     {
-        $stmt = $this->db->prepare('UPDATE statuses SET is_default = 0 WHERE user_id = :user_id');
+        $stmt = $this->db->prepare(
+            'UPDATE statuses SET is_default = 0 WHERE user_id = :user_id AND project_id IS NULL'
+        );
         $stmt->execute(['user_id' => $userId]);
     }
 
     private function clearCompletion(int $userId): void
     {
-        $stmt = $this->db->prepare('UPDATE statuses SET is_completion = 0 WHERE user_id = :user_id');
+        $stmt = $this->db->prepare(
+            'UPDATE statuses SET is_completion = 0 WHERE user_id = :user_id AND project_id IS NULL'
+        );
         $stmt->execute(['user_id' => $userId]);
     }
 
     private function nextSortOrder(int $userId): int
     {
-        $stmt = $this->db->prepare('SELECT COALESCE(MAX(sort_order), 0) FROM statuses WHERE user_id = :user_id');
+        $stmt = $this->db->prepare(
+            'SELECT COALESCE(MAX(sort_order), 0)
+             FROM statuses
+             WHERE user_id = :user_id AND project_id IS NULL'
+        );
         $stmt->execute(['user_id' => $userId]);
         return (int) $stmt->fetchColumn() + 1;
+    }
+
+    private function normalizeName(string $name): string
+    {
+        $name = trim($name);
+        if ($name === '') {
+            throw new DomainException('Status name cannot be empty.');
+        }
+        if (mb_strlen($name) > 96) {
+            throw new DomainException('Status name cannot exceed 96 characters.');
+        }
+        return $name;
     }
 
     private function normalizeColor(string $color): string
@@ -273,14 +336,26 @@ final class StatusRepository
         return $color;
     }
 
-    /**
-     * @param array<string, mixed> $row
-     */
+    /** @return list<StatusRecord> */
+    private function fetchAll(\PDOStatement $stmt): array
+    {
+        $records = [];
+        while (($row = $stmt->fetch()) !== false) {
+            if (is_array($row)) {
+                $records[] = $this->hydrate($row);
+            }
+        }
+        return $records;
+    }
+
+    /** @param array<string, mixed> $row */
     private function hydrate(array $row): StatusRecord
     {
         return new StatusRecord(
             id: (int) $row['id'],
-            userId: (int) $row['user_id'],
+            userId: $row['user_id'] !== null ? (int) $row['user_id'] : null,
+            projectId: $row['project_id'] !== null ? (int) $row['project_id'] : null,
+            sourceStatusId: $row['source_status_id'] !== null ? (int) $row['source_status_id'] : null,
             name: (string) $row['name'],
             description: (string) ($row['description'] ?? ''),
             color: (string) $row['color'],
