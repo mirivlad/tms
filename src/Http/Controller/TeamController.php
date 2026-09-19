@@ -8,6 +8,7 @@ use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
+use Tms\Domain\Project\ProjectRepository;
 use Tms\Domain\Team\TeamInvitationRepository;
 use Tms\Domain\Team\TeamRepository;
 use Tms\Domain\User\UserRepository;
@@ -20,6 +21,7 @@ final class TeamController
         private readonly Twig $view,
         private readonly SessionManager $sessions,
         private readonly TeamRepository $teams,
+        private readonly ProjectRepository $projects,
         private readonly TeamInvitationRepository $invitations,
         private readonly UserRepository $users,
         private readonly Translator $translator,
@@ -72,6 +74,7 @@ final class TeamController
             'team' => $team,
             'is_lead' => $team->currentUserIsLead(),
             'members' => $this->teams->listMembers($this->userId(), $teamId),
+            'projects' => $this->projects->listForTeamForUser($this->userId(), $teamId),
             'roles' => TeamRepository::ROLES,
             'invitations' => $team->currentUserIsLead()
                 ? $this->invitations->listForTeam($this->userId(), $teamId)
@@ -231,8 +234,13 @@ final class TeamController
         array $args,
     ): ResponseInterface {
         $teamId = $this->id($args, 'id');
-        if (!$this->teams->deleteForLead($this->userId(), $teamId)) {
-            return $this->notFound($response);
+        try {
+            if (!$this->teams->deleteForLead($this->userId(), $teamId)) {
+                return $this->notFound($response);
+            }
+        } catch (DomainException $error) {
+            $this->notice('error', $this->teamErrorKey($error));
+            return $this->redirect($response, '/teams/' . $teamId);
         }
         $this->notice('success', 'teams.deleted');
         return $this->redirect($response, '/teams');
@@ -245,6 +253,7 @@ final class TeamController
             'Team description cannot exceed 20000 characters.' => 'teams.validation_description',
             'Unsupported team role.' => 'teams.validation_role',
             'A team must have at least one lead.' => 'teams.last_lead',
+            'A team with projects cannot be deleted.' => 'teams.delete_with_projects',
             default => 'teams.operation_failed',
         };
     }
