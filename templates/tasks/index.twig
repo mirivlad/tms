@@ -260,27 +260,27 @@
                 <tbody>
                 {% for task in tasks %}
                     <tr>
-                        <td class="bulk-select-cell">
+                        <td class="bulk-select-cell task-select-cell">
                             <input type="checkbox" name="task_ids[]" value="{{ task.id }}" form="bulk-action-form" data-bulk-task aria-label="{{ t('bulk.select_task', {'title': task.title}) }}">
                         </td>
-                        <td>
+                        <td class="task-title-cell" data-label="{{ t('tasks.table.task') }}">
                             <a class="task-title" href="/tasks/{{ task.id }}/edit">{{ task.title }}</a>
                             {% if task.description %}<div class="muted task-preview">{{ task.description|striptags }}</div>{% endif %}
                         </td>
-                        <td>{{ project_map[task.projectId].name|default(t('projects.no_project')) }}</td>
-                        <td>{{ assignee_map[task.assigneeUserId].username|default('—') }}</td>
-                        <td>
+                        <td data-label="{{ t('projects.task_project') }}">{{ project_map[task.projectId].name|default(t('projects.no_project')) }}</td>
+                        <td data-label="{{ t('task_form.assignee') }}">{{ assignee_map[task.assigneeUserId].username|default('—') }}</td>
+                        <td data-label="{{ t('tasks.table.status') }}">
                             <span class="status-pill" style="--status-color: {{ status_map[task.statusId].color|default('var(--status-neutral)') }}">
                                 <span class="status-dot"></span>
                                 {{ status_map[task.statusId].name|default('—') }}
                             </span>
                         </td>
-                        <td>{{ type_map[task.typeId].name|default('—') }}</td>
-                        <td><span class="priority priority-{{ task.priority }}">{{ priority_labels[task.priority]|default(t('priority.medium')) }}</span></td>
-                        <td>{{ customer_map[task.customerId].name|default('—') }}</td>
+                        <td data-label="{{ t('tasks.table.type') }}">{{ type_map[task.typeId].name|default('—') }}</td>
+                        <td data-label="{{ t('tasks.table.priority') }}"><span class="priority priority-{{ task.priority }}">{{ priority_labels[task.priority]|default(t('priority.medium')) }}</span></td>
+                        <td data-label="{{ t('tasks.table.customer') }}">{{ customer_map[task.customerId].name|default('—') }}</td>
                         {% for field in custom_fields %}
                             {% set stored = custom_values[task.id][field.id]|default(null) %}
-                            <td class="custom-value-cell">
+                            <td class="custom-value-cell" data-label="{{ field.name }}">
                                 {% if stored is null %}
                                     —
                                 {% elseif field.type == 'checkbox' %}
@@ -290,9 +290,9 @@
                                 {% endif %}
                             </td>
                         {% endfor %}
-                        <td class="nowrap">{{ task.createdAt|date('Y-m-d H:i') }}</td>
-                        <td class="nowrap">{{ task.deadline ? task.deadline|date('Y-m-d H:i') : '—' }}</td>
-                        <td class="row-actions">
+                        <td class="nowrap" data-label="{{ t('tasks.table.created') }}">{{ task.createdAt|date('Y-m-d H:i') }}</td>
+                        <td class="nowrap" data-label="{{ t('tasks.table.deadline') }}">{{ task.deadline ? task.deadline|date('Y-m-d H:i') : '—' }}</td>
+                        <td class="row-actions task-row-actions">
                             <a class="text-link" href="/tasks/{{ task.id }}/edit" data-task-preview="{{ task.id }}">{{ t('common.view') }}</a>
                             {% if project_map[task.projectId].ownerTeamId|default(null) %}
                                 {% set discussion_stat = discussion_stats[task.id]|default({'count': 0, 'unread': 0}) %}
