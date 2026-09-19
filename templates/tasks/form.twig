@@ -80,7 +80,7 @@
 
         <label data-assignee-field {{ team_project ? '' : 'hidden' }}>
             {{ t('task_form.assignee') }}
-            <select name="assignee_user_id" data-assignee-select {{ team_project ? '' : 'disabled' }}>
+            <select name="assignee_user_id" data-assignee-select data-unassigned-label="{{ t('task_form.unassigned') }}" {{ team_project ? '' : 'disabled' }}>
                 <option value="">{{ t('task_form.unassigned') }}</option>
                 {% for member in assignees %}
                     <option value="{{ member.userId }}" {{ form.assignee_user_id == member.userId ? 'selected' : '' }}>
