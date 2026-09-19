@@ -22,7 +22,7 @@
             button.addEventListener('click', () => {
                 surface.focus();
                 const command = button.dataset.discussionCommand || '';
-                let value = null;
+                let value = button.dataset.discussionValue || null;
                 if (command === 'createLink') {
                     const entered = window.prompt(editor.dataset.linkPrompt || '', 'https://');
                     if (!entered) return;
