@@ -175,6 +175,12 @@ CREATE TABLE projects (
     owner_user_id INTEGER NULL,
     owner_team_id INTEGER NULL
 );
+CREATE TABLE team_members (
+    team_id INTEGER NOT NULL,
+    user_id INTEGER NOT NULL,
+    role TEXT NOT NULL,
+    PRIMARY KEY (team_id, user_id)
+);
 CREATE TABLE tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     created_by INTEGER NOT NULL,
