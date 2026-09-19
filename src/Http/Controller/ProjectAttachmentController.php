@@ -35,7 +35,7 @@ final class ProjectAttachmentController
     {
         $userId = $this->userId();
         $projectId = $this->routeId($args, 'projectId');
-        if ($this->projects->findForUser($userId, $projectId) === null) {
+        if ($this->projects->findAccessibleForUser($userId, $projectId) === null) {
             return $this->notFound($response);
         }
 
@@ -88,7 +88,7 @@ final class ProjectAttachmentController
     {
         $userId = $this->userId();
         $projectId = $this->routeId($args, 'projectId');
-        if ($this->projects->findForUser($userId, $projectId) === null) {
+        if ($this->projects->findAccessibleForUser($userId, $projectId) === null) {
             return $this->notFound($response);
         }
         $attachment = $this->attachments->findForProject(
@@ -129,7 +129,7 @@ final class ProjectAttachmentController
         $userId = $this->userId();
         $projectId = $this->routeId($args, 'projectId');
         $attachmentId = $this->routeId($args, 'attachmentId');
-        if ($this->projects->findForUser($userId, $projectId) === null) {
+        if ($this->projects->findAccessibleForUser($userId, $projectId) === null) {
             return $this->notFound($response);
         }
         $attachment = $this->attachments->findForProject($userId, $projectId, $attachmentId);
