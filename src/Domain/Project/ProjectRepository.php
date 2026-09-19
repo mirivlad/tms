@@ -368,6 +368,19 @@ final class ProjectRepository
             );
             $clearAssignees->execute(['project_id' => $projectId]);
 
+            // Personal task type/customer metadata must never become visible through a team project.
+            if ($teamId !== null) {
+                $clearPersonalMetadata = $this->db->prepare(
+                    'UPDATE tasks
+                     SET type_id = NULL,
+                         customer_id = NULL,
+                         updated_at = CURRENT_TIMESTAMP
+                     WHERE project_id = :project_id
+                       AND (type_id IS NOT NULL OR customer_id IS NOT NULL)'
+                );
+                $clearPersonalMetadata->execute(['project_id' => $projectId]);
+            }
+
             $this->db->commit();
             return true;
         } catch (Throwable $error) {
