@@ -294,6 +294,7 @@ return [
     'task_form.team_project_metadata_help' => 'Задачи командного проекта используют поля проекта. Личный тип задачи и заказчик не передаются команде.',
     'task_form.project_locked_for_collaborator' => 'Переносить эту командную задачу между проектами может её автор.',
     'validation.team_project_personal_metadata' => 'У задачи командного проекта нельзя использовать личный тип задачи или заказчика.',
+    'validation.selected_assignee_unavailable' => 'Выбранный ответственный не состоит в команде этого проекта.',
     'task_form.save_changes' => 'Сохранить изменения',
     'task_form.create_task' => 'Создать задачу',
 
