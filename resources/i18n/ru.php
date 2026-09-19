@@ -288,6 +288,8 @@ return [
     'task_form.customer' => 'Заказчик',
     'task_form.customer_placeholder' => 'Существующий или новый заказчик',
     'task_form.customer_help' => 'Начните вводить имя для поиска среди ваших заказчиков. Если такого имени ещё нет, TMS автоматически создаст заказчика при сохранении задачи.',
+    'task_form.personal_metadata_author_only' => 'Тип задачи и заказчик — личные данные автора задачи.',
+    'task_form.team_project_move_locked' => 'Общая командная задача остаётся в своём командном проекте.',
     'task_form.save_changes' => 'Сохранить изменения',
     'task_form.create_task' => 'Создать задачу',
 
