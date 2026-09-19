@@ -1,7 +1,7 @@
 {% extends "app_layout.twig" %}
 
 {% block title %}{{ task ? t('task_form.edit_title') : t('task_form.new_title') }} · TMS{% endblock %}
-{% block styles %}<link rel="stylesheet" href="/assets/task-form.css">{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/assets/task-form.css"><link rel="stylesheet" href="/assets/discussions.css">{% endblock %}
 
 {% block content %}
 <div class="page-header compact-page-header">
@@ -180,6 +180,9 @@
         {% endif %}
     </section>
 {% endif %}
+{% if discussion_enabled %}
+    {% include 'discussions/thread.twig' %}
+{% endif %}
 {% endblock %}
 
-{% block scripts %}<script src="/assets/task-form.js" defer></script>{% endblock %}
+{% block scripts %}<script src="/assets/task-form.js" defer></script><script src="/assets/discussions.js" defer></script>{% endblock %}
