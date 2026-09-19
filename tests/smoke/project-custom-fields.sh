@@ -9,7 +9,7 @@ db() {
 }
 
 curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/custom-fields" > /tmp/pcf-personal.html
-csrf=$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' /tmp/pcf-personal.html | head -n1)
+csrf=$(grep -m1 -o 'name="_csrf" value="[^"]*"' /tmp/pcf-personal.html | sed 's/.*value="//;s/"$//')
 test -n "$csrf"
 admin_id=$(db "SELECT id FROM users WHERE username='ciadmin' LIMIT 1")
 
@@ -36,7 +36,7 @@ project_field=$(db "SELECT id FROM custom_fields WHERE project_id=$project_id AN
 test -n "$project_field"
 test "$(db "SELECT field_type FROM custom_fields WHERE id=$project_field")" = "text"
 
-curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/projects/$project_id" > /tmp/pcf-project.html
+curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/projects/$project_id/fields" > /tmp/pcf-project.html
 grep -q 'Project custom fields' /tmp/pcf-project.html
 grep -q 'Lineage smoke field' /tmp/pcf-project.html
 

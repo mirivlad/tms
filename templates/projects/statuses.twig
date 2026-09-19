@@ -1,0 +1,50 @@
+{% extends 'app_layout.twig' %}
+{% block title %}{{ t('projects.action_statuses') }} · {{ project.name }} · TMS{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/assets/metadata.css"><link rel="stylesheet" href="/assets/collaboration.css">{% endblock %}
+{% set project_section = 'statuses' %}
+{% block content %}
+{% include 'projects/_nav.twig' %}
+<section class="content-card metadata-section entity-management-page">
+    <div class="section-heading"><div><h2>{{ t('projects.workflow_title') }}</h2><p class="muted">{{ t('projects.workflow_help') }}</p></div></div>
+    {% if status_notice %}<p class="{{ status_notice.kind == 'error' ? 'alert' : 'success-notice' }}" role="status">{{ status_notice.message }}</p>{% endif %}
+    <form class="metadata-create" method="post" action="/projects/{{ project.id }}/statuses">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label><span>{{ t('projects.workflow_name') }}</span><input type="text" name="name" maxlength="96" required></label>
+        <label><span>{{ t('projects.workflow_color') }}</span><input type="color" name="color" value="#6b7280"></label>
+        <label class="field-wide"><span>{{ t('projects.workflow_description') }}</span><input type="text" name="description" maxlength="512"></label>
+        <label class="checkbox-inline"><input type="checkbox" name="show_on_board" value="1" checked> {{ t('projects.workflow_board') }}</label>
+        <label class="checkbox-inline"><input type="checkbox" name="is_default" value="1"> {{ t('projects.workflow_default') }}</label>
+        <label class="checkbox-inline"><input type="checkbox" name="is_completion" value="1"> {{ t('projects.workflow_completion') }}</label>
+        <button type="submit">{{ t('projects.workflow_add') }}</button>
+    </form>
+    <div class="metadata-list">
+    {% for status in statuses %}
+        <article class="metadata-item">
+            <div class="metadata-item-heading">
+                <strong><span class="status-dot" style="--status-color: {{ status.color }}"></span> {{ status.name }}</strong>
+                <div class="metadata-badges">
+                    {% if status.isDefault %}<span class="metadata-badge">{{ t('projects.workflow_default') }}</span>{% endif %}
+                    {% if status.isCompletion %}<span class="metadata-badge">{{ t('projects.workflow_completion') }}</span>{% endif %}
+                    {% if status.showOnBoard %}<span class="metadata-badge">{{ t('projects.workflow_board') }}</span>{% endif %}
+                </div>
+            </div>
+            <form class="metadata-edit" method="post" action="/projects/{{ project.id }}/statuses/{{ status.id }}">
+                <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                <label><span>{{ t('projects.workflow_name') }}</span><input type="text" name="name" maxlength="96" required value="{{ status.name }}"></label>
+                <label><span>{{ t('projects.workflow_color') }}</span><input type="color" name="color" value="{{ status.color }}"></label>
+                <label class="field-wide"><span>{{ t('projects.workflow_description') }}</span><input type="text" name="description" maxlength="512" value="{{ status.description }}"></label>
+                <label class="checkbox-inline"><input type="checkbox" name="show_on_board" value="1" {{ status.showOnBoard ? 'checked' : '' }}> {{ t('projects.workflow_board') }}</label>
+                <button class="secondary compact" type="submit">{{ t('common.save') }}</button>
+            </form>
+            <div class="metadata-actions">
+                {% if not status.isDefault %}<form method="post" action="/projects/{{ project.id }}/statuses/{{ status.id }}/default"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="secondary compact" type="submit">{{ t('projects.workflow_make_default') }}</button></form>{% endif %}
+                {% if not status.isCompletion %}<form method="post" action="/projects/{{ project.id }}/statuses/{{ status.id }}/completion"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="secondary compact" type="submit">{{ t('projects.workflow_make_completion') }}</button></form>{% endif %}
+                <form method="post" action="/projects/{{ project.id }}/statuses/{{ status.id }}/move"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="direction" value="up"><button class="secondary compact" type="submit" title="{{ t('projects.workflow_move_up') }}">↑</button></form>
+                <form method="post" action="/projects/{{ project.id }}/statuses/{{ status.id }}/move"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><input type="hidden" name="direction" value="down"><button class="secondary compact" type="submit" title="{{ t('projects.workflow_move_down') }}">↓</button></form>
+                <form method="post" action="/projects/{{ project.id }}/statuses/{{ status.id }}/delete" onsubmit="return confirm('{{ t('projects.workflow_delete_confirm')|e('js') }}')"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="danger-link compact" type="submit">{{ t('common.delete') }}</button></form>
+            </div>
+        </article>
+    {% endfor %}
+    </div>
+</section>
+{% endblock %}

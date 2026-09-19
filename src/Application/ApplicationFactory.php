@@ -281,7 +281,7 @@ final class ApplicationFactory
         $projectStatusController = new ProjectStatusController($sessions, $projects, $projectStatuses, $translator);
         $projectCustomFieldController = new ProjectCustomFieldController($sessions, $projects, $projectCustomFields, $translator);
         $projectAttachmentController = new ProjectAttachmentController($sessions, $projects, $projectAttachments, $attachmentPolicy, $attachmentStorage, $translator);
-        $teamController = new TeamController($twig, $sessions, $teams, $projects, $teamInvitations, $teamInvitationDelivery, $users, $translator);
+        $teamController = new TeamController($twig, $sessions, $teams, $projects, $tasks, $projectStatuses, $teamInvitations, $teamInvitationDelivery, $users, $translator);
         $teamInvitationController = new TeamInvitationController($twig, $sessions, $teamInvitations, $translator);
         $dashboardController = new DashboardController($twig, $sessions, $tasks, $statuses, $projects, $teams, $dashboardTips, $translator);
         $taskController = new TaskController($twig, $sessions, $tasks, $attachments, $statuses, $taskTypes, $customers, $projects, $projectStatuses, $projectCustomFields, $teams, $discussions, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator, $descriptionSanitizer);
@@ -392,6 +392,8 @@ final class ApplicationFactory
         $app->get('/teams', [$teamController, 'index'])->add($requireAuth);
         $app->post('/teams', [$teamController, 'create'])->add($requireAuth);
         $app->get('/teams/{id:[0-9]+}', [$teamController, 'show'])->add($requireAuth);
+        $app->get('/teams/{id:[0-9]+}/settings', [$teamController, 'settings'])->add($requireAuth);
+        $app->get('/teams/{id:[0-9]+}/members', [$teamController, 'members'])->add($requireAuth);
         $app->post('/teams/{id:[0-9]+}', [$teamController, 'update'])->add($requireAuth);
         $app->post('/teams/{id:[0-9]+}/invitations', [$teamController, 'invite'])->add($requireAuth);
         $app->post('/teams/{id:[0-9]+}/invitations/{invitationId:[0-9]+}/revoke', [$teamController, 'revokeInvitation'])->add($requireAuth);
@@ -404,6 +406,11 @@ final class ApplicationFactory
         $app->post('/invitations/{id:[0-9]+}/decline', [$teamInvitationController, 'decline'])->add($requireAuth);
         $app->get('/projects', [$projectController, 'index'])->add($requireAuth);
         $app->get('/projects/{id:[0-9]+}', [$projectController, 'show'])->add($requireAuth);
+        $app->get('/projects/{id:[0-9]+}/settings', [$projectController, 'settings'])->add($requireAuth);
+        $app->get('/projects/{id:[0-9]+}/statuses', [$projectController, 'statuses'])->add($requireAuth);
+        $app->get('/projects/{id:[0-9]+}/fields', [$projectController, 'fields'])->add($requireAuth);
+        $app->get('/projects/{id:[0-9]+}/files', [$projectController, 'files'])->add($requireAuth);
+        $app->get('/projects/{id:[0-9]+}/discussion', [$projectController, 'discussion'])->add($requireAuth);
         $app->post('/projects', [$projectController, 'create'])->add($requireAuth);
         $app->post('/projects/{id:[0-9]+}', [$projectController, 'update'])->add($requireAuth);
         $app->post('/projects/{id:[0-9]+}/delete', [$projectController, 'delete'])->add($requireAuth);

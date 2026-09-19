@@ -203,7 +203,7 @@ final class ProjectCustomFieldController
     private function redirect(ResponseInterface $response, int $projectId): ResponseInterface
     {
         return $response
-            ->withHeader('Location', '/projects/' . $projectId . '#project-fields')
+            ->withHeader('Location', '/projects/' . $projectId . '/fields')
             ->withStatus(302);
     }
 

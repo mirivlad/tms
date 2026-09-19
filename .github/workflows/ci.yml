@@ -241,6 +241,9 @@ jobs:
       - name: Exercise team project collaboration
         run: bash tests/smoke/team-projects.sh
 
+      - name: Exercise project ownership transfers
+        run: bash tests/smoke/project-ownership.sh
+
       - name: Exercise cross-team authorization matrix
         run: bash tests/smoke/collaboration-acl.sh
 

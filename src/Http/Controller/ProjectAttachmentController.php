@@ -199,7 +199,7 @@ final class ProjectAttachmentController
 
     private function redirect(ResponseInterface $response, int $projectId): ResponseInterface
     {
-        return $response->withHeader('Location', '/projects/' . $projectId)->withStatus(302);
+        return $response->withHeader('Location', '/projects/' . $projectId . '/files')->withStatus(302);
     }
 
     private function contentDisposition(string $name): string

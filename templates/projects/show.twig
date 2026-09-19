@@ -1,361 +1,99 @@
 {% extends 'app_layout.twig' %}
-
 {% block title %}{{ project.name }} · TMS{% endblock %}
-{% block styles %}<link rel="stylesheet" href="/assets/task-form.css"><link rel="stylesheet" href="/assets/metadata.css"><link rel="stylesheet" href="/assets/discussions.css"><link rel="stylesheet" href="/assets/collaboration.css">{% endblock %}
-{% block scripts %}<script src="/assets/custom-fields.js" defer></script><script src="/assets/discussions.js" defer></script>{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/assets/metadata.css"><link rel="stylesheet" href="/assets/collaboration.css">{% endblock %}
+{% set project_section = 'overview' %}
 
 {% block content %}
-<header class="page-header compact-page-header">
-    <div>
-        <h1>{{ project.name }}</h1>
-        <p class="muted">
-            {{ t('projects.status.' ~ project.lifecycleStatus) }} ·
-            {% if project.ownerTeamId %}
-                {{ t('projects.owner_team', {'team': project_team.name|default('—')}) }}
-            {% else %}
-                {{ t('projects.personal') }}
-            {% endif %}
-        </p>
-    </div>
-    <div class="page-header-actions">
-        <a class="button-link" href="/tasks/new?project_id={{ project.id }}">{{ t('projects.add_task') }}</a>
-        <a class="text-link" href="/projects">{{ t('projects.back') }}</a>
-    </div>
-</header>
+{% include 'projects/_nav.twig' %}
 
-<div class="project-detail-grid">
-{% if can_manage %}
-<section class="content-card metadata-section project-settings-card">
-    <div class="section-heading">
-        <div>
-            <h2>{{ t('projects.settings_title') }}</h2>
-            <p class="muted">{{ t('projects.settings_help') }}</p>
+<div class="entity-overview-grid">
+    <section class="content-card overview-span-2">
+        <div class="section-heading">
+            <div><h2>{{ t('projects.overview_about') }}</h2></div>
         </div>
-    </div>
-
-    {% if settings_notice %}
-        <p class="{{ settings_notice.kind == 'error' ? 'alert' : 'success-notice' }}" role="status">{{ settings_notice.message }}</p>
-    {% endif %}
-
-    <form class="project-settings-form" method="post" action="/projects/{{ project.id }}">
-        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-        <label>
-            <span>{{ t('projects.name') }}</span>
-            <input type="text" name="name" maxlength="160" required value="{{ project.name }}">
-        </label>
-        <label>
-            <span>{{ t('projects.status') }}</span>
-            <select name="lifecycle_status">
-                {% for status in lifecycle_statuses %}
-                    <option value="{{ status }}" {{ project.lifecycleStatus == status ? 'selected' : '' }}>{{ t('projects.status.' ~ status) }}</option>
-                {% endfor %}
-            </select>
-        </label>
-        <label class="field-wide">
-            <span>{{ t('projects.description') }}</span>
-            <textarea name="description" rows="4" maxlength="20000">{{ project.description }}</textarea>
-        </label>
-        <div class="project-settings-actions field-wide">
-            <button type="submit">{{ t('common.save') }}</button>
+        {% if project.description %}<p class="project-description">{{ project.description|nl2br }}</p>{% else %}<p class="muted">{{ t('projects.overview_no_description') }}</p>{% endif %}
+        <div class="overview-facts">
+            <div><span>{{ t('projects.status') }}</span><strong>{{ t('projects.status.' ~ project.lifecycleStatus) }}</strong></div>
+            <div><span>{{ t('projects.owner') }}</span><strong>{{ project_team ? project_team.name : t('projects.personal') }}</strong></div>
+            <div><span>{{ t('projects.overview_tasks') }}</span><strong>{{ task_count }}</strong></div>
+            <div><span>{{ t('projects.overview_files') }}</span><strong>{{ attachment_count }}</strong></div>
         </div>
-    </form>
-    <div class="metadata-actions project-danger-actions">
-        <form method="post" action="/projects/{{ project.id }}/delete" onsubmit="return confirm('{{ t('projects.delete_confirm')|e('js') }}')">
-            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-            <button class="danger-link" type="submit">{{ t('common.delete') }}</button>
-        </form>
-    </div>
-</section>
-{% elseif project.description %}
-<section class="content-card project-summary-card">
-    <p class="project-description">{{ project.description|nl2br }}</p>
-</section>
-{% endif %}
+    </section>
 
-<section class="content-card attachment-card project-files-card">
-    <div class="attachment-heading">
-        <div>
-            <h2>{{ t('projects.files') }}</h2>
-            <p class="muted">{{ t('attachments.help', {'size': attachment_max_mib, 'extensions': attachment_allowed_extensions|join(', ')}) }}</p>
+    <section class="content-card">
+        <div class="section-heading">
+            <div><h2>{{ t('projects.overview_task_state') }}</h2></div>
+            <a href="/tasks?project={{ project.id }}">{{ t('projects.open_task_list') }}</a>
         </div>
-    </div>
-
-    <form class="attachment-upload" method="post" action="/projects/{{ project.id }}/attachments" enctype="multipart/form-data">
-        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-        <label>
-            {{ t('attachments.choose') }}
-            <input type="file" name="attachments[]" multiple required>
-        </label>
-        <button type="submit">{{ t('attachments.upload') }}</button>
-    </form>
-
-    {% if attachments is empty %}
-        <p class="muted attachment-empty">{{ t('projects.files_empty') }}</p>
-    {% else %}
-        <div class="attachment-list">
-            {% for attachment in attachments %}
-                <div class="attachment-row">
-                    <div class="attachment-details">
-                        <a class="text-link attachment-name" href="/projects/{{ project.id }}/attachments/{{ attachment.id }}">{{ attachment.originalName }}</a>
-                        <span class="muted attachment-meta">
-                            {% if attachment.fileSize >= 1048576 %}
-                                {{ (attachment.fileSize / 1048576)|number_format(1, '.', ' ') }} MiB
-                            {% else %}
-                                {{ (attachment.fileSize / 1024)|number_format(1, '.', ' ') }} KiB
-                            {% endif %}
-                            · {{ attachment.createdAt }}
-                        </span>
-                    </div>
-                    <form method="post" action="/projects/{{ project.id }}/attachments/{{ attachment.id }}/delete" onsubmit="return confirm('{{ t('attachments.delete_confirm')|e('js') }}')">
-                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                        <button type="submit" class="secondary compact">{{ t('attachments.delete') }}</button>
-                    </form>
-                </div>
+        <div class="overview-metrics">
+            <div><strong>{{ open_task_count }}</strong><span>{{ t('projects.overview_open_tasks') }}</span></div>
+            <div><strong>{{ completed_task_count }}</strong><span>{{ t('projects.overview_completed_tasks') }}</span></div>
+        </div>
+        <div class="overview-status-list">
+            {% for item in status_summary %}
+                <div><span><span class="status-dot" style="--status-color: {{ item.status.color }}"></span>{{ item.status.name }}</span><strong>{{ item.count }}</strong></div>
             {% endfor %}
         </div>
-    {% endif %}
-</section>
+    </section>
 
-{% if discussion_enabled %}
-    {% include 'discussions/thread.twig' %}
-{% endif %}
-
-{% if can_manage %}
-<section class="content-card metadata-section project-workflow-card" id="project-statuses">
-    <div class="section-heading">
-        <div>
-            <h2>{{ t('projects.workflow_title') }}</h2>
-            <p class="muted">{{ t('projects.workflow_help') }}</p>
+    <section class="content-card">
+        <div class="section-heading">
+            <div><h2>{{ t('projects.fields_title') }}</h2></div>
+            {% if can_manage %}<a href="/projects/{{ project.id }}/fields">{{ t('projects.action_fields') }}</a>{% endif %}
         </div>
-    </div>
+        {% if custom_fields is empty %}
+            <p class="muted">{{ t('projects.fields_empty') }}</p>
+        {% else %}
+            <div class="overview-chip-list">
+                {% for field in custom_fields %}<span class="metadata-badge">{{ field.name }} · {{ t('custom_fields.type.' ~ field.type) }}</span>{% endfor %}
+            </div>
+        {% endif %}
+    </section>
 
-    {% if status_notice %}
-        <p class="{{ status_notice.kind == 'error' ? 'alert' : 'success-notice' }}" role="status">{{ status_notice.message }}</p>
-    {% endif %}
-
-    <form class="metadata-create" method="post" action="/projects/{{ project.id }}/statuses">
-        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-        <label>
-            <span>{{ t('projects.workflow_name') }}</span>
-            <input type="text" name="name" maxlength="96" required>
-        </label>
-        <label>
-            <span>{{ t('projects.workflow_color') }}</span>
-            <input type="color" name="color" value="#6b7280">
-        </label>
-        <label class="field-wide">
-            <span>{{ t('projects.workflow_description') }}</span>
-            <input type="text" name="description" maxlength="512">
-        </label>
-        <label class="checkbox-inline"><input type="checkbox" name="show_on_board" value="1" checked> {{ t('projects.workflow_board') }}</label>
-        <label class="checkbox-inline"><input type="checkbox" name="is_default" value="1"> {{ t('projects.workflow_default') }}</label>
-        <label class="checkbox-inline"><input type="checkbox" name="is_completion" value="1"> {{ t('projects.workflow_completion') }}</label>
-        <button type="submit">{{ t('projects.workflow_add') }}</button>
-    </form>
-
-    <div class="metadata-list">
-        {% for status in statuses %}
-            <article class="metadata-item">
-                <div class="metadata-item-heading">
-                    <strong><span class="status-dot" style="--status-color: {{ status.color }}"></span> {{ status.name }}</strong>
-                    <div class="metadata-badges">
-                        {% if status.isDefault %}<span class="metadata-badge">{{ t('projects.workflow_default') }}</span>{% endif %}
-                        {% if status.isCompletion %}<span class="metadata-badge">{{ t('projects.workflow_completion') }}</span>{% endif %}
-                        {% if status.showOnBoard %}<span class="metadata-badge">{{ t('projects.workflow_board') }}</span>{% endif %}
-                    </div>
-                </div>
-
-                <form class="metadata-edit" method="post" action="/projects/{{ project.id }}/statuses/{{ status.id }}">
-                    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                    <label>
-                        <span>{{ t('projects.workflow_name') }}</span>
-                        <input type="text" name="name" maxlength="96" required value="{{ status.name }}">
-                    </label>
-                    <label>
-                        <span>{{ t('projects.workflow_color') }}</span>
-                        <input type="color" name="color" value="{{ status.color }}">
-                    </label>
-                    <label class="field-wide">
-                        <span>{{ t('projects.workflow_description') }}</span>
-                        <input type="text" name="description" maxlength="512" value="{{ status.description }}">
-                    </label>
-                    <label class="checkbox-inline"><input type="checkbox" name="show_on_board" value="1" {{ status.showOnBoard ? 'checked' : '' }}> {{ t('projects.workflow_board') }}</label>
-                    <button class="secondary compact" type="submit">{{ t('common.save') }}</button>
-                </form>
-
-                <div class="metadata-actions">
-                    {% if not status.isDefault %}
-                        <form method="post" action="/projects/{{ project.id }}/statuses/{{ status.id }}/default">
-                            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                            <button class="secondary compact" type="submit">{{ t('projects.workflow_make_default') }}</button>
-                        </form>
-                    {% endif %}
-                    {% if not status.isCompletion %}
-                        <form method="post" action="/projects/{{ project.id }}/statuses/{{ status.id }}/completion">
-                            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                            <button class="secondary compact" type="submit">{{ t('projects.workflow_make_completion') }}</button>
-                        </form>
-                    {% endif %}
-                    <form method="post" action="/projects/{{ project.id }}/statuses/{{ status.id }}/move">
-                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                        <input type="hidden" name="direction" value="up">
-                        <button class="secondary compact" type="submit" title="{{ t('projects.workflow_move_up') }}">↑</button>
-                    </form>
-                    <form method="post" action="/projects/{{ project.id }}/statuses/{{ status.id }}/move">
-                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                        <input type="hidden" name="direction" value="down">
-                        <button class="secondary compact" type="submit" title="{{ t('projects.workflow_move_down') }}">↓</button>
-                    </form>
-                    <form method="post" action="/projects/{{ project.id }}/statuses/{{ status.id }}/delete" onsubmit="return confirm('{{ t('projects.workflow_delete_confirm')|e('js') }}')">
-                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                        <button class="danger-link compact" type="submit">{{ t('common.delete') }}</button>
-                    </form>
-                </div>
-            </article>
-        {% endfor %}
-    </div>
-</section>
-
-<section class="content-card metadata-section project-fields-card" id="project-fields">
-    <div class="section-heading">
-        <div>
-            <h2>{{ t('projects.fields_title') }}</h2>
-            <p class="muted">{{ t('projects.fields_help') }}</p>
+    <section class="content-card">
+        <div class="section-heading">
+            <div><h2>{{ t('projects.workflow_title') }}</h2></div>
+            {% if can_manage %}<a href="/projects/{{ project.id }}/statuses">{{ t('projects.action_statuses') }}</a>{% endif %}
         </div>
-    </div>
+        <div class="overview-chip-list">
+            {% for status in statuses %}
+                <span class="metadata-badge"><span class="status-dot" style="--status-color: {{ status.color }}"></span>{{ status.name }}</span>
+            {% endfor %}
+        </div>
+    </section>
 
-    {% if field_notice %}
-        <p class="{{ field_notice.kind == 'error' ? 'alert' : 'success-notice' }}" role="status">{{ field_notice.message }}</p>
-    {% endif %}
+    <section class="content-card">
+        <div class="section-heading">
+            <div><h2>{{ t('projects.files') }}</h2></div>
+            <a href="/projects/{{ project.id }}/files">{{ t('projects.action_files') }}</a>
+        </div>
+        <p class="overview-big-number">{{ attachment_count }}</p>
+        <p class="muted">{{ t('projects.overview_files_help') }}</p>
+    </section>
 
-    <form class="custom-field-editor custom-field-create" method="post" action="/projects/{{ project.id }}/fields" data-custom-field-form>
-        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-        <label class="custom-field-name">
-            <span>{{ t('custom_fields.name') }}</span>
-            <input type="text" name="name" maxlength="96" required>
-        </label>
-        <label class="custom-field-type">
-            <span>{{ t('custom_fields.type') }}</span>
-            <select name="field_type" required>
-                {% for type in custom_field_types %}
-                    <option value="{{ type }}">{{ t('custom_fields.type.' ~ type) }}</option>
+    {% if discussion_enabled %}
+    <section class="content-card overview-span-2">
+        <div class="section-heading">
+            <div>
+                <h2>{{ t('projects.discussion_title') }}</h2>
+                <p class="muted">{{ t('projects.overview_discussion_help', {'count': discussion_count}) }}</p>
+            </div>
+            <a href="/projects/{{ project.id }}/discussion">{{ t('projects.action_discussion') }}</a>
+        </div>
+        {% if recent_discussion is empty %}
+            <p class="muted">{{ t('projects.overview_no_discussion') }}</p>
+        {% else %}
+            <div class="overview-activity-list">
+                {% for comment in recent_discussion %}
+                    <article>
+                        <strong>{{ comment.authorUsername|default(t('discussions.deleted_author')) }}</strong>
+                        <span class="muted">{{ comment.updatedAt }}</span>
+                        <div>{{ sanitize_task_html(comment.bodyHtml)|raw }}</div>
+                    </article>
                 {% endfor %}
-            </select>
-        </label>
-        <label class="custom-field-options" data-custom-field-options hidden>
-            <span>{{ t('custom_fields.options') }}</span>
-            <textarea name="options" rows="5" placeholder="{{ t('custom_fields.options_placeholder') }}" disabled></textarea>
-            <small class="field-help">{{ t('custom_fields.options_inline_help') }}</small>
-        </label>
-        <label class="checkbox-inline compact-check custom-field-required">
-            <input type="checkbox" name="is_required" value="1">
-            {{ t('custom_fields.required') }}
-        </label>
-        <button class="custom-field-submit" type="submit">{{ t('custom_fields.add') }}</button>
-    </form>
-
-    {% if custom_fields is empty %}
-        <div class="empty-state">
-            <strong>{{ t('projects.fields_empty') }}</strong>
-            <span>{{ t('projects.fields_empty_help') }}</span>
-        </div>
-    {% else %}
-        <div class="metadata-list">
-        {% for field in custom_fields %}
-            <article class="metadata-item">
-                <div class="metadata-item-heading">
-                    <strong>{{ field.name }}</strong>
-                    <div class="metadata-badges">
-                        <span class="metadata-badge">{{ t('custom_fields.type.' ~ field.type) }}</span>
-                        {% if field.isRequired %}<span class="metadata-badge">{{ t('custom_fields.required_badge') }}</span>{% endif %}
-                    </div>
-                </div>
-
-                <form class="custom-field-editor custom-field-edit" method="post" action="/projects/{{ project.id }}/fields/{{ field.id }}" data-custom-field-form>
-                    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                    <label class="custom-field-name">
-                        <span>{{ t('custom_fields.name') }}</span>
-                        <input type="text" name="name" maxlength="96" value="{{ field.name }}" required>
-                    </label>
-                    <label class="custom-field-type">
-                        <span>{{ t('custom_fields.type') }}</span>
-                        <select name="field_type" required>
-                            {% for type in custom_field_types %}
-                                <option value="{{ type }}" {{ field.type == type ? 'selected' : '' }}>{{ t('custom_fields.type.' ~ type) }}</option>
-                            {% endfor %}
-                        </select>
-                    </label>
-                    <label class="custom-field-options" data-custom-field-options {{ field.type in ['select', 'checkbox_list'] ? '' : 'hidden' }}>
-                        <span>{{ t('custom_fields.options') }}</span>
-                        <textarea name="options" rows="5" placeholder="{{ t('custom_fields.options_placeholder') }}" {{ field.type in ['select', 'checkbox_list'] ? '' : 'disabled' }}>{{ field.options|join('\n') }}</textarea>
-                        <small class="field-help">{{ t('custom_fields.options_inline_help') }}</small>
-                    </label>
-                    <label class="checkbox-inline compact-check custom-field-required">
-                        <input type="checkbox" name="is_required" value="1" {{ field.isRequired ? 'checked' : '' }}>
-                        {{ t('custom_fields.required') }}
-                    </label>
-                    <button class="custom-field-submit" type="submit">{{ t('common.save') }}</button>
-                </form>
-
-                <div class="metadata-actions">
-                    <form method="post" action="/projects/{{ project.id }}/fields/{{ field.id }}/move">
-                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                        <input type="hidden" name="direction" value="up">
-                        <button class="secondary compact" type="submit" {{ loop.first ? 'disabled' : '' }}>{{ t('common.move_up') }}</button>
-                    </form>
-                    <form method="post" action="/projects/{{ project.id }}/fields/{{ field.id }}/move">
-                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                        <input type="hidden" name="direction" value="down">
-                        <button class="secondary compact" type="submit" {{ loop.last ? 'disabled' : '' }}>{{ t('common.move_down') }}</button>
-                    </form>
-                    <form method="post" action="/projects/{{ project.id }}/fields/{{ field.id }}/delete" onsubmit="return confirm('{{ t('projects.field_delete_confirm')|e('js') }}')">
-                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                        <button class="danger-link" type="submit">{{ t('common.delete') }}</button>
-                    </form>
-                </div>
-            </article>
-        {% endfor %}
-        </div>
+            </div>
+        {% endif %}
+    </section>
     {% endif %}
-</section>
-{% elseif project.ownerTeamId %}
-<section class="content-card project-readonly-card">
-    <p class="muted">{{ t('projects.team_member_readonly') }}</p>
-</section>
-{% endif %}
-
-
-<section class="content-card task-table-card project-tasks-card">
-    <div class="section-heading">
-        <div>
-            <h2>{{ t('projects.tasks') }}</h2>
-            <p class="muted">{{ t('projects.tasks_help') }}</p>
-        </div>
-        <a class="text-link" href="/tasks?project={{ project.id }}">{{ t('projects.open_task_list') }}</a>
-    </div>
-
-    {% if tasks is empty %}
-        <div class="empty-state">
-            <strong>{{ t('projects.no_tasks') }}</strong>
-            <span>{{ t('projects.no_tasks_help') }}</span>
-        </div>
-    {% else %}
-        <div class="table-wrap">
-            <table class="task-table">
-                <thead><tr><th>{{ t('tasks.table.task') }}</th>{% if project.ownerTeamId %}<th>{{ t('task_form.assignee') }}</th>{% endif %}<th>{{ t('tasks.table.status') }}</th><th>{{ t('tasks.table.deadline') }}</th></tr></thead>
-                <tbody>
-                {% for task in tasks %}
-                    <tr>
-                        <td><a class="task-title" href="/tasks/{{ task.id }}/edit" data-task-preview="{{ task.id }}">{{ task.title }}</a></td>
-                        {% if project.ownerTeamId %}<td>{{ assignee_map[task.assigneeUserId].username|default('—') }}</td>{% endif %}
-                        <td>{{ status_map[task.statusId].name|default('—') }}</td>
-                        <td class="nowrap">{{ task.deadline ? task.deadline|date('Y-m-d H:i') : '—' }}</td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    {% endif %}
-</section>
 </div>
 {% endblock %}

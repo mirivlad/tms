@@ -1,0 +1,8 @@
+{% extends 'app_layout.twig' %}
+{% block title %}{{ t('projects.action_discussion') }} · {{ project.name }} · TMS{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/assets/metadata.css"><link rel="stylesheet" href="/assets/discussions.css"><link rel="stylesheet" href="/assets/collaboration.css">{% endblock %}
+{% set project_section = 'discussion' %}
+{% block content %}
+{% include 'projects/_nav.twig' %}
+{% include 'discussions/thread.twig' %}
+{% endblock %}

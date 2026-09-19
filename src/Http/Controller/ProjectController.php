@@ -12,8 +12,10 @@ use Tms\Domain\CustomField\CustomFieldRepository;
 use Tms\Domain\Discussion\DiscussionRepository;
 use Tms\Domain\Project\ProjectAttachmentRepository;
 use Tms\Domain\Project\ProjectCustomFieldRepository;
+use Tms\Domain\Project\ProjectRecord;
 use Tms\Domain\Project\ProjectRepository;
 use Tms\Domain\Project\ProjectStatusRepository;
+use Tms\Domain\Status\StatusRecord;
 use Tms\Domain\Task\TaskRepository;
 use Tms\Domain\Team\TeamRepository;
 use Tms\I18n\Translator;
@@ -39,80 +41,7 @@ final class ProjectController
 
     public function index(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
-        return $this->render($request, $response);
-    }
-
-    /** @param array<string, string> $args */
-    public function show(
-        ServerRequestInterface $request,
-        ResponseInterface $response,
-        array $args,
-    ): ResponseInterface {
-        $userId = $this->userId();
-        $project = $this->projects->findForUser($userId, $this->routeId($args));
-        if ($project === null) {
-            $response->getBody()->write($this->translator->trans('validation.project_not_found'));
-            return $response->withStatus(404)->withHeader('Content-Type', 'text/plain; charset=utf-8');
-        }
-
-        $statusMap = [];
-        foreach ($this->statuses->listForProject($userId, $project->id) as $status) {
-            $statusMap[$status->id] = $status;
-        }
-
-        $statusNotice = $_SESSION['project_status_notice'] ?? null;
-        unset($_SESSION['project_status_notice']);
-        if (!is_array($statusNotice) || !is_string($statusNotice['message'] ?? null)) {
-            $statusNotice = null;
-        }
-        $fieldNotice = $_SESSION['project_field_notice'] ?? null;
-        unset($_SESSION['project_field_notice']);
-        if (!is_array($fieldNotice) || !is_string($fieldNotice['message'] ?? null)) {
-            $fieldNotice = null;
-        }
-        $settingsNotice = $_SESSION['project_settings_notice'] ?? null;
-        unset($_SESSION['project_settings_notice']);
-        if (!is_array($settingsNotice) || !is_string($settingsNotice['message'] ?? null)) {
-            $settingsNotice = null;
-        }
-
-        $team = $project->ownerTeamId === null
-            ? null
-            : $this->teams->findForMember($userId, $project->ownerTeamId);
-        $discussionNotice = $this->consumeDiscussionNotice();
-        $discussionEnabled = $project->ownerTeamId !== null && $team !== null;
-        $assigneeMap = [];
-        if ($project->ownerTeamId !== null) {
-            foreach ($this->teams->listMembers($userId, $project->ownerTeamId) as $member) {
-                $assigneeMap[$member->userId] = $member;
-            }
-        }
-
-        return $this->view->render($response, 'projects/show.twig', [
-            'csrf_token' => $this->csrfToken($request),
-            'username' => $this->sessions->currentUsername() ?? '',
-            'project' => $project,
-            'can_manage' => $this->projects->canManageForUser($userId, $project->id),
-            'project_team' => $team,
-            'discussion_enabled' => $discussionEnabled,
-            'discussion_comments' => $discussionEnabled ? $this->discussions->listForProject($userId, $project->id) : [],
-            'discussion_notice' => $discussionNotice,
-            'discussion_base_url' => '/projects/' . $project->id . '/discussion',
-            'discussion_current_user_id' => $userId,
-            'discussion_can_moderate' => $project->ownerTeamId !== null
-                && $this->teams->roleForUser($userId, $project->ownerTeamId) === 'lead',
-            'tasks' => $this->tasks->listForProjectForUser($userId, $project->id),
-            'attachments' => $this->attachments->listForProject($userId, $project->id),
-            'statuses' => array_values($statusMap),
-            'status_map' => $statusMap,
-            'assignee_map' => $assigneeMap,
-            'status_notice' => $statusNotice,
-            'custom_fields' => $this->fields->listForProject($userId, $project->id),
-            'custom_field_types' => CustomFieldRepository::TYPES,
-            'field_notice' => $fieldNotice,
-            'settings_notice' => $settingsNotice,
-            'lifecycle_statuses' => ProjectRepository::LIFECYCLE_STATUSES,
-        ]);
+        return $this->renderIndex($request, $response);
     }
 
     public function create(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
@@ -142,26 +71,195 @@ final class ProjectController
                 );
             }
         } catch (DomainException $error) {
-            return $this->render($request, $response, $this->domainMessage($error), 422, $body);
+            return $this->renderIndex(
+                $request,
+                $response,
+                $this->domainMessage($error),
+                422,
+                $body,
+                true,
+            );
         }
 
-        return $this->redirect($response);
+        return $this->redirect($response, '/projects');
     }
 
     /** @param array<string, string> $args */
-    public function update(
-        ServerRequestInterface $request,
-        ResponseInterface $response,
-        array $args,
-    ): ResponseInterface {
-        $projectId = $this->routeId($args);
-        if ($this->projects->findManageableForUser($this->userId(), $projectId) === null) {
-            $response->getBody()->write($this->translator->trans('validation.project_not_found'));
+    public function show(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $project = $this->projectForUser($response, $args);
+        if (!$project instanceof ProjectRecord) {
+            return $project;
+        }
+
+        $userId = $this->userId();
+        $statuses = $this->statuses->listForProject($userId, $project->id);
+        $tasks = $this->tasks->listForProjectForUser($userId, $project->id);
+        $statusMap = [];
+        $statusCounts = [];
+        foreach ($statuses as $status) {
+            $statusMap[$status->id] = $status;
+            $statusCounts[$status->id] = 0;
+        }
+
+        $completedTasks = 0;
+        foreach ($tasks as $task) {
+            $statusCounts[$task->statusId] = ($statusCounts[$task->statusId] ?? 0) + 1;
+            $status = $statusMap[$task->statusId] ?? null;
+            if ($status instanceof StatusRecord && $status->isCompletion) {
+                ++$completedTasks;
+            }
+        }
+
+        $discussionComments = $project->ownerTeamId !== null
+            ? $this->discussions->listForProject($userId, $project->id)
+            : [];
+        $recentDiscussion = array_values(array_filter(
+            $discussionComments,
+            static fn ($comment): bool => $comment->deletedAt === null,
+        ));
+        $recentDiscussion = array_reverse(array_slice($recentDiscussion, -5));
+
+        $statusSummary = [];
+        foreach ($statuses as $status) {
+            $statusSummary[] = [
+                'status' => $status,
+                'count' => $statusCounts[$status->id] ?? 0,
+            ];
+        }
+
+        return $this->view->render($response, 'projects/show.twig', $this->baseProjectView(
+            $request,
+            $project,
+            [
+                'statuses' => $statuses,
+                'status_summary' => $statusSummary,
+                'custom_fields' => $this->fields->listForProject($userId, $project->id),
+                'task_count' => count($tasks),
+                'open_task_count' => count($tasks) - $completedTasks,
+                'completed_task_count' => $completedTasks,
+                'attachment_count' => count($this->attachments->listForProject($userId, $project->id)),
+                'discussion_count' => count($discussionComments),
+                'recent_discussion' => $recentDiscussion,
+            ],
+        ));
+    }
+
+    /** @param array<string, string> $args */
+    public function settings(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $project = $this->manageableProject($response, $args);
+        if (!$project instanceof ProjectRecord) {
+            return $project;
+        }
+
+        return $this->view->render($response, 'projects/settings.twig', $this->baseProjectView(
+            $request,
+            $project,
+            [
+                'lead_teams' => $this->leadTeams(),
+                'lifecycle_statuses' => ProjectRepository::LIFECYCLE_STATUSES,
+                'settings_notice' => $this->consumeSessionNotice('project_settings_notice'),
+            ],
+        ));
+    }
+
+    /** @param array<string, string> $args */
+    public function statuses(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $project = $this->manageableProject($response, $args);
+        if (!$project instanceof ProjectRecord) {
+            return $project;
+        }
+
+        return $this->view->render($response, 'projects/statuses.twig', $this->baseProjectView(
+            $request,
+            $project,
+            [
+                'statuses' => $this->statuses->listForProject($this->userId(), $project->id),
+                'status_notice' => $this->consumeSessionNotice('project_status_notice'),
+            ],
+        ));
+    }
+
+    /** @param array<string, string> $args */
+    public function fields(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $project = $this->manageableProject($response, $args);
+        if (!$project instanceof ProjectRecord) {
+            return $project;
+        }
+
+        return $this->view->render($response, 'projects/fields.twig', $this->baseProjectView(
+            $request,
+            $project,
+            [
+                'custom_fields' => $this->fields->listForProject($this->userId(), $project->id),
+                'custom_field_types' => CustomFieldRepository::TYPES,
+                'field_notice' => $this->consumeSessionNotice('project_field_notice'),
+            ],
+        ));
+    }
+
+    /** @param array<string, string> $args */
+    public function files(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $project = $this->projectForUser($response, $args);
+        if (!$project instanceof ProjectRecord) {
+            return $project;
+        }
+
+        return $this->view->render($response, 'projects/files.twig', $this->baseProjectView(
+            $request,
+            $project,
+            ['attachments' => $this->attachments->listForProject($this->userId(), $project->id)],
+        ));
+    }
+
+    /** @param array<string, string> $args */
+    public function discussion(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $project = $this->projectForUser($response, $args);
+        if (!$project instanceof ProjectRecord) {
+            return $project;
+        }
+        if ($project->ownerTeamId === null) {
+            $response->getBody()->write($this->translator->trans('discussions.unavailable'));
             return $response->withStatus(404)->withHeader('Content-Type', 'text/plain; charset=utf-8');
+        }
+
+        return $this->view->render($response, 'projects/discussion.twig', $this->baseProjectView(
+            $request,
+            $project,
+            [
+                'discussion_comments' => $this->discussions->listForProject($this->userId(), $project->id),
+                'discussion_notice' => $this->consumeDiscussionNotice(),
+                'discussion_base_url' => '/projects/' . $project->id . '/discussion',
+                'discussion_current_user_id' => $this->userId(),
+                'discussion_can_moderate' => $this->teams->roleForUser(
+                    $this->userId(),
+                    (int) $project->ownerTeamId,
+                ) === 'lead',
+            ],
+        ));
+    }
+
+    /** @param array<string, string> $args */
+    public function update(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
+        $projectId = $this->routeId($args);
+        $project = $this->projects->findManageableForUser($this->userId(), $projectId);
+        if ($project === null) {
+            return $this->notFound($response);
         }
 
         $body = $this->body($request);
         try {
+            $targetTeamId = $this->targetTeamId($body, $project);
+            if ($targetTeamId !== null && $this->teams->findForLead($this->userId(), $targetTeamId) === null) {
+                throw new DomainException('Only a Team Lead can assign a project to that team.');
+            }
+
             $this->projects->updateForUser(
                 $this->userId(),
                 $projectId,
@@ -169,76 +267,53 @@ final class ProjectController
                 (string) ($body['description'] ?? ''),
                 (string) ($body['lifecycle_status'] ?? 'active'),
             );
-            $_SESSION['project_settings_notice'] = [
-                'kind' => 'success',
-                'message' => $this->translator->trans('projects.saved'),
-            ];
+            $this->projects->changeOwnershipForUser($this->userId(), $projectId, $targetTeamId);
+            $this->sessionNotice('project_settings_notice', 'success', $this->translator->trans('projects.saved'));
         } catch (DomainException $error) {
-            $_SESSION['project_settings_notice'] = [
-                'kind' => 'error',
-                'message' => $this->domainMessage($error),
-            ];
+            $this->sessionNotice('project_settings_notice', 'error', $this->domainMessage($error));
         }
 
-        return $this->redirectProject($response, $projectId);
+        return $this->redirect($response, '/projects/' . $projectId . '/settings');
     }
 
     /** @param array<string, string> $args */
-    public function delete(
-        ServerRequestInterface $request,
-        ResponseInterface $response,
-        array $args,
-    ): ResponseInterface {
+    public function delete(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
+    {
         $userId = $this->userId();
         $projectId = $this->routeId($args);
         if ($this->projects->findManageableForUser($userId, $projectId) === null) {
-            return $this->render(
-                $request,
-                $response,
-                $this->translator->trans('validation.project_not_found'),
-                404,
-            );
+            return $this->notFound($response);
         }
 
         $stored = $this->attachments->listForProject($userId, $projectId);
         try {
             if (!$this->projects->deleteForUser($userId, $projectId)) {
-                return $this->render(
-                    $request,
-                    $response,
-                    $this->translator->trans('validation.project_not_found'),
-                    404,
-                );
+                return $this->notFound($response);
             }
         } catch (DomainException $error) {
-            return $this->render(
-                $request,
-                $response,
-                $this->domainMessage($error),
-                409,
-            );
+            $this->sessionNotice('project_settings_notice', 'error', $this->domainMessage($error));
+            return $this->redirect($response, '/projects/' . $projectId . '/settings');
         }
+
         foreach ($stored as $attachment) {
             if (!$this->storage->delete($attachment->storageName)) {
                 error_log('TMS project attachment cleanup failed after project deletion: ' . $attachment->storageName);
             }
         }
 
-        return $this->redirect($response);
+        return $this->redirect($response, '/projects');
     }
 
     /**
      * @param array<string, mixed>|null $createForm
-     * @param array<string, mixed>|null $editForm
      */
-    private function render(
+    private function renderIndex(
         ServerRequestInterface $request,
         ResponseInterface $response,
         ?string $error = null,
         int $status = 200,
         ?array $createForm = null,
-        ?int $editProjectId = null,
-        ?array $editForm = null,
+        bool $openCreateDialog = false,
     ): ResponseInterface {
         $userId = $this->userId();
         $teams = $this->teams->listForUser($userId);
@@ -254,14 +329,15 @@ final class ProjectController
         $projects = $this->projects->listForUser($userId);
         $manageable = [];
         foreach ($projects as $project) {
-            if ($this->projects->canManageForUser($userId, $project->id)) {
-                $manageable[$project->id] = true;
-            }
+            $manageable[$project->id] = $this->projects->canManageForUser($userId, $project->id);
         }
 
         if ($createForm === null) {
             $owner = $request->getQueryParams()['owner'] ?? null;
             $createForm = is_string($owner) ? ['owner_scope' => $owner] : [];
+            if (is_string($owner) && $owner !== '') {
+                $openCreateDialog = true;
+            }
         }
 
         return $this->view->render($response, 'projects/index.twig', [
@@ -274,9 +350,70 @@ final class ProjectController
             'lifecycle_statuses' => ProjectRepository::LIFECYCLE_STATUSES,
             'error' => $error,
             'create_form' => $createForm,
-            'edit_project_id' => $editProjectId,
-            'edit_form' => $editForm ?? [],
+            'open_create_dialog' => $openCreateDialog,
         ])->withStatus($status);
+    }
+
+    /**
+     * @param array<string, mixed> $extra
+     * @return array<string, mixed>
+     */
+    private function baseProjectView(
+        ServerRequestInterface $request,
+        ProjectRecord $project,
+        array $extra = [],
+    ): array {
+        $team = $project->ownerTeamId === null
+            ? null
+            : $this->teams->findForMember($this->userId(), $project->ownerTeamId);
+
+        return $extra + [
+            'csrf_token' => $this->csrfToken($request),
+            'username' => $this->sessions->currentUsername() ?? '',
+            'project' => $project,
+            'project_team' => $team,
+            'can_manage' => $this->projects->canManageForUser($this->userId(), $project->id),
+            'discussion_enabled' => $project->ownerTeamId !== null && $team !== null,
+        ];
+    }
+
+    /** @param array<string, string> $args */
+    private function projectForUser(ResponseInterface $response, array $args): ProjectRecord|ResponseInterface
+    {
+        $project = $this->projects->findForUser($this->userId(), $this->routeId($args));
+        return $project ?? $this->notFound($response);
+    }
+
+    /** @param array<string, string> $args */
+    private function manageableProject(ResponseInterface $response, array $args): ProjectRecord|ResponseInterface
+    {
+        $project = $this->projects->findManageableForUser($this->userId(), $this->routeId($args));
+        return $project ?? $this->notFound($response);
+    }
+
+    /** @return list<object> */
+    private function leadTeams(): array
+    {
+        return array_values(array_filter(
+            $this->teams->listForUser($this->userId()),
+            static fn ($team): bool => $team->currentUserIsLead(),
+        ));
+    }
+
+    /** @param array<string, mixed> $body */
+    private function targetTeamId(array $body, ProjectRecord $project): ?int
+    {
+        if (!array_key_exists('owner_scope', $body)) {
+            return $project->ownerTeamId;
+        }
+        $ownerScope = is_string($body['owner_scope'] ?? null) ? (string) $body['owner_scope'] : '';
+        if ($ownerScope === 'personal') {
+            return null;
+        }
+        if (preg_match('/^team:([0-9]+)$/D', $ownerScope, $matches) !== 1) {
+            throw new DomainException('Invalid project owner.');
+        }
+        return (int) $matches[1];
     }
 
     private function domainMessage(DomainException $error): string
@@ -285,20 +422,23 @@ final class ProjectController
             'Project name must contain 1-160 characters.' => $this->translator->trans('validation.project_name'),
             'Project description cannot exceed 20000 characters.' => $this->translator->trans('validation.project_description'),
             'Unsupported project lifecycle status.' => $this->translator->trans('validation.project_status'),
-            'Only a Team Lead can create a team project.' => $this->translator->trans('projects.team_lead_required'),
+            'Only a Team Lead can create a team project.',
+            'Only a Team Lead can assign a project to that team.' => $this->translator->trans('projects.team_lead_required'),
             'A team project with tasks cannot be deleted.' => $this->translator->trans('projects.team_delete_with_tasks'),
+            'Invalid project owner.' => $this->translator->trans('projects.owner_invalid'),
             default => $this->translator->trans('validation.project_invalid'),
         };
     }
 
-    private function redirect(ResponseInterface $response): ResponseInterface
+    private function notFound(ResponseInterface $response): ResponseInterface
     {
-        return $response->withHeader('Location', '/projects')->withStatus(302);
+        $response->getBody()->write($this->translator->trans('validation.project_not_found'));
+        return $response->withStatus(404)->withHeader('Content-Type', 'text/plain; charset=utf-8');
     }
 
-    private function redirectProject(ResponseInterface $response, int $projectId): ResponseInterface
+    private function redirect(ResponseInterface $response, string $location): ResponseInterface
     {
-        return $response->withHeader('Location', '/projects/' . $projectId)->withStatus(302);
+        return $response->withHeader('Location', $location)->withStatus(302);
     }
 
     /** @return array<string, mixed> */
@@ -315,17 +455,28 @@ final class ProjectController
         return ctype_digit($value) ? (int) $value : 0;
     }
 
-    /** @return array{kind:string,message:string}|null */
-    private function consumeDiscussionNotice(): ?array
+    private function sessionNotice(string $key, string $kind, string $message): void
     {
-        $notice = $_SESSION['_discussion_notice'] ?? null;
-        unset($_SESSION['_discussion_notice']);
+        $_SESSION[$key] = ['kind' => $kind, 'message' => $message];
+    }
+
+    /** @return array{kind:string,message:string}|null */
+    private function consumeSessionNotice(string $key): ?array
+    {
+        $notice = $_SESSION[$key] ?? null;
+        unset($_SESSION[$key]);
         if (!is_array($notice)
             || !is_string($notice['kind'] ?? null)
             || !is_string($notice['message'] ?? null)) {
             return null;
         }
         return ['kind' => $notice['kind'], 'message' => $notice['message']];
+    }
+
+    /** @return array{kind:string,message:string}|null */
+    private function consumeDiscussionNotice(): ?array
+    {
+        return $this->consumeSessionNotice('_discussion_notice');
     }
 
     private function userId(): int

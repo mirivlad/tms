@@ -72,6 +72,7 @@ final class DiscussionNotificationServiceTest extends TestCase
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             project_id INTEGER NULL,
             task_id INTEGER NULL,
+            team_id INTEGER NULL,
             parent_comment_id INTEGER NULL,
             author_user_id INTEGER NULL,
             body_html TEXT NOT NULL,
@@ -159,16 +160,19 @@ final class DiscussionNotificationServiceTest extends TestCase
         );
         $this->service->processComment(2, $commentId);
 
+        self::assertSame('7', (string) $this->db->query(
+            'SELECT team_id FROM discussion_comments WHERE id = ' . $commentId
+        )->fetchColumn());
         self::assertSame(1, $this->notifications->countUnreadForUser(1));
         self::assertSame(0, $this->notifications->countUnreadForUser(4));
         $notification = $this->notifications->listForUser(1)[0];
         self::assertSame('discussion_mention', $notification->notificationType);
-        self::assertSame('/projects/10#comment-' . $commentId, $notification->targetUrl);
+        self::assertSame('/projects/10/discussion#comment-' . $commentId, $notification->targetUrl);
         self::assertStringContainsString('@lead', $notification->bodyPreview);
 
         self::assertCount(1, $this->email->messages);
         self::assertSame('lead-delivery@example.test', $this->email->messages[0]['to']);
-        self::assertStringContainsString('https://tms.example.test/projects/10#comment-', $this->email->messages[0]['text']);
+        self::assertStringContainsString('https://tms.example.test/projects/10/discussion#comment-', $this->email->messages[0]['text']);
         self::assertCount(1, $this->telegram->messages);
         self::assertSame('111', $this->telegram->messages[0]['chat_id']);
 

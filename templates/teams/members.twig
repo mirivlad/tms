@@ -1,0 +1,75 @@
+{% extends 'app_layout.twig' %}
+{% block title %}{{ t('teams.action_members') }} · {{ team.name }} · TMS{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/assets/metadata.css"><link rel="stylesheet" href="/assets/collaboration.css">{% endblock %}
+{% set team_section = 'members' %}
+{% block content %}
+{% include 'teams/_nav.twig' %}
+{% if notice %}<p class="{{ notice.kind == 'error' ? 'alert' : 'success-notice' }}" role="status">{{ notice.message }}</p>{% endif %}
+
+<section class="content-card metadata-section entity-management-page">
+    <div class="section-heading">
+        <div><h2>{{ t('teams.members') }}</h2><p class="muted">{{ t('teams.members_page_help') }}</p></div>
+        {% if is_lead %}<button type="button" data-dialog-trigger="#team-invite-dialog">{{ t('teams.invite_send') }}</button>{% endif %}
+    </div>
+    <div class="metadata-list team-member-list">
+    {% for member in members %}
+        <article class="metadata-item">
+            <div class="metadata-item-heading">
+                <div><strong>{{ member.username }}</strong><span class="muted"> · {{ member.email }}</span></div>
+                <span class="metadata-badge">{{ t('teams.role.' ~ member.role) }}</span>
+            </div>
+            {% if is_lead %}
+            <div class="metadata-actions">
+                <form method="post" action="/teams/{{ team.id }}/members/{{ member.userId }}/role">
+                    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                    <select name="role">{% for role in roles %}<option value="{{ role }}" {{ member.role == role ? 'selected' : '' }}>{{ t('teams.role.' ~ role) }}</option>{% endfor %}</select>
+                    <button class="secondary compact" type="submit">{{ t('teams.change_role') }}</button>
+                </form>
+                <form method="post" action="/teams/{{ team.id }}/members/{{ member.userId }}/remove" onsubmit="return confirm('{{ t('teams.remove_confirm')|e('js') }}')">
+                    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                    <button class="danger-link compact" type="submit">{{ t('teams.remove_member') }}</button>
+                </form>
+            </div>
+            {% endif %}
+        </article>
+    {% endfor %}
+    </div>
+</section>
+
+{% if is_lead and invitations is not empty %}
+<section class="content-card metadata-section entity-management-page">
+    <div class="section-heading"><div><h2>{{ t('teams.pending_invitations') }}</h2></div></div>
+    <div class="metadata-list">
+    {% for invitation in invitations %}
+        <article class="metadata-item">
+            <div class="metadata-item-heading"><div><strong>{{ invitation.invitedUsername }}</strong><span class="muted"> · {{ invitation.invitedEmail }}</span></div><span class="metadata-badge">{{ t('teams.invite_status.' ~ invitation.status) }}</span></div>
+            <p class="muted">{{ t('teams.invite_expires') }}: {{ invitation.expiresAt }}</p>
+            {% if invitation.status == 'pending' %}<form method="post" action="/teams/{{ team.id }}/invitations/{{ invitation.id }}/revoke"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="secondary compact" type="submit">{{ t('teams.invite_revoke') }}</button></form>{% endif %}
+        </article>
+    {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<section class="content-card entity-membership-actions">
+    <form method="post" action="/teams/{{ team.id }}/leave" onsubmit="return confirm('{{ t('teams.leave_confirm')|e('js') }}')">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <button class="secondary" type="submit">{{ t('teams.leave') }}</button>
+    </form>
+</section>
+
+{% if is_lead %}
+<dialog class="collaboration-dialog" id="team-invite-dialog" data-collaboration-dialog>
+    <form class="collaboration-dialog-form" method="post" action="/teams/{{ team.id }}/invitations">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <header class="quick-add-dialog-header">
+            <div><h2>{{ t('teams.invite_title') }}</h2><p class="muted">{{ t('teams.invite_help') }}</p></div>
+            <button class="secondary compact quick-add-close" type="button" data-dialog-close aria-label="{{ t('common.cancel') }}">×</button>
+        </header>
+        <label><span>{{ t('teams.invite_identifier') }}</span><input type="text" name="identifier" required placeholder="{{ t('teams.invite_identifier_placeholder') }}" autofocus></label>
+        <footer class="quick-add-dialog-actions"><button type="submit">{{ t('teams.invite_send') }}</button><button class="secondary" type="button" data-dialog-close>{{ t('common.cancel') }}</button></footer>
+    </form>
+</dialog>
+{% endif %}
+{% endblock %}
+{% block scripts %}<script src="/assets/collaboration.js" defer></script>{% endblock %}

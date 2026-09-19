@@ -11,7 +11,7 @@ db() {
 }
 
 csrf_from() {
-  sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' "$1" | head -n1
+  grep -m1 -o 'name="_csrf" value="[^"]*"' "$1" | sed 's/.*value="//;s/"$//'
 }
 
 admin_id=$(db "SELECT id FROM users WHERE username='ciadmin' LIMIT 1")
@@ -70,7 +70,10 @@ curl --fail --silent --cookie "$MEMBER_COOKIES" "$BASE_URL/projects/$project_id"
 member_csrf=$(csrf_from /tmp/tp-member-project.html)
 test -n "$member_csrf"
 grep -q 'CI Shared Project' /tmp/tp-member-project.html
-grep -q 'Project settings are managed by Team Leads' /tmp/tp-member-project.html
+if grep -q "href=\"/projects/$project_id/settings\"" /tmp/tp-member-project.html; then
+  echo 'Member received project settings navigation.' >&2
+  exit 1
+fi
 if grep -q "action=\"/projects/$project_id/statuses\"" /tmp/tp-member-project.html; then
   echo 'Member received project workflow management controls.' >&2
   exit 1
@@ -124,19 +127,23 @@ curl --fail --silent --cookie "$MEMBER_COOKIES"   "$BASE_URL/tasks/$task_id/atta
 cmp /tmp/tp-shared.txt /tmp/tp-member-downloaded.txt
 
 # A project with tasks and its owning team cannot be deleted.
-curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/projects/$project_id" > /tmp/tp-admin-project.html
+curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/projects/$project_id/settings" > /tmp/tp-admin-project.html
 admin_project_csrf=$(csrf_from /tmp/tp-admin-project.html)
 code=$(curl --silent -o /tmp/tp-project-delete-blocked.html -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$admin_project_csrf"   "$BASE_URL/projects/$project_id/delete")
-test "$code" = "409"
+test "$code" = "302"
 test "$(db "SELECT COUNT(*) FROM projects WHERE id=$project_id")" = "1"
+curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/projects/$project_id/settings" > /tmp/tp-project-delete-blocked-settings.html
+grep -q 'team project with tasks' /tmp/tp-project-delete-blocked-settings.html
 
-curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/teams/$team_id" > /tmp/tp-admin-team.html
+curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/teams/$team_id/settings" > /tmp/tp-admin-team.html
 team_csrf=$(csrf_from /tmp/tp-admin-team.html)
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$team_csrf"   "$BASE_URL/teams/$team_id/delete")
 test "$code" = "302"
 test "$(db "SELECT COUNT(*) FROM teams WHERE id=$team_id")" = "1"
 
 # Removing membership immediately revokes project/task access.
+curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/teams/$team_id/members" > /tmp/tp-admin-members.html
+team_csrf=$(csrf_from /tmp/tp-admin-members.html)
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$team_csrf"   "$BASE_URL/teams/$team_id/members/$member_id/remove")
 test "$code" = "302"
 test "$(db "SELECT COUNT(*) FROM team_members WHERE team_id=$team_id AND user_id=$member_id")" = "0"
@@ -161,13 +168,13 @@ if docker compose exec -T app test -f "$STORAGE_ROOT/${storage_name:0:2}/$storag
 fi
 
 # Empty team project can now be deleted, then the team can be deleted.
-curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/projects/$project_id" > /tmp/tp-admin-project-final.html
+curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/projects/$project_id/settings" > /tmp/tp-admin-project-final.html
 admin_project_csrf=$(csrf_from /tmp/tp-admin-project-final.html)
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$admin_project_csrf"   "$BASE_URL/projects/$project_id/delete")
 test "$code" = "302"
 test "$(db "SELECT COUNT(*) FROM projects WHERE id=$project_id")" = "0"
 
-curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/teams/$team_id" > /tmp/tp-admin-team-final.html
+curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/teams/$team_id/settings" > /tmp/tp-admin-team-final.html
 team_csrf=$(csrf_from /tmp/tp-admin-team-final.html)
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$team_csrf"   "$BASE_URL/teams/$team_id/delete")
 test "$code" = "302"

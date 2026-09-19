@@ -10,7 +10,7 @@ db() {
 }
 
 csrf_from() {
-  sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' "$1" | head -n1
+  grep -m1 -o 'name="_csrf" value="[^"]*"' "$1" | sed 's/.*value="//;s/"$//'
 }
 
 admin_id=$(db "SELECT id FROM users WHERE username='ciadmin' LIMIT 1")
@@ -47,7 +47,7 @@ test "$code" = "302"
 project_id=$(db "SELECT id FROM projects WHERE owner_team_id=$team_id AND name='CI Discussion Project' LIMIT 1")
 test -n "$project_id"
 
-curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/projects/$project_id" > /tmp/discussion-project-admin.html
+curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/projects/$project_id/discussion" > /tmp/discussion-project-admin.html
 project_csrf=$(csrf_from /tmp/discussion-project-admin.html)
 test -n "$project_csrf"
 grep -q 'id="discussion"' /tmp/discussion-project-admin.html
@@ -61,11 +61,7 @@ test -n "$task_id"
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$project_csrf"   --data-urlencode 'owner_scope=personal'   --data-urlencode 'name=CI Personal No Discussion'   --data-urlencode 'lifecycle_status=active'   "$BASE_URL/projects")
 test "$code" = "302"
 personal_id=$(db "SELECT id FROM projects WHERE owner_user_id=$admin_id AND name='CI Personal No Discussion' LIMIT 1")
-curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/projects/$personal_id" > /tmp/discussion-personal.html
-if grep -q 'id="discussion"' /tmp/discussion-personal.html; then
-  echo 'Personal project unexpectedly exposed discussion UI.' >&2
-  exit 1
-fi
+test "$(curl --silent -o /dev/null -w '%{http_code}' --cookie "$ADMIN_COOKIES" "$BASE_URL/projects/$personal_id/discussion")" = "404"
 
 # Independent member session.
 curl --fail --silent --cookie-jar "$MEMBER_COOKIES" "$BASE_URL/login" > /tmp/discussion-login.html
@@ -74,7 +70,7 @@ test -n "$login_csrf"
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES" --cookie-jar "$MEMBER_COOKIES"   --data-urlencode "_csrf=$login_csrf"   --data-urlencode 'username=discussionmember'   --data-urlencode 'password=discussion-member-password'   "$BASE_URL/login")
 test "$code" = "302"
 
-curl --fail --silent --cookie "$MEMBER_COOKIES" "$BASE_URL/projects/$project_id" > /tmp/discussion-project-member.html
+curl --fail --silent --cookie "$MEMBER_COOKIES" "$BASE_URL/projects/$project_id/discussion" > /tmp/discussion-project-member.html
 member_csrf=$(csrf_from /tmp/discussion-project-member.html)
 test -n "$member_csrf"
 grep -q 'id="discussion"' /tmp/discussion-project-member.html
@@ -108,7 +104,7 @@ grep -q 'discussionmember' /tmp/discussion-admin-inbox.html
 
 code=$(curl --silent -D /tmp/discussion-open.headers -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   "$BASE_URL/notifications/$mention_notification/open")
 test "$code" = "302"
-grep -qi "location: /projects/$project_id#comment-$root_id" /tmp/discussion-open.headers
+grep -qi "location: /projects/$project_id/discussion#comment-$root_id" /tmp/discussion-open.headers
 test "$(db "SELECT read_at IS NOT NULL FROM internal_notifications WHERE id=$mention_notification")" = "1"
 
 # Lead replies; reply-to-reply is rejected.
@@ -152,7 +148,7 @@ test "$code" = "302"
 test "$(db "SELECT deleted_at IS NOT NULL FROM discussion_comments WHERE id=$root_id")" = "1"
 test "$(db "SELECT COUNT(*) FROM discussion_comments WHERE id=$reply_id")" = "1"
 
-curl --fail --silent --cookie "$MEMBER_COOKIES" "$BASE_URL/projects/$project_id#discussion" > /tmp/discussion-thread.html
+curl --fail --silent --cookie "$MEMBER_COOKIES" "$BASE_URL/projects/$project_id/discussion" > /tmp/discussion-thread.html
 grep -q 'Comment deleted' /tmp/discussion-thread.html
 grep -q 'Lead reply' /tmp/discussion-thread.html
 
@@ -180,7 +176,7 @@ test "$code" = "302"
 test "$(db "SELECT COUNT(*) FROM internal_notifications WHERE user_id=$admin_id AND read_at IS NULL")" = "0"
 
 # Removing membership revokes discussion access immediately.
-curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/teams/$team_id" > /tmp/discussion-team-admin.html
+curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/teams/$team_id/members" > /tmp/discussion-team-admin.html
 team_csrf=$(csrf_from /tmp/discussion-team-admin.html)
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$team_csrf"   "$BASE_URL/teams/$team_id/members/$member_id/remove")
 test "$code" = "302"
@@ -208,7 +204,7 @@ code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES" 
 test "$code" = "302"
 test "$(db "SELECT COUNT(*) FROM discussion_comments WHERE task_id=$task_id")" = "0"
 
-curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/projects/$project_id" > /tmp/discussion-project-final.html
+curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/projects/$project_id/settings" > /tmp/discussion-project-final.html
 project_csrf=$(csrf_from /tmp/discussion-project-final.html)
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$project_csrf"   "$BASE_URL/projects/$project_id/delete")
 test "$code" = "302"

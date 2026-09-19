@@ -1,0 +1,58 @@
+{% extends 'app_layout.twig' %}
+{% block title %}{{ t('projects.action_settings') }} · {{ project.name }} · TMS{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/assets/metadata.css"><link rel="stylesheet" href="/assets/collaboration.css">{% endblock %}
+{% set project_section = 'settings' %}
+{% block content %}
+{% include 'projects/_nav.twig' %}
+<section class="content-card metadata-section entity-management-page">
+    <div class="section-heading">
+        <div>
+            <h2>{{ t('projects.settings_title') }}</h2>
+            <p class="muted">{{ t('projects.settings_help') }}</p>
+        </div>
+    </div>
+    {% if settings_notice %}<p class="{{ settings_notice.kind == 'error' ? 'alert' : 'success-notice' }}" role="status">{{ settings_notice.message }}</p>{% endif %}
+    <form class="entity-settings-form" method="post" action="/projects/{{ project.id }}">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label>
+            <span>{{ t('projects.name') }}</span>
+            <input type="text" name="name" maxlength="160" required value="{{ project.name }}">
+        </label>
+        <label>
+            <span>{{ t('projects.status') }}</span>
+            <select name="lifecycle_status">
+                {% for status in lifecycle_statuses %}
+                    <option value="{{ status }}" {{ project.lifecycleStatus == status ? 'selected' : '' }}>{{ t('projects.status.' ~ status) }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
+            <span>{{ t('projects.owner') }}</span>
+            {% set current_owner = project.ownerTeamId ? 'team:' ~ project.ownerTeamId : 'personal' %}
+            <select name="owner_scope">
+                <option value="personal" {{ current_owner == 'personal' ? 'selected' : '' }}>{{ t('projects.owner_personal') }}</option>
+                {% for team in lead_teams %}
+                    {% set value = 'team:' ~ team.id %}
+                    <option value="{{ value }}" {{ current_owner == value ? 'selected' : '' }}>{{ t('projects.owner_team', {'team': team.name}) }}</option>
+                {% endfor %}
+            </select>
+            <small class="field-help">{{ t('projects.owner_change_help') }}</small>
+        </label>
+        <label class="field-wide">
+            <span>{{ t('projects.description') }}</span>
+            <textarea name="description" rows="7" maxlength="20000">{{ project.description }}</textarea>
+        </label>
+        <div class="field-wide"><button type="submit">{{ t('common.save') }}</button></div>
+    </form>
+</section>
+<section class="content-card danger-zone">
+    <div>
+        <h2>{{ t('projects.delete_title') }}</h2>
+        <p class="muted">{{ t('projects.delete_help') }}</p>
+    </div>
+    <form method="post" action="/projects/{{ project.id }}/delete" onsubmit="return confirm('{{ t('projects.delete_confirm')|e('js') }}')">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <button class="danger-button" type="submit">{{ t('projects.delete_project') }}</button>
+    </form>
+</section>
+{% endblock %}

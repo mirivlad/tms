@@ -1,78 +1,247 @@
-/* Desktop-first collaboration surfaces for Projects and Teams. */
-
-.collab-index-layout {
-    display: grid;
-    grid-template-columns: minmax(290px, 360px) minmax(0, 1fr);
-    gap: 18px;
-    align-items: start;
-}
-
-.collab-index-layout > .metadata-section,
-.team-detail-grid > .metadata-section,
-.project-detail-grid > section {
-    min-width: 0;
-    margin-bottom: 0;
-}
-
-.collab-create-panel {
-    position: sticky;
-    top: 76px;
-}
-
-.collab-create-panel .metadata-create {
-    grid-template-columns: 1fr;
-}
-
-.collab-create-panel .field-wide {
-    grid-column: auto;
-}
-
-.collab-create-panel textarea {
-    min-height: 120px;
-}
+/* Projects and Teams: desktop management surfaces and focused subpages. */
 
 .collab-project-grid,
-.collab-team-grid,
-.team-project-grid {
-    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-    gap: 12px;
+.collab-team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 14px;
 }
 
 .collab-project-card,
-.collab-team-card,
-.team-project-grid .metadata-item {
-    min-height: 112px;
+.collab-team-card {
     display: grid;
     align-content: start;
+    gap: 10px;
+    min-height: 170px;
 }
 
-.collab-project-card .metadata-item-heading,
-.collab-team-card .metadata-item-heading,
-.team-project-grid .metadata-item-heading {
-    margin-bottom: 6px;
+.entity-card-description {
+    margin: 0;
+    line-height: 1.45;
 }
 
-.team-detail-grid {
+.entity-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 1px solid var(--row-border);
+}
+
+.entity-card-actions .button-link {
+    min-height: 30px;
+}
+
+.collaboration-dialog {
+    width: min(620px, calc(100vw - 28px));
+}
+
+.collaboration-dialog::backdrop {
+    background: var(--overlay);
+}
+
+.collaboration-dialog-form {
     display: grid;
-    grid-template-columns: minmax(0, 1.5fr) minmax(320px, .72fr);
-    grid-template-areas:
-        "projects about"
-        "members invite"
-        "members actions";
-    gap: 18px;
+    gap: 13px;
+    padding: 18px;
+}
+
+.collaboration-dialog-form > label {
+    display: grid;
+    gap: 6px;
+}
+
+.entity-subnav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    margin: -4px 0 18px;
+    padding: 7px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: var(--surface-2);
+}
+
+.entity-subnav a {
+    padding: 7px 10px;
+    border-radius: 8px;
+    color: var(--muted);
+    font-weight: 700;
+}
+
+.entity-subnav a:hover,
+.entity-subnav a.active {
+    background: var(--surface);
+    color: var(--text-strong);
+    box-shadow: 0 1px 5px var(--shadow);
+}
+
+.entity-overview-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
     align-items: start;
 }
 
-.team-about-card { grid-area: about; }
-.team-projects-card { grid-area: projects; }
-.team-members-card { grid-area: members; }
-.team-invite-card { grid-area: invite; }
-.team-actions-card { grid-area: actions; }
+.entity-overview-grid > .content-card {
+    min-width: 0;
+}
+
+.overview-span-2 {
+    grid-column: 1 / -1;
+}
+
+.overview-facts {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin-top: 18px;
+}
+
+.overview-facts > div,
+.overview-metrics > div {
+    display: grid;
+    gap: 3px;
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-2);
+}
+
+.overview-facts span,
+.overview-metrics span {
+    color: var(--muted);
+    font-size: .75rem;
+}
+
+.overview-facts strong {
+    overflow-wrap: anywhere;
+}
+
+.overview-metrics {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.overview-metrics strong {
+    font-size: 1.35rem;
+}
+
+.overview-status-list,
+.team-project-overview-list {
+    display: grid;
+}
+
+.overview-status-list > div,
+.team-project-overview-list > a {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-width: 0;
+    padding: 9px 2px;
+    border-top: 1px solid var(--row-border);
+}
+
+.overview-status-list > div:first-child,
+.team-project-overview-list > a:first-child {
+    border-top: 0;
+}
+
+.overview-status-list > div > span {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-width: 0;
+}
+
+.overview-chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.overview-chip-list .metadata-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.overview-big-number {
+    margin: 6px 0 0;
+    font-size: 2.1rem;
+    font-weight: 800;
+    color: var(--text-strong);
+}
+
+.overview-activity-list {
+    display: grid;
+    gap: 10px;
+}
+
+.overview-activity-list article {
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface-2);
+}
+
+.overview-activity-list article > .muted {
+    margin-left: 8px;
+    font-size: .72rem;
+}
+
+.overview-activity-list article > div {
+    margin-top: 5px;
+    color: var(--text-soft);
+}
+
+.entity-management-page {
+    margin-bottom: 16px;
+}
+
+.entity-settings-form {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(190px, .45fr);
+    gap: 13px 15px;
+}
+
+.entity-settings-form > label {
+    display: grid;
+    gap: 6px;
+}
+
+.entity-settings-form .field-wide {
+    grid-column: 1 / -1;
+}
+
+.danger-zone {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    border-color: var(--danger-border);
+}
+
+.danger-zone h2 {
+    margin-bottom: 5px;
+}
+
+.danger-zone p {
+    margin: 0;
+}
+
+.danger-zone form {
+    flex: 0 0 auto;
+}
 
 .team-member-list .metadata-item {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;
-    gap: 8px 16px;
+    gap: 10px 16px;
     align-items: center;
 }
 
@@ -89,81 +258,91 @@
 
 .team-member-list .metadata-actions form {
     display: flex;
-    gap: 7px;
     align-items: center;
+    gap: 7px;
 }
 
-.team-member-list .metadata-actions select {
-    width: auto;
+.team-member-list select {
     min-width: 120px;
 }
 
-.project-detail-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1.45fr) minmax(340px, .75fr);
-    grid-template-areas:
-        "settings settings"
-        "summary summary"
-        "tasks files"
-        "discussion discussion"
-        "workflow fields";
-    gap: 18px;
-    align-items: start;
-}
-
-.project-settings-card { grid-area: settings; }
-.project-summary-card { grid-area: summary; }
-.project-files-card { grid-area: files; }
-.project-tasks-card { grid-area: tasks; }
-.project-workflow-card { grid-area: workflow; }
-.project-fields-card { grid-area: fields; }
-.project-detail-grid > .discussion-section { grid-area: discussion; }
-.project-readonly-card { grid-column: 1 / -1; }
-
-.project-summary-card .project-description {
-    margin: 0;
-}
-
-.project-settings-form {
-    display: grid;
-    grid-template-columns: minmax(220px, 1fr) minmax(180px, .4fr);
-    gap: 12px 14px;
-}
-
-.project-settings-form .field-wide {
-    grid-column: 1 / -1;
-}
-
-.project-settings-form textarea {
-    min-height: 90px;
-}
-
-.project-settings-actions {
+.entity-membership-actions {
     display: flex;
-    justify-content: flex-start;
+    justify-content: flex-end;
 }
 
-.project-danger-actions {
-    margin-top: 14px;
-    padding-top: 12px;
-    border-top: 1px solid var(--border);
+.team-project-overview-list > a > span:first-child {
+    display: grid;
+    min-width: 0;
+    gap: 2px;
 }
 
-.project-tasks-card .section-heading {
-    padding: 14px 16px 10px;
+.team-project-overview-list strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.project-files-card .attachment-upload {
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
+.team-project-load {
+    flex: 0 0 auto;
+    padding: 4px 8px;
+    border-radius: 999px;
+    background: var(--surface-2);
+    color: var(--muted);
+    font-size: .78rem;
+    font-weight: 700;
 }
 
-.project-workflow-card .metadata-list,
-.project-fields-card .metadata-list {
-    margin-top: 14px;
+.member-preview-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 9px;
 }
 
-@media (max-width: 1180px) {
+.member-preview-grid article {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 9px;
+    min-width: 0;
+    padding: 10px 11px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface-2);
+}
+
+.member-preview-grid strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.project-description {
+    margin: 0;
+    white-space: pre-wrap;
+}
+
+@media (max-width: 900px) {
+    .entity-overview-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .overview-span-2 {
+        grid-column: auto;
+    }
+
+    .overview-facts {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .entity-settings-form {
+        grid-template-columns: 1fr;
+    }
+
+    .entity-settings-form .field-wide {
+        grid-column: auto;
+    }
+
     .team-member-list .metadata-item {
         grid-template-columns: 1fr;
     }
@@ -173,56 +352,36 @@
     }
 }
 
-@media (max-width: 980px) {
-    .collab-index-layout,
-    .team-detail-grid,
-    .project-detail-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .collab-create-panel {
-        position: static;
-    }
-
-    .team-detail-grid {
-        grid-template-areas:
-            "about"
-            "projects"
-            "members"
-            "invite"
-            "actions";
-    }
-
-    .project-detail-grid {
-        grid-template-areas:
-            "settings"
-            "summary"
-            "tasks"
-            "files"
-            "discussion"
-            "workflow"
-            "fields";
-    }
-
-    .project-readonly-card {
-        grid-column: 1;
-    }
-}
-
-@media (max-width: 680px) {
-    .project-settings-form,
-    .project-files-card .attachment-upload {
-        grid-template-columns: 1fr;
-    }
-
-    .project-settings-form .field-wide {
-        grid-column: auto;
-    }
-
+@media (max-width: 620px) {
     .collab-project-grid,
     .collab-team-grid,
-    .team-project-grid {
+    .overview-facts,
+    .overview-metrics,
+    .member-preview-grid {
         grid-template-columns: 1fr;
+    }
+
+    .entity-subnav {
+        flex-wrap: nowrap;
+        overflow-x: auto;
+    }
+
+    .entity-subnav a {
+        white-space: nowrap;
+    }
+
+    .entity-card-actions {
+        align-items: stretch;
+    }
+
+    .entity-card-actions .button-link {
+        flex: 1 1 calc(50% - 7px);
+        text-align: center;
+    }
+
+    .danger-zone {
+        align-items: stretch;
+        flex-direction: column;
     }
 
     .team-member-list .metadata-actions form {
@@ -230,7 +389,7 @@
         flex-wrap: wrap;
     }
 
-    .team-member-list .metadata-actions select {
+    .team-member-list select {
         flex: 1;
     }
 }
