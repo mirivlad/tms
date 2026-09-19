@@ -210,6 +210,9 @@ final class UserRepository
         if ($current->role === 'admin' && $this->isLastActiveAdmin($userId) && ($role !== 'admin' || !$isActive)) {
             throw new DomainException('The last active administrator cannot be disabled or demoted.');
         }
+        if ($current->isActive && !$isActive && $this->isSoleLeadOfAnyTeam($userId)) {
+            throw new DomainException('A user who is the sole lead of a team cannot be disabled.');
+        }
         $stmt = $this->db->prepare(
             'UPDATE users SET username = :username, email = :email, role = :role, is_active = :is_active,
              email_verified_at = CASE WHEN :preserve_verified = 1 THEN email_verified_at ELSE NULL END,
@@ -253,9 +256,32 @@ final class UserRepository
         if ($user->role === 'admin' && $this->isLastActiveAdmin($userId)) {
             throw new DomainException('The last active administrator cannot be deleted.');
         }
+        if ($this->isSoleLeadOfAnyTeam($userId)) {
+            throw new DomainException('A user who is the sole lead of a team cannot be deleted.');
+        }
         $stmt = $this->db->prepare('DELETE FROM users WHERE id = :id');
         $stmt->execute(['id' => $userId]);
         return $stmt->rowCount() === 1;
+    }
+
+    private function isSoleLeadOfAnyTeam(int $userId): bool
+    {
+        $stmt = $this->db->prepare(
+            "SELECT 1
+             FROM team_members mine
+             WHERE mine.user_id = :user_id
+               AND mine.role = 'lead'
+               AND NOT EXISTS (
+                    SELECT 1
+                    FROM team_members other
+                    WHERE other.team_id = mine.team_id
+                      AND other.role = 'lead'
+                      AND other.user_id <> mine.user_id
+               )
+             LIMIT 1"
+        );
+        $stmt->execute(['user_id' => $userId]);
+        return $stmt->fetchColumn() !== false;
     }
 
     private function isLastActiveAdmin(int $userId): bool
