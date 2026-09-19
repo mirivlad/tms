@@ -18,6 +18,7 @@ use Tms\Domain\CustomField\CustomFieldRecord;
 use Tms\Domain\CustomField\CustomFieldRepository;
 use Tms\Domain\CustomField\CustomFieldValueCodec;
 use Tms\Domain\CustomField\TaskCustomFieldValueRepository;
+use Tms\Domain\Discussion\DiscussionRepository;
 use Tms\Domain\Project\ProjectCustomFieldRepository;
 use Tms\Domain\Project\ProjectRecord;
 use Tms\Domain\Project\ProjectStatusRepository;
@@ -55,6 +56,7 @@ final class TaskController
         private readonly ProjectStatusRepository $projectStatuses,
         private readonly ProjectCustomFieldRepository $projectCustomFields,
         private readonly TeamRepository $teams,
+        private readonly DiscussionRepository $discussions,
         private readonly CustomFieldRepository $customFields,
         private readonly TaskCustomFieldValueRepository $customValues,
         private readonly CustomFieldValueCodec $customValueCodec,
@@ -632,6 +634,7 @@ final class TaskController
         $project = $projectId === null ? null : $this->projects->findForUser($userId, $projectId);
         $teamProject = $project?->isTeamOwned() ?? false;
         $scopeLocked = $task !== null && $task->ownerId !== $userId;
+        $discussionEnabled = $task !== null && $teamProject && $project?->ownerTeamId !== null;
         $fields = $this->fieldsForScope($userId, $projectId);
         $response = $response->withStatus($status);
 
@@ -647,6 +650,15 @@ final class TaskController
             'projects' => $this->projects->listForUser($userId),
             'team_project' => $teamProject,
             'assignees' => $this->assigneesForProject($userId, $projectId),
+            'discussion_enabled' => $discussionEnabled,
+            'discussion_comments' => $discussionEnabled && $task !== null
+                ? $this->discussions->listForTask($userId, $task->id)
+                : [],
+            'discussion_notice' => $this->consumeDiscussionNotice(),
+            'discussion_base_url' => $task !== null ? '/tasks/' . $task->id . '/discussion' : '',
+            'discussion_current_user_id' => $userId,
+            'discussion_can_moderate' => $discussionEnabled && $project?->ownerTeamId !== null
+                && $this->teams->roleForUser($userId, $project->ownerTeamId) === 'lead',
             'scope_locked' => $scopeLocked,
             'custom_fields' => $fields,
             'custom_form_values' => $this->customFormValues($formData, $task, $fields, $projectId),
@@ -1112,6 +1124,19 @@ final class TaskController
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $response->getBody()->write($json === false ? '{}': $json);
         return $response->withHeader('Content-Type', 'application/json; charset=utf-8')->withStatus($status);
+    }
+
+    /** @return array{kind:string,message:string}|null */
+    private function consumeDiscussionNotice(): ?array
+    {
+        $notice = $_SESSION['_discussion_notice'] ?? null;
+        unset($_SESSION['_discussion_notice']);
+        if (!is_array($notice)
+            || !is_string($notice['kind'] ?? null)
+            || !is_string($notice['message'] ?? null)) {
+            return null;
+        }
+        return ['kind' => $notice['kind'], 'message' => $notice['message']];
     }
 
     /** @return array<string, mixed> */
