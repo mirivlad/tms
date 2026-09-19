@@ -69,6 +69,7 @@ label { gap: 5px; }
 .topbar-actions { gap: 8px; }
 .nav-invitations,
 .nav-create-task { min-height: 34px; padding-top: 6px; padding-bottom: 6px; }
+.nav-create-task-icon { display: none; font-size: 1.35rem; line-height: 1; }
 .mobile-menu-only { display: none !important; }
 
 /* Dashboard: metrics are a status strip, not five hero cards. */
@@ -297,9 +298,43 @@ label { gap: 5px; }
 .discussion-surface { min-height: 82px; }
 .project-task-discussion-rail { border-radius: 11px; top: 64px; }
 
-/* Files: keep upload controls compact and give the listing a row-like rhythm. */
-.entity-management-page input[type="file"] { max-width: 100%; }
-.entity-management-page button[type="submit"] { width: auto; }
+/* Files: compact upload row and predictable file list. */
+.attachment-card { display: grid; gap: 12px; }
+.attachment-heading h2 { margin: 0; }
+.attachment-heading p { margin: 4px 0 0; }
+.attachment-upload {
+    display: flex;
+    align-items: end;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface-2);
+}
+.attachment-upload label { flex: 1 1 320px; min-width: 0; }
+.attachment-upload input[type="file"] { max-width: 100%; }
+.attachment-upload button { flex: 0 0 auto; width: auto; }
+.attachment-list {
+    display: grid;
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+}
+.attachment-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 11px;
+    border-bottom: 1px solid var(--row-border);
+}
+.attachment-row:last-child { border-bottom: 0; }
+.attachment-details { min-width: 0; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.attachment-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attachment-row form { display: block; flex: 0 0 auto; }
+.attachment-empty { margin: 0; }
 
 /* Calendar is a wide surface; filters collapse below it on tablet. */
 .calendar-workspace { gap: 10px; }
@@ -377,6 +412,8 @@ label { gap: 5px; }
     .topbar-actions > .nav-invitations { display: none; }
     .mobile-menu-only { display: flex !important; }
     .nav-create-task { min-width: 36px; padding-inline: 9px; }
+    .nav-create-task-icon { display: inline; }
+    .nav-create-task-label { display: none; }
     .user-menu > summary { max-width: 120px; padding-inline: 7px; }
     .user-menu .nav-dropdown-panel { top: 54px; }
     .nav-settings-menu .nav-dropdown-panel { top: 98px; }
@@ -424,8 +461,72 @@ label { gap: 5px; }
     .calendar-workspace { grid-template-columns: 1fr; }
     .calendar-sidebar { order: 2; }
 
-    .task-table { min-width: 900px; }
-    .table-wrap { margin-inline: -12px; padding-inline: 12px; }
+    .task-table { min-width: 0; }
+    .table-wrap { margin-inline: -12px; padding-inline: 12px; overflow-x: visible; }
+    .task-table thead { display: none; }
+    .task-table tbody {
+        display: grid;
+        gap: 8px;
+        padding: 2px 0;
+    }
+    .task-table tbody tr {
+        position: relative;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 12px;
+        padding: 11px 12px 10px 38px;
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        background: var(--surface);
+    }
+    .task-table td {
+        display: grid;
+        grid-template-columns: minmax(88px, .72fr) minmax(0, 1fr);
+        align-items: baseline;
+        gap: 8px;
+        min-width: 0;
+        padding: 5px 0;
+        border: 0;
+    }
+    .task-table td[data-label]::before {
+        content: attr(data-label);
+        color: var(--muted);
+        font-size: .7rem;
+        font-weight: 700;
+    }
+    .task-table .task-title-cell {
+        grid-column: 1 / -1;
+        display: block;
+        padding: 0 0 8px;
+        border-bottom: 1px solid var(--row-border);
+    }
+    .task-table .task-title-cell::before { display: none; }
+    .task-table .task-title { font-size: .95rem; }
+    .task-table .task-preview { max-width: none; white-space: normal; }
+    .task-table .task-select-cell {
+        position: absolute;
+        top: 11px;
+        left: 11px;
+        display: block;
+        width: auto;
+        padding: 0;
+    }
+    .task-table .task-row-actions {
+        grid-column: 1 / -1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding-top: 8px;
+        border-top: 1px solid var(--row-border);
+    }
+    .task-table .task-row-actions::before { display: none; }
+    .task-table .nowrap { white-space: normal; }
+    .task-table .custom-value-cell { max-width: none; }
+
+    .attachment-upload { align-items: stretch; }
+    .attachment-upload label { flex-basis: 100%; }
+    .attachment-upload button { align-self: flex-start; }
+    .attachment-row { align-items: flex-start; }
 }
 
 @media (max-width: 480px) {
@@ -460,6 +561,13 @@ label { gap: 5px; }
 
     .team-member-list .metadata-actions form { width: 100%; flex-wrap: wrap; }
     .team-member-list select { flex: 1 1 150px; }
+    .task-table tbody tr { grid-template-columns: 1fr; }
+    .task-table td { grid-template-columns: minmax(86px, .65fr) minmax(0, 1fr); }
+    .task-table .task-title-cell,
+    .task-table .task-row-actions { grid-column: auto; }
+    .attachment-row { flex-direction: column; }
+    .attachment-row form { width: 100%; }
+    .attachment-row form button { width: 100%; }
 
     .discussion-comment { grid-template-columns: 27px minmax(0, 1fr); gap: 7px; }
     .discussion-replies { padding-left: 6px; }
