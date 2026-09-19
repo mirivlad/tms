@@ -16,11 +16,23 @@ final readonly class ProjectRecord
         public string $lifecycleStatus,
         public string $createdAt,
         public string $updatedAt,
+        public ?string $ownerTeamName = null,
+        public ?string $accessRole = null,
     ) {
     }
 
     public function isPersonal(): bool
     {
         return $this->ownerUserId !== null && $this->ownerTeamId === null;
+    }
+
+    public function isTeamOwned(): bool
+    {
+        return $this->ownerUserId === null && $this->ownerTeamId !== null;
+    }
+
+    public function canManage(): bool
+    {
+        return $this->isPersonal() || in_array($this->accessRole, ['owner', 'lead'], true);
     }
 }
