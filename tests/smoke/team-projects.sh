@@ -130,8 +130,10 @@ cmp /tmp/tp-shared.txt /tmp/tp-member-downloaded.txt
 curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/projects/$project_id/settings" > /tmp/tp-admin-project.html
 admin_project_csrf=$(csrf_from /tmp/tp-admin-project.html)
 code=$(curl --silent -o /tmp/tp-project-delete-blocked.html -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$admin_project_csrf"   "$BASE_URL/projects/$project_id/delete")
-test "$code" = "409"
+test "$code" = "302"
 test "$(db "SELECT COUNT(*) FROM projects WHERE id=$project_id")" = "1"
+curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/projects/$project_id/settings" > /tmp/tp-project-delete-blocked-settings.html
+grep -q 'team project with tasks' /tmp/tp-project-delete-blocked-settings.html
 
 curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/teams/$team_id/settings" > /tmp/tp-admin-team.html
 team_csrf=$(csrf_from /tmp/tp-admin-team.html)
