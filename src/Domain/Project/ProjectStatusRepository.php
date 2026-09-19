@@ -11,14 +11,17 @@ use Tms\Domain\Status\StatusRecord;
 
 final class ProjectStatusRepository
 {
-    public function __construct(private readonly PDO $db)
+    private readonly ProjectAccessRepository $access;
+
+    public function __construct(private readonly PDO $db, ?ProjectAccessRepository $access = null)
     {
+        $this->access = $access ?? new ProjectAccessRepository($db);
     }
 
     /** @return list<StatusRecord> */
     public function listForProject(int $userId, int $projectId, bool $boardOnly = false): array
     {
-        if (!$this->projectOwned($userId, $projectId)) {
+        if (!$this->access->canAccess($userId, $projectId)) {
             return [];
         }
 
@@ -38,7 +41,7 @@ final class ProjectStatusRepository
 
     public function findForProject(int $userId, int $projectId, int $statusId): ?StatusRecord
     {
-        if (!$this->projectOwned($userId, $projectId)) {
+        if (!$this->access->canAccess($userId, $projectId)) {
             return null;
         }
 
@@ -56,7 +59,7 @@ final class ProjectStatusRepository
 
     public function defaultForProject(int $userId, int $projectId): ?StatusRecord
     {
-        if (!$this->projectOwned($userId, $projectId)) {
+        if (!$this->access->canAccess($userId, $projectId)) {
             return null;
         }
 
@@ -83,7 +86,9 @@ final class ProjectStatusRepository
         bool $isCompletion = false,
         bool $showOnBoard = true,
     ): int {
-        $this->assertProjectOwned($userId, $projectId);
+        if (!$this->access->canManage($userId, $projectId)) {
+            throw new DomainException('Project is unavailable.');
+        }
         $name = $this->normalizeName($name);
 
         $this->db->beginTransaction();
@@ -134,7 +139,8 @@ final class ProjectStatusRepository
         string $color,
         bool $showOnBoard,
     ): bool {
-        if ($this->findForProject($userId, $projectId, $statusId) === null) {
+        if (!$this->access->canManage($userId, $projectId)
+            || $this->findForProject($userId, $projectId, $statusId) === null) {
             return false;
         }
 
@@ -170,6 +176,9 @@ final class ProjectStatusRepository
 
     public function deleteForProject(int $userId, int $projectId, int $statusId): bool
     {
+        if (!$this->access->canManage($userId, $projectId)) {
+            return false;
+        }
         $status = $this->findForProject($userId, $projectId, $statusId);
         if ($status === null || $status->isDefault || $status->isCompletion) {
             return false;
@@ -194,6 +203,9 @@ final class ProjectStatusRepository
     /** @param list<int> $statusIds */
     public function reorderForProject(int $userId, int $projectId, array $statusIds): bool
     {
+        if (!$this->access->canManage($userId, $projectId)) {
+            return false;
+        }
         $owned = array_map(
             static fn (StatusRecord $record): int => $record->id,
             $this->listForProject($userId, $projectId),
@@ -233,7 +245,8 @@ final class ProjectStatusRepository
         if (!in_array($column, ['is_default', 'is_completion'], true)) {
             throw new DomainException('Unsupported status role.');
         }
-        if ($this->findForProject($userId, $projectId, $statusId) === null) {
+        if (!$this->access->canManage($userId, $projectId)
+            || $this->findForProject($userId, $projectId, $statusId) === null) {
             return false;
         }
 
@@ -275,24 +288,6 @@ final class ProjectStatusRepository
         );
         $stmt->execute(['project_id' => $projectId]);
         return (int) $stmt->fetchColumn() + 1;
-    }
-
-    private function assertProjectOwned(int $userId, int $projectId): void
-    {
-        if (!$this->projectOwned($userId, $projectId)) {
-            throw new DomainException('Project is unavailable.');
-        }
-    }
-
-    private function projectOwned(int $userId, int $projectId): bool
-    {
-        $stmt = $this->db->prepare(
-            'SELECT 1 FROM projects
-             WHERE id = :id AND owner_user_id = :user_id AND owner_team_id IS NULL
-             LIMIT 1'
-        );
-        $stmt->execute(['id' => $projectId, 'user_id' => $userId]);
-        return $stmt->fetchColumn() !== false;
     }
 
     private function normalizeName(string $name): string
