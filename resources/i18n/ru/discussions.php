@@ -16,6 +16,7 @@ return [
     'discussions.delete_confirm' => 'Удалить этот комментарий?',
     'discussions.deleted_placeholder' => 'Комментарий удалён.',
     'discussions.edited' => 'изменено',
+    'discussions.deleted_user' => 'Удалённый пользователь',
     'discussions.empty' => 'Комментариев пока нет.',
     'discussions.empty_help' => 'Начните обсуждение прямо в контексте работы.',
     'discussions.saved' => 'Комментарий сохранён.',
