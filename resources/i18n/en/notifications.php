@@ -20,10 +20,11 @@ return [
     'notifications.collaboration_open' => 'Open in TMS',
     'validation.admin_required' => 'Administrator access is required.',
 
-    'notifications.title' => 'Notifications',
+    'notifications.title' => 'Notification settings',
     'notifications.eyebrow' => 'Preferences',
     'notifications.subtitle' => 'Delivery times use the deployment timezone: {timezone}.',
     'notifications.channels' => 'Delivery channels',
+    'notifications.channels_help' => 'The in-app inbox is always available. Enabled email and Telegram channels also carry mentions and direct replies.',
     'notifications.email_enabled' => 'Send email notifications',
     'notifications.email_address' => 'Notification email',
     'notifications.email_help' => 'Leave empty to use account email: {email}',
