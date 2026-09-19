@@ -262,6 +262,9 @@ jobs:
       - name: Exercise project file workflow
         run: bash tests/smoke/project-files.sh
 
+      - name: Exercise project status workflow
+        run: bash tests/smoke/project-statuses.sh
+
       - name: Exercise navigation and profile regression
         run: bash tests/smoke/profile-navigation.sh
 
