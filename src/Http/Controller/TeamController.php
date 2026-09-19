@@ -121,6 +121,7 @@ final class TeamController
                 'task_count' => $taskCount,
                 'open_task_count' => $openTaskCount,
                 'project_summaries' => $projectSummaries,
+                'member_preview' => array_slice($members, 0, 8),
                 'notice' => $this->consumeNotice(),
             ],
         ));
