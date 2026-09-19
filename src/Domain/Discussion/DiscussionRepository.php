@@ -61,6 +61,47 @@ final class DiscussionRepository
         return $this->fetchAll($stmt);
     }
 
+    /**
+     * @return array<int, list<DiscussionCommentRecord>>
+     */
+    public function listTaskCommentsForProject(int $userId, int $projectId): array
+    {
+        $context = $this->teamProjectContext($userId, $projectId);
+        if ($context === null) {
+            return [];
+        }
+
+        $stmt = $this->db->prepare(
+            'SELECT c.id, c.project_id, c.task_id, c.parent_comment_id, c.author_user_id,
+                    u.username AS author_username, c.body_html, c.created_at, c.updated_at, c.deleted_at
+             FROM discussion_comments c
+             INNER JOIN tasks t ON t.id = c.task_id
+             LEFT JOIN users u ON u.id = c.author_user_id
+             WHERE t.project_id = :project_id
+               AND c.project_id IS NULL
+               AND c.task_id IS NOT NULL
+               AND c.team_id = :team_id
+             ORDER BY c.task_id ASC,
+                      COALESCE(c.parent_comment_id, c.id) ASC,
+                      CASE WHEN c.parent_comment_id IS NULL THEN 0 ELSE 1 END ASC,
+                      c.created_at ASC, c.id ASC'
+        );
+        $stmt->execute(['project_id' => $projectId, 'team_id' => $context['team_id']]);
+
+        $grouped = [];
+        while (($row = $stmt->fetch()) !== false) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $record = $this->hydrate($row);
+            if ($record->taskId === null) {
+                continue;
+            }
+            $grouped[$record->taskId][] = $record;
+        }
+        return $grouped;
+    }
+
     public function createForProject(
         int $userId,
         int $projectId,
@@ -413,20 +454,26 @@ final class DiscussionRepository
         $records = [];
         while (($row = $stmt->fetch()) !== false) {
             if (is_array($row)) {
-                $records[] = new DiscussionCommentRecord(
-                    id: (int) $row['id'],
-                    projectId: $row['project_id'] !== null ? (int) $row['project_id'] : null,
-                    taskId: $row['task_id'] !== null ? (int) $row['task_id'] : null,
-                    parentCommentId: $row['parent_comment_id'] !== null ? (int) $row['parent_comment_id'] : null,
-                    authorUserId: $row['author_user_id'] !== null ? (int) $row['author_user_id'] : null,
-                    authorUsername: $row['author_username'] !== null ? (string) $row['author_username'] : null,
-                    bodyHtml: (string) $row['body_html'],
-                    createdAt: (string) $row['created_at'],
-                    updatedAt: (string) $row['updated_at'],
-                    deletedAt: $row['deleted_at'] !== null ? (string) $row['deleted_at'] : null,
-                );
+                $records[] = $this->hydrate($row);
             }
         }
         return $records;
+    }
+
+    /** @param array<string, mixed> $row */
+    private function hydrate(array $row): DiscussionCommentRecord
+    {
+        return new DiscussionCommentRecord(
+            id: (int) $row['id'],
+            projectId: $row['project_id'] !== null ? (int) $row['project_id'] : null,
+            taskId: $row['task_id'] !== null ? (int) $row['task_id'] : null,
+            parentCommentId: $row['parent_comment_id'] !== null ? (int) $row['parent_comment_id'] : null,
+            authorUserId: $row['author_user_id'] !== null ? (int) $row['author_user_id'] : null,
+            authorUsername: $row['author_username'] !== null ? (string) $row['author_username'] : null,
+            bodyHtml: (string) $row['body_html'],
+            createdAt: (string) $row['created_at'],
+            updatedAt: (string) $row['updated_at'],
+            deletedAt: $row['deleted_at'] !== null ? (string) $row['deleted_at'] : null,
+        );
     }
 }
