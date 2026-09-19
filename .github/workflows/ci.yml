@@ -286,6 +286,9 @@ jobs:
       - name: Exercise extended feature workflow
         run: bash tests/smoke/feature-workflows.sh
 
+      - name: Exercise v0.1.4 to v0.2 database upgrade
+        run: bash tests/smoke/upgrade-v014-to-v020.sh
+
       - name: Show stack state on failure
         if: failure()
         run: |
