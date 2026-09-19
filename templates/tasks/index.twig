@@ -2,6 +2,7 @@
 {% import "macros/sorting.twig" as sorting %}
 
 {% block title %}{{ t('tasks.page_title') }} · TMS{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/assets/discussions.css">{% endblock %}
 
 {% block content %}
 <div class="page-header compact-page-header">
@@ -293,6 +294,14 @@
                         <td class="nowrap">{{ task.deadline ? task.deadline|date('Y-m-d H:i') : '—' }}</td>
                         <td class="row-actions">
                             <a class="text-link" href="/tasks/{{ task.id }}/edit" data-task-preview="{{ task.id }}">{{ t('common.view') }}</a>
+                            {% if project_map[task.projectId].ownerTeamId|default(null) %}
+                                {% set discussion_stat = discussion_stats[task.id]|default({'count': 0, 'unread': 0}) %}
+                                <a class="text-link discussion-link" href="/tasks/{{ task.id }}/discussion">
+                                    {{ t('discussions.open') }}
+                                    <span class="count-badge">{{ discussion_stat.count }}</span>
+                                    {% if discussion_stat.unread > 0 %}<span class="discussion-unread-badge">{{ discussion_stat.unread }}</span>{% endif %}
+                                </a>
+                            {% endif %}
                             <a class="text-link" href="/tasks/{{ task.id }}/edit">{{ t('common.edit') }}</a>
                             <form method="post" action="/tasks/{{ task.id }}/delete" onsubmit="return confirm('{{ t('tasks.delete_confirm') }}')">
                                 <input type="hidden" name="_csrf" value="{{ csrf_token }}">
