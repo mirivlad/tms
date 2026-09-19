@@ -4,6 +4,20 @@ declare(strict_types=1);
 
 return [
     'nav.notifications' => 'Уведомления',
+    'nav.notification_settings' => 'Настройки уведомлений',
+
+    'notifications.inbox_title' => 'Уведомления',
+    'notifications.inbox_subtitle' => 'Здесь появляются упоминания и ответы из командной работы.',
+    'notifications.inbox_empty' => 'Уведомлений пока нет.',
+    'notifications.inbox_empty_help' => 'Когда вас упомянут или ответят вам, уведомление появится здесь.',
+    'notifications.mark_all_read' => 'Отметить всё прочитанным',
+    'notifications.settings_link' => 'Настройки уведомлений',
+    'notifications.unread' => 'Не прочитано',
+    'notifications.inbox_not_found' => 'Уведомление не найдено.',
+    'notifications.discussion_mention' => '{actor} упомянул вас в {context}',
+    'notifications.discussion_reply' => '{actor} ответил вам в {context}',
+    'notifications.collaboration_subject' => 'TMS: {context}',
+    'notifications.collaboration_open' => 'Открыть в TMS',
     'validation.admin_required' => 'Требуются права администратора.',
 
     'notifications.title' => 'Уведомления',
