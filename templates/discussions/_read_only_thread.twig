@@ -5,37 +5,43 @@
         {% for comment in comments %}
             {% if comment.parentCommentId is null %}
                 <article class="discussion-comment discussion-root" id="comment-{{ comment.id }}">
-                    <header class="discussion-comment-meta">
-                        <strong>{{ comment.authorUsername|default(t('discussions.deleted_user')) }}</strong>
-                        <span class="muted">{{ comment.createdAt|date('Y-m-d H:i') }}</span>
-                        {% if not comment.isDeleted and comment.updatedAt != comment.createdAt %}
-                            <span class="muted">· {{ t('discussions.edited') }}</span>
-                        {% endif %}
-                    </header>
-                    {% if comment.isDeleted %}
-                        <p class="muted discussion-deleted">{{ t('discussions.deleted_placeholder') }}</p>
-                    {% else %}
-                        <div class="discussion-body">{{ comment.bodyHtml|raw }}</div>
-                    {% endif %}
-                    <div class="discussion-replies">
-                        {% for reply in comments %}
-                            {% if reply.parentCommentId == comment.id %}
-                                <article class="discussion-comment discussion-reply" id="comment-{{ reply.id }}">
-                                    <header class="discussion-comment-meta">
-                                        <strong>{{ reply.authorUsername|default(t('discussions.deleted_user')) }}</strong>
-                                        <span class="muted">{{ reply.createdAt|date('Y-m-d H:i') }}</span>
-                                        {% if not reply.isDeleted and reply.updatedAt != reply.createdAt %}
-                                            <span class="muted">· {{ t('discussions.edited') }}</span>
-                                        {% endif %}
-                                    </header>
-                                    {% if reply.isDeleted %}
-                                        <p class="muted discussion-deleted">{{ t('discussions.deleted_placeholder') }}</p>
-                                    {% else %}
-                                        <div class="discussion-body">{{ reply.bodyHtml|raw }}</div>
-                                    {% endif %}
-                                </article>
+                    <div class="discussion-avatar" aria-hidden="true">{{ comment.authorUsername ? comment.authorUsername|slice(0, 1)|upper : '?' }}</div>
+                    <div class="discussion-comment-content">
+                        <header class="discussion-comment-meta">
+                            <strong>{{ comment.authorUsername|default(t('discussions.deleted_user')) }}</strong>
+                            <span class="muted">{{ comment.createdAt|date('Y-m-d H:i') }}</span>
+                            {% if not comment.isDeleted and comment.updatedAt != comment.createdAt %}
+                                <span class="muted">· {{ t('discussions.edited') }}</span>
                             {% endif %}
-                        {% endfor %}
+                        </header>
+                        {% if comment.isDeleted %}
+                            <p class="muted discussion-deleted">{{ t('discussions.deleted_placeholder') }}</p>
+                        {% else %}
+                            <div class="discussion-body">{{ comment.bodyHtml|raw }}</div>
+                        {% endif %}
+                        <div class="discussion-replies">
+                            {% for reply in comments %}
+                                {% if reply.parentCommentId == comment.id %}
+                                    <article class="discussion-comment discussion-reply" id="comment-{{ reply.id }}">
+                                        <div class="discussion-avatar small" aria-hidden="true">{{ reply.authorUsername ? reply.authorUsername|slice(0, 1)|upper : '?' }}</div>
+                                        <div class="discussion-comment-content">
+                                            <header class="discussion-comment-meta">
+                                                <strong>{{ reply.authorUsername|default(t('discussions.deleted_user')) }}</strong>
+                                                <span class="muted">{{ reply.createdAt|date('Y-m-d H:i') }}</span>
+                                                {% if not reply.isDeleted and reply.updatedAt != reply.createdAt %}
+                                                    <span class="muted">· {{ t('discussions.edited') }}</span>
+                                                {% endif %}
+                                            </header>
+                                            {% if reply.isDeleted %}
+                                                <p class="muted discussion-deleted">{{ t('discussions.deleted_placeholder') }}</p>
+                                            {% else %}
+                                                <div class="discussion-body">{{ reply.bodyHtml|raw }}</div>
+                                            {% endif %}
+                                        </div>
+                                    </article>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
                     </div>
                 </article>
             {% endif %}
