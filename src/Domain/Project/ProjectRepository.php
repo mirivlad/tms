@@ -184,7 +184,7 @@ final class ProjectRepository
             $projectFields->execute(['project_id' => $projectId]);
 
             $sourceField = $this->db->prepare(
-                'SELECT field_type
+                'SELECT field_type, options_json
                  FROM custom_fields
                  WHERE id = :field_id AND user_id = :user_id AND project_id IS NULL
                  LIMIT 1'
@@ -218,8 +218,8 @@ final class ProjectRepository
 
                 $sourceId = (int) $field['source_field_id'];
                 $sourceField->execute(['field_id' => $sourceId, 'user_id' => $userId]);
-                $sourceType = $sourceField->fetchColumn();
-                if (!is_string($sourceType) || $sourceType !== (string) $field['field_type']) {
+                $source = $sourceField->fetch();
+                if (!is_array($source) || (string) $source['field_type'] !== (string) $field['field_type']) {
                     continue;
                 }
 
@@ -232,13 +232,22 @@ final class ProjectRepository
                     if (!is_array($value)) {
                         continue;
                     }
+                    $storedValue = (string) $value['value'];
+                    if (!$this->customValueCompatibleWithSourceField(
+                        (string) $source['field_type'],
+                        is_string($source['options_json'] ?? null) ? (string) $source['options_json'] : null,
+                        $storedValue,
+                    )) {
+                        continue;
+                    }
+
                     $params = [
                         'task_id' => (int) $value['task_id'],
                         'field_id' => $sourceId,
                         'user_id' => (int) $value['user_id'],
                     ];
                     $deletePersonalValue->execute($params);
-                    $insertPersonalValue->execute($params + ['value' => (string) $value['value']]);
+                    $insertPersonalValue->execute($params + ['value' => $storedValue]);
                 }
             }
 
@@ -323,6 +332,47 @@ final class ProjectRepository
             }
             throw $error;
         }
+    }
+
+    private function customValueCompatibleWithSourceField(
+        string $type,
+        ?string $optionsJson,
+        string $value,
+    ): bool {
+        if ($type === 'checkbox') {
+            return in_array($value, ['0', '1'], true);
+        }
+        if ($type === 'select') {
+            $options = $this->decodeFieldOptions($optionsJson);
+            return in_array($value, $options, true);
+        }
+        if ($type === 'checkbox_list') {
+            $options = $this->decodeFieldOptions($optionsJson);
+            $decoded = json_decode($value, true);
+            if (!is_array($decoded)) {
+                return false;
+            }
+            foreach ($decoded as $selected) {
+                if (!is_string($selected) || !in_array($selected, $options, true)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return in_array($type, ['text', 'textarea', 'money'], true);
+    }
+
+    /** @return list<string> */
+    private function decodeFieldOptions(?string $optionsJson): array
+    {
+        if ($optionsJson === null || $optionsJson === '') {
+            return [];
+        }
+        $decoded = json_decode($optionsJson, true);
+        if (!is_array($decoded)) {
+            return [];
+        }
+        return array_values(array_filter($decoded, 'is_string'));
     }
 
     private function personalDefaultStatusId(int $userId): ?int
