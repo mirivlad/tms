@@ -294,6 +294,7 @@ return [
     'task_form.team_project_metadata_help' => 'Team project tasks use project custom fields. Personal task type and customer are not shared with the team.',
     'task_form.project_locked_for_collaborator' => 'The task author controls moving this collaborative task between projects.',
     'validation.team_project_personal_metadata' => 'Team project tasks cannot use personal task type or customer.',
+    'validation.selected_assignee_unavailable' => 'Selected assignee is not a member of this project team.',
     'task_form.save_changes' => 'Save changes',
     'task_form.create_task' => 'Create task',
 
