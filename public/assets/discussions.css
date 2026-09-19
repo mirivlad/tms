@@ -1,0 +1,57 @@
+.discussion-section { display: grid; gap: 18px; }
+.discussion-compose { display: grid; gap: 10px; }
+.discussion-editor { display: grid; gap: 8px; }
+.discussion-toolbar { display: flex; flex-wrap: wrap; gap: 6px; }
+.discussion-surface {
+    min-height: 110px;
+    padding: 12px 14px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--input-bg);
+    color: var(--text);
+    overflow-wrap: anywhere;
+}
+.discussion-surface:empty::before {
+    content: attr(data-placeholder);
+    color: var(--muted);
+    pointer-events: none;
+}
+.compact-editor .discussion-surface { min-height: 76px; }
+.discussion-thread { display: grid; gap: 14px; }
+.discussion-comment {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    background: var(--surface);
+}
+.discussion-comment-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+.discussion-body { line-height: 1.55; overflow-wrap: anywhere; }
+.discussion-body > :first-child { margin-top: 0; }
+.discussion-body > :last-child { margin-bottom: 0; }
+.discussion-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    margin-top: 10px;
+}
+.discussion-actions details { min-width: min(100%, 520px); }
+.discussion-actions summary { cursor: pointer; list-style: none; }
+.discussion-actions details[open] { flex-basis: 100%; }
+.discussion-actions details form { display: grid; gap: 8px; margin-top: 8px; }
+.discussion-replies {
+    display: grid;
+    gap: 10px;
+    margin: 12px 0 0 26px;
+}
+.discussion-reply { background: var(--surface-subtle); }
+.discussion-deleted { font-style: italic; margin: 4px 0; }
+@media (max-width: 700px) {
+    .discussion-replies { margin-left: 10px; }
+}
