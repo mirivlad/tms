@@ -65,6 +65,7 @@
                                         <form method="post" action="{{ discussion_base_url }}/{{ comment.id }}" data-discussion-form>
                                             <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                                             <div class="discussion-editor compact-editor" data-discussion-editor data-link-prompt="{{ t('discussions.link_prompt') }}">
+                                                {% include 'discussions/_toolbar.twig' %}
                                                 <textarea class="discussion-source" name="body" rows="3" maxlength="20000">{{ comment.bodyHtml }}</textarea>
                                                 <div class="discussion-surface" contenteditable="true" role="textbox" aria-multiline="true" hidden></div>
                                             </div>
@@ -105,6 +106,7 @@
                                                         <form method="post" action="{{ discussion_base_url }}/{{ reply.id }}" data-discussion-form>
                                                             <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                                                             <div class="discussion-editor compact-editor" data-discussion-editor data-link-prompt="{{ t('discussions.link_prompt') }}">
+                                                                {% include 'discussions/_toolbar.twig' %}
                                                                 <textarea class="discussion-source" name="body" rows="3" maxlength="20000">{{ reply.bodyHtml }}</textarea>
                                                                 <div class="discussion-surface" contenteditable="true" role="textbox" aria-multiline="true" hidden></div>
                                                             </div>
