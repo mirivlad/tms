@@ -70,6 +70,7 @@ final class TeamController
             'csrf_token' => $this->csrfToken($request),
             'username' => $this->sessions->currentUsername() ?? '',
             'team' => $team,
+            'is_lead' => $team->currentUserIsLead(),
             'members' => $this->teams->listMembers($this->userId(), $teamId),
             'roles' => TeamRepository::ROLES,
             'invitations' => $team->currentUserIsLead()
