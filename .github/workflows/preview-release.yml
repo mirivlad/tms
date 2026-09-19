@@ -119,7 +119,7 @@ jobs:
           - project/task discussions with shallow replies, @mentions and canonical in-app unread notifications;
           - collaboration ACL hardening and a tested v0.1.4-to-v0.2.0 database upgrade path;
           - per-user timezone, notification preferences and six interface theme modes;
-          - compact global navigation with settings/user menus and an always-available new-task action;
+          - desktop-first Projects and Teams management, with collaboration setup moved out of the primary work navigation into the user menu;
           - calendar day quick-add, customer autocomplete and wheel-aware wide-board navigation;
           - optional self-registration with visual CAPTCHA, email verification and administrator approval;
           - administrator user management, direct account creation, quick user details and impersonation;
