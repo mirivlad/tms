@@ -44,12 +44,18 @@
 
         <label>
             {{ t('projects.task_project') }}
-            <select name="project_id" data-project-select>
-                <option value="">{{ t('projects.no_project') }}</option>
+            <select name="project_id" data-project-select {{ scope_locked ? 'disabled' : '' }}>
+                <option value="" data-team-owned="0">{{ t('projects.no_project') }}</option>
                 {% for project in projects %}
-                    <option value="{{ project.id }}" {{ form.project_id == project.id ? 'selected' : '' }}>{{ project.name }}</option>
+                    <option value="{{ project.id }}"
+                            data-team-owned="{{ project.ownerTeamId ? '1' : '0' }}"
+                            {{ form.project_id == project.id ? 'selected' : '' }}>{{ project.name }}</option>
                 {% endfor %}
             </select>
+            {% if scope_locked %}
+                <input type="hidden" name="project_id" value="{{ form.project_id|default('') }}">
+                <span class="field-help">{{ t('task_form.project_locked_for_collaborator') }}</span>
+            {% endif %}
         </label>
 
         <label>
@@ -61,9 +67,9 @@
             </select>
         </label>
 
-        <label>
+        <label data-personal-metadata {{ team_project ? 'hidden' : '' }}>
             {{ t('task_form.type') }}
-            <select name="type_id">
+            <select name="type_id" {{ team_project ? 'disabled' : '' }}>
                 <option value="">{{ t('task_form.no_type') }}</option>
                 {% for type in types %}
                     <option value="{{ type.id }}" {{ form.type_id == type.id ? 'selected' : '' }}>{{ type.name }}</option>
@@ -86,17 +92,22 @@
             <input type="datetime-local" name="deadline" value="{{ form.deadline|default('') }}">
         </label>
 
-        <div class="field-wide form-field customer-autocomplete">
+        <div class="field-wide form-field customer-autocomplete" data-personal-metadata {{ team_project ? 'hidden' : '' }}>
             <label for="task-customer">{{ t('task_form.customer') }}</label>
             <div class="customer-autocomplete-control">
                 <input id="task-customer" type="text" name="customer" maxlength="255" autocomplete="off"
                        value="{{ form.customer|default('') }}" placeholder="{{ t('task_form.customer_placeholder') }}"
                        data-customer-autocomplete data-search-url="/api/customers/search"
-                       aria-autocomplete="list" aria-controls="customer-suggestions" aria-expanded="false">
+                       aria-autocomplete="list" aria-controls="customer-suggestions" aria-expanded="false"
+                       {{ team_project ? 'disabled' : '' }}>
                 <div id="customer-suggestions" class="autocomplete-results" role="listbox" hidden></div>
             </div>
             <span class="field-help">{{ t('task_form.customer_help') }}</span>
         </div>
+
+        <p class="field-wide muted" data-team-metadata-help {{ team_project ? '' : 'hidden' }}>
+            {{ t('task_form.team_project_metadata_help') }}
+        </p>
 
         <div class="field-wide task-custom-fields-container" data-custom-fields-container>
             {% include 'tasks/_custom_fields.twig' %}
