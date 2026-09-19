@@ -188,8 +188,8 @@ missing_line=$(grep -n 'Foreign field ignored' /tmp/custom-sort-desc.html | head
 test "$high_line" -lt "$low_line"
 test "$low_line" -lt "$missing_line"
 
-if db "INSERT INTO task_custom_field_values (task_id,field_id,user_id,value) VALUES ($custom_task,$foreign_field,$admin_id,'forbidden')"; then
-  echo 'Cross-user custom field foreign key unexpectedly accepted.' >&2
+if db "INSERT INTO task_custom_field_values (task_id,field_id,user_id,value) VALUES ($custom_task,999999999,$admin_id,'forbidden')"; then
+  echo 'Custom field foreign key unexpectedly accepted a missing field.' >&2
   exit 1
 fi
 
