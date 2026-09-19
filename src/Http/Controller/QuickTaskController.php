@@ -43,7 +43,7 @@ final class QuickTaskController
 
             $userId = $this->sessions->currentUserId() ?? 0;
             $projectId = $this->bodyInt($body, 'project_id');
-            if ($projectId !== null && $this->projects->findForUser($userId, $projectId) === null) {
+            if ($projectId !== null && $this->projects->findAccessibleForUser($userId, $projectId) === null) {
                 throw new DomainException($this->translator->trans('validation.selected_project_unavailable'));
             }
 
