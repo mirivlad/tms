@@ -16,7 +16,8 @@ final class DiscussionRepository
     /** @return list<DiscussionCommentRecord> */
     public function listForProject(int $userId, int $projectId): array
     {
-        if ($this->teamProjectRole($userId, $projectId) === null) {
+        $context = $this->teamProjectContext($userId, $projectId);
+        if ($context === null) {
             return [];
         }
 
@@ -25,19 +26,22 @@ final class DiscussionRepository
                     u.username AS author_username, c.body_html, c.created_at, c.updated_at, c.deleted_at
              FROM discussion_comments c
              LEFT JOIN users u ON u.id = c.author_user_id
-             WHERE c.project_id = :project_id AND c.task_id IS NULL
+             WHERE c.project_id = :project_id
+               AND c.task_id IS NULL
+               AND c.team_id = :team_id
              ORDER BY COALESCE(c.parent_comment_id, c.id) ASC,
                       CASE WHEN c.parent_comment_id IS NULL THEN 0 ELSE 1 END ASC,
                       c.created_at ASC, c.id ASC'
         );
-        $stmt->execute(['project_id' => $projectId]);
+        $stmt->execute(['project_id' => $projectId, 'team_id' => $context['team_id']]);
         return $this->fetchAll($stmt);
     }
 
     /** @return list<DiscussionCommentRecord> */
     public function listForTask(int $userId, int $taskId): array
     {
-        if ($this->teamTaskContext($userId, $taskId) === null) {
+        $context = $this->teamTaskContext($userId, $taskId);
+        if ($context === null) {
             return [];
         }
 
@@ -46,12 +50,14 @@ final class DiscussionRepository
                     u.username AS author_username, c.body_html, c.created_at, c.updated_at, c.deleted_at
              FROM discussion_comments c
              LEFT JOIN users u ON u.id = c.author_user_id
-             WHERE c.task_id = :task_id AND c.project_id IS NULL
+             WHERE c.task_id = :task_id
+               AND c.project_id IS NULL
+               AND c.team_id = :team_id
              ORDER BY COALESCE(c.parent_comment_id, c.id) ASC,
                       CASE WHEN c.parent_comment_id IS NULL THEN 0 ELSE 1 END ASC,
                       c.created_at ASC, c.id ASC'
         );
-        $stmt->execute(['task_id' => $taskId]);
+        $stmt->execute(['task_id' => $taskId, 'team_id' => $context['team_id']]);
         return $this->fetchAll($stmt);
     }
 
@@ -61,14 +67,16 @@ final class DiscussionRepository
         string $bodyHtml,
         ?int $parentCommentId = null,
     ): int {
-        if ($this->teamProjectRole($userId, $projectId) === null) {
+        $context = $this->teamProjectContext($userId, $projectId);
+        if ($context === null) {
             throw new DomainException('Discussion is unavailable.');
         }
-        $this->assertParentContext($parentCommentId, $projectId, null);
+        $this->assertParentContext($parentCommentId, $projectId, null, $context['team_id']);
 
         return $this->insert(
             projectId: $projectId,
             taskId: null,
+            teamId: $context['team_id'],
             parentCommentId: $parentCommentId,
             authorUserId: $userId,
             bodyHtml: $bodyHtml,
@@ -81,14 +89,16 @@ final class DiscussionRepository
         string $bodyHtml,
         ?int $parentCommentId = null,
     ): int {
-        if ($this->teamTaskContext($userId, $taskId) === null) {
+        $context = $this->teamTaskContext($userId, $taskId);
+        if ($context === null) {
             throw new DomainException('Discussion is unavailable.');
         }
-        $this->assertParentContext($parentCommentId, null, $taskId);
+        $this->assertParentContext($parentCommentId, null, $taskId, $context['team_id']);
 
         return $this->insert(
             projectId: null,
             taskId: $taskId,
+            teamId: $context['team_id'],
             parentCommentId: $parentCommentId,
             authorUserId: $userId,
             bodyHtml: $bodyHtml,
@@ -137,6 +147,7 @@ final class DiscussionRepository
                AND c.deleted_at IS NULL
                AND p.owner_user_id IS NULL
                AND p.owner_team_id IS NOT NULL
+               AND c.team_id = p.owner_team_id
              LIMIT 1'
         );
         $stmt->execute(['user_id' => $userId, 'comment_id' => $commentId]);
@@ -249,22 +260,24 @@ final class DiscussionRepository
     private function insert(
         ?int $projectId,
         ?int $taskId,
+        int $teamId,
         ?int $parentCommentId,
         int $authorUserId,
         string $bodyHtml,
     ): int {
         $stmt = $this->db->prepare(
             'INSERT INTO discussion_comments (
-                project_id, task_id, parent_comment_id, author_user_id, body_html,
+                project_id, task_id, team_id, parent_comment_id, author_user_id, body_html,
                 created_at, updated_at, deleted_at
              ) VALUES (
-                :project_id, :task_id, :parent_comment_id, :author_user_id, :body_html,
+                :project_id, :task_id, :team_id, :parent_comment_id, :author_user_id, :body_html,
                 CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL
              )'
         );
         $stmt->execute([
             'project_id' => $projectId,
             'task_id' => $taskId,
+            'team_id' => $teamId,
             'parent_comment_id' => $parentCommentId,
             'author_user_id' => $authorUserId,
             'body_html' => $this->normalizeBody($bodyHtml),
@@ -272,14 +285,14 @@ final class DiscussionRepository
         return (int) $this->db->lastInsertId();
     }
 
-    private function assertParentContext(?int $parentCommentId, ?int $projectId, ?int $taskId): void
+    private function assertParentContext(?int $parentCommentId, ?int $projectId, ?int $taskId, int $teamId): void
     {
         if ($parentCommentId === null) {
             return;
         }
 
         $stmt = $this->db->prepare(
-            'SELECT project_id, task_id, parent_comment_id, deleted_at
+            'SELECT project_id, task_id, team_id, parent_comment_id, deleted_at
              FROM discussion_comments
              WHERE id = :id
              LIMIT 1'
@@ -289,7 +302,8 @@ final class DiscussionRepository
         if (!is_array($row)
             || $row['deleted_at'] !== null
             || ($row['project_id'] !== null ? (int) $row['project_id'] : null) !== $projectId
-            || ($row['task_id'] !== null ? (int) $row['task_id'] : null) !== $taskId) {
+            || ($row['task_id'] !== null ? (int) $row['task_id'] : null) !== $taskId
+            || ($row['team_id'] !== null ? (int) $row['team_id'] : null) !== $teamId) {
             throw new DomainException('Reply target is unavailable.');
         }
         if ($row['parent_comment_id'] !== null) {
@@ -312,10 +326,11 @@ final class DiscussionRepository
         return $bodyHtml;
     }
 
-    private function teamProjectRole(int $userId, int $projectId): ?string
+    /** @return array{team_id:int,role:string}|null */
+    private function teamProjectContext(int $userId, int $projectId): ?array
     {
         $stmt = $this->db->prepare(
-            'SELECT tm.role
+            'SELECT p.owner_team_id AS team_id, tm.role
              FROM projects p
              INNER JOIN team_members tm
                ON tm.team_id = p.owner_team_id
@@ -323,18 +338,22 @@ final class DiscussionRepository
              WHERE p.id = :project_id
                AND p.owner_user_id IS NULL
                AND p.owner_team_id IS NOT NULL
+               AND c.team_id = p.owner_team_id
              LIMIT 1'
         );
         $stmt->execute(['user_id' => $userId, 'project_id' => $projectId]);
-        $role = $stmt->fetchColumn();
-        return is_string($role) ? $role : null;
+        $row = $stmt->fetch();
+        if (!is_array($row) || $row['team_id'] === null) {
+            return null;
+        }
+        return ['team_id' => (int) $row['team_id'], 'role' => (string) $row['role']];
     }
 
-    /** @return array{project_id:int,role:string}|null */
+    /** @return array{project_id:int,team_id:int,role:string}|null */
     private function teamTaskContext(int $userId, int $taskId): ?array
     {
         $stmt = $this->db->prepare(
-            'SELECT p.id AS project_id, tm.role
+            'SELECT p.id AS project_id, p.owner_team_id AS team_id, tm.role
              FROM tasks t
              INNER JOIN projects p ON p.id = t.project_id
              INNER JOIN team_members tm
@@ -347,10 +366,14 @@ final class DiscussionRepository
         );
         $stmt->execute(['user_id' => $userId, 'task_id' => $taskId]);
         $row = $stmt->fetch();
-        if (!is_array($row)) {
+        if (!is_array($row) || $row['team_id'] === null) {
             return null;
         }
-        return ['project_id' => (int) $row['project_id'], 'role' => (string) $row['role']];
+        return [
+            'project_id' => (int) $row['project_id'],
+            'team_id' => (int) $row['team_id'],
+            'role' => (string) $row['role'],
+        ];
     }
 
     /** @return array{author_user_id:int,role:string,deleted_at:?string,project_id:?int,task_id:?int}|null */
