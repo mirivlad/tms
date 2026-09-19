@@ -98,7 +98,7 @@ final class RegistrationServiceTest extends TestCase
     {
         $this->db->exec('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, email TEXT UNIQUE, password_hash TEXT, role TEXT, is_active INTEGER, email_verified_at TEXT NULL, approved_at TEXT NULL, last_activity_at TEXT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)');
         $this->db->exec('CREATE TABLE email_verification_tokens (selector TEXT PRIMARY KEY, user_id INTEGER, verifier_hash TEXT, expires_at TEXT, consumed_at TEXT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP)');
-        $this->db->exec('CREATE TABLE statuses (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, name TEXT, description TEXT DEFAULT "", color TEXT, sort_order INTEGER DEFAULT 0, is_default INTEGER DEFAULT 0, is_completion INTEGER DEFAULT 0, show_on_board INTEGER DEFAULT 1, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)');
+        $this->db->exec('CREATE TABLE statuses (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, project_id INTEGER NULL, source_status_id INTEGER NULL, name TEXT, description TEXT DEFAULT "", color TEXT, sort_order INTEGER DEFAULT 0, is_default INTEGER DEFAULT 0, is_completion INTEGER DEFAULT 0, show_on_board INTEGER DEFAULT 1, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)');
         $this->db->exec('CREATE TABLE task_types (id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER, name TEXT, description TEXT DEFAULT "", sort_order INTEGER DEFAULT 0, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)');
     }
 }
