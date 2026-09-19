@@ -17,13 +17,16 @@ final class AttachmentRepository
     /** @return list<AttachmentRecord> */
     public function listForTask(int $userId, int $taskId): array
     {
+        if ($this->taskOwnerIfAccessible($userId, $taskId) === null) {
+            return [];
+        }
         $stmt = $this->db->prepare(
             'SELECT id, task_id, user_id, storage_name, original_name, mime_type, file_size, sha256, created_at
              FROM attachments
-             WHERE task_id = :task_id AND user_id = :user_id
+             WHERE task_id = :task_id
              ORDER BY created_at DESC, id DESC'
         );
-        $stmt->execute(['task_id' => $taskId, 'user_id' => $userId]);
+        $stmt->execute(['task_id' => $taskId]);
 
         $records = [];
         while (($row = $stmt->fetch()) !== false) {
@@ -53,16 +56,18 @@ final class AttachmentRepository
 
     public function findForTask(int $userId, int $taskId, int $attachmentId): ?AttachmentRecord
     {
+        if ($this->taskOwnerIfAccessible($userId, $taskId) === null) {
+            return null;
+        }
         $stmt = $this->db->prepare(
             'SELECT id, task_id, user_id, storage_name, original_name, mime_type, file_size, sha256, created_at
              FROM attachments
-             WHERE id = :id AND task_id = :task_id AND user_id = :user_id
+             WHERE id = :id AND task_id = :task_id
              LIMIT 1'
         );
         $stmt->execute([
             'id' => $attachmentId,
             'task_id' => $taskId,
-            'user_id' => $userId,
         ]);
         $row = $stmt->fetch();
         return is_array($row) ? $this->hydrate($row) : null;
@@ -76,7 +81,8 @@ final class AttachmentRepository
         if ($files === []) {
             return;
         }
-        if (!$this->taskBelongsToUser($userId, $taskId)) {
+        $taskOwnerId = $this->taskOwnerIfAccessible($userId, $taskId);
+        if ($taskOwnerId === null) {
             throw new DomainException('Task is unavailable.');
         }
 
@@ -94,7 +100,7 @@ final class AttachmentRepository
                 $this->assertMetadata($file);
                 $stmt->execute([
                     'task_id' => $taskId,
-                    'user_id' => $userId,
+                    'user_id' => $taskOwnerId,
                     'storage_name' => $file['storage_name'],
                     'original_name' => $file['original_name'],
                     'mime_type' => $file['mime_type'],
@@ -113,25 +119,54 @@ final class AttachmentRepository
 
     public function deleteForTask(int $userId, int $taskId, int $attachmentId): bool
     {
+        if ($this->taskOwnerIfAccessible($userId, $taskId) === null) {
+            return false;
+        }
         $stmt = $this->db->prepare(
             'DELETE FROM attachments
-             WHERE id = :id AND task_id = :task_id AND user_id = :user_id'
+             WHERE id = :id AND task_id = :task_id'
         );
         $stmt->execute([
             'id' => $attachmentId,
             'task_id' => $taskId,
-            'user_id' => $userId,
         ]);
         return $stmt->rowCount() === 1;
     }
 
-    private function taskBelongsToUser(int $userId, int $taskId): bool
+    private function taskOwnerIfAccessible(int $userId, int $taskId): ?int
     {
         $stmt = $this->db->prepare(
-            'SELECT 1 FROM tasks WHERE id = :id AND created_by = :user_id LIMIT 1'
+            'SELECT t.created_by
+             FROM tasks t
+             WHERE t.id = :task_id
+               AND (
+                    (t.project_id IS NULL AND t.created_by = :personal_task_user)
+                    OR EXISTS (
+                        SELECT 1
+                        FROM projects p
+                        LEFT JOIN team_members tm
+                          ON tm.team_id = p.owner_team_id
+                         AND tm.user_id = :team_user
+                        WHERE p.id = t.project_id
+                          AND (
+                               (p.owner_user_id = :personal_project_user AND p.owner_team_id IS NULL)
+                               OR
+                               (p.owner_user_id IS NULL
+                                AND p.owner_team_id IS NOT NULL
+                                AND tm.user_id IS NOT NULL)
+                          )
+                    )
+               )
+             LIMIT 1'
         );
-        $stmt->execute(['id' => $taskId, 'user_id' => $userId]);
-        return $stmt->fetchColumn() !== false;
+        $stmt->execute([
+            'task_id' => $taskId,
+            'personal_task_user' => $userId,
+            'team_user' => $userId,
+            'personal_project_user' => $userId,
+        ]);
+        $value = $stmt->fetchColumn();
+        return $value === false ? null : (int) $value;
     }
 
     /** @param array{storage_name:string,original_name:string,mime_type:string,file_size:int,sha256:string} $file */
