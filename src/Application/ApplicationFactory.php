@@ -32,6 +32,8 @@ use Tms\Domain\Project\ProjectRepository;
 use Tms\Domain\Project\ProjectStatusRepository;
 use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRepository;
+use Tms\Domain\Team\TeamInvitationRepository;
+use Tms\Domain\Team\TeamRepository;
 use Tms\Domain\TaskType\TaskTypeRepository;
 use Tms\Domain\User\UserRepository;
 use Tms\Domain\UserPreference\UserPreferenceRepository;
@@ -62,6 +64,8 @@ use Tms\Http\Controller\TaskBulkController;
 use Tms\Http\Controller\TaskDeleteController;
 use Tms\Http\Controller\TaskStatusController;
 use Tms\Http\Controller\TelegramWebhookController;
+use Tms\Http\Controller\TeamController;
+use Tms\Http\Controller\TeamInvitationController;
 use Tms\Http\CookiePolicy;
 use Tms\Http\Middleware\CsrfMiddleware;
 use Tms\Http\Middleware\PersistentLoginMiddleware;
@@ -161,6 +165,8 @@ final class ApplicationFactory
         $projectCustomFields = new ProjectCustomFieldRepository($db);
         $projectAttachments = new ProjectAttachmentRepository($db);
         $tasks = new TaskRepository($db);
+        $teams = new TeamRepository($db);
+        $teamInvitations = new TeamInvitationRepository($db);
         $attachments = new AttachmentRepository($db);
         $notificationSettings = new NotificationSettingsRepository($db);
         $smtpSettings = new SmtpSettingsRepository($db);
@@ -176,6 +182,10 @@ final class ApplicationFactory
         $twig->getEnvironment()->addFunction(new TwigFunction('current_projects', static function () use ($sessions, $projects): array {
             $userId = $sessions->currentUserId();
             return $userId === null ? [] : $projects->listForUser($userId);
+        }));
+        $twig->getEnvironment()->addFunction(new TwigFunction('current_team_invitation_count', static function () use ($sessions, $teamInvitations): int {
+            $userId = $sessions->currentUserId();
+            return $userId === null ? 0 : $teamInvitations->countPendingForUser($userId);
         }));
         $twig->getEnvironment()->addFunction(new TwigFunction('current_role', static fn (): ?string => $sessions->currentRole()));
         $twig->getEnvironment()->addFunction(new TwigFunction('is_impersonating', static fn (): bool => $sessions->isImpersonating()));
@@ -244,6 +254,8 @@ final class ApplicationFactory
         $projectStatusController = new ProjectStatusController($sessions, $projects, $projectStatuses, $translator);
         $projectCustomFieldController = new ProjectCustomFieldController($sessions, $projects, $projectCustomFields, $translator);
         $projectAttachmentController = new ProjectAttachmentController($sessions, $projects, $projectAttachments, $attachmentPolicy, $attachmentStorage, $translator);
+        $teamController = new TeamController($twig, $sessions, $teams, $teamInvitations, $users, $translator);
+        $teamInvitationController = new TeamInvitationController($twig, $sessions, $teamInvitations, $translator);
         $dashboardController = new DashboardController($twig, $sessions, $tasks, $statuses, $dashboardTips, $translator);
         $taskController = new TaskController($twig, $sessions, $tasks, $attachments, $statuses, $taskTypes, $customers, $projects, $projectStatuses, $projectCustomFields, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator, $descriptionSanitizer);
         $taskDeleteController = new TaskDeleteController($sessions, $tasks, $attachments, $attachmentStorage);
@@ -335,6 +347,19 @@ final class ApplicationFactory
         $app->post('/locale', [$localeController, 'switch']);
 
         $app->get('/dashboard', [$dashboardController, 'show'])->add($requireAuth);
+        $app->get('/teams', [$teamController, 'index'])->add($requireAuth);
+        $app->post('/teams', [$teamController, 'create'])->add($requireAuth);
+        $app->get('/teams/{id:[0-9]+}', [$teamController, 'show'])->add($requireAuth);
+        $app->post('/teams/{id:[0-9]+}', [$teamController, 'update'])->add($requireAuth);
+        $app->post('/teams/{id:[0-9]+}/invitations', [$teamController, 'invite'])->add($requireAuth);
+        $app->post('/teams/{id:[0-9]+}/invitations/{invitationId:[0-9]+}/revoke', [$teamController, 'revokeInvitation'])->add($requireAuth);
+        $app->post('/teams/{id:[0-9]+}/members/{userId:[0-9]+}/role', [$teamController, 'changeRole'])->add($requireAuth);
+        $app->post('/teams/{id:[0-9]+}/members/{userId:[0-9]+}/remove', [$teamController, 'removeMember'])->add($requireAuth);
+        $app->post('/teams/{id:[0-9]+}/leave', [$teamController, 'leave'])->add($requireAuth);
+        $app->post('/teams/{id:[0-9]+}/delete', [$teamController, 'delete'])->add($requireAuth);
+        $app->get('/invitations', [$teamInvitationController, 'index'])->add($requireAuth);
+        $app->post('/invitations/{id:[0-9]+}/accept', [$teamInvitationController, 'accept'])->add($requireAuth);
+        $app->post('/invitations/{id:[0-9]+}/decline', [$teamInvitationController, 'decline'])->add($requireAuth);
         $app->get('/projects', [$projectController, 'index'])->add($requireAuth);
         $app->get('/projects/{id:[0-9]+}', [$projectController, 'show'])->add($requireAuth);
         $app->post('/projects', [$projectController, 'create'])->add($requireAuth);
