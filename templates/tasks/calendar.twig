@@ -2,7 +2,7 @@
 
 {% block title %}{{ t('calendar.page_title') }} · TMS{% endblock %}
 {% block styles %}<link rel="stylesheet" href="/assets/calendar.css">{% endblock %}
-{% block scripts %}<script src="/assets/calendar.js" defer></script>{% endblock %}
+{% block scripts %}<script src="/assets/status-filter.js" defer></script><script src="/assets/calendar.js" defer></script>{% endblock %}
 
 {% block content %}
 <div class="page-header compact-page-header calendar-page-header">
@@ -50,7 +50,7 @@
                                 </a>
                             {% endfor %}
                             {% if day.tasks|length > 3 %}
-                                <a class="calendar-more" href="/tasks?deadline_from={{ day.date }}&deadline_to={{ day.date }}">{{ t('calendar.more_tasks', {'count': day.tasks|length - 3}) }}</a>
+                                <a class="calendar-more" href="/tasks?deadline_from={{ day.date }}&deadline_to={{ day.date }}{% if filters.project != 'none' %}&amp;project={{ filters.project }}{% endif %}">{{ t('calendar.more_tasks', {'count': day.tasks|length - 3}) }}</a>
                             {% endif %}
                         </div>
                     </article>
@@ -72,17 +72,17 @@
                 </select>
             </label>
             <label>{{ t('projects.task_project') }}
-                <select name="project">
-                    <option value="">{{ t('projects.all_projects') }}</option>
+                <select name="project" data-status-filter-project data-status-options-url="/api/task-statuses">
                     <option value="none" {{ filters.project == 'none' ? 'selected' : '' }}>{{ t('projects.no_project') }}</option>
                     {% for project in projects %}
                         <option value="{{ project.id }}" {{ filters.project == (project.id ~ '') ? 'selected' : '' }}>{{ project.name }}</option>
                     {% endfor %}
+                    <option value="all" {{ filters.project == 'all' ? 'selected' : '' }}>{{ t('projects.all_projects') }}</option>
                 </select>
             </label>
             <div class="calendar-filter-group">
                 <label>{{ t('tasks.status') }}
-                    <select name="status_id[]" multiple size="4">{% for status in statuses %}<option value="{{ status.id }}" {{ status.id in filters.status_id ? 'selected' : '' }}>{{ status.name }}</option>{% endfor %}</select>
+                    <select name="status_id[]" multiple size="4" data-status-filter-select>{% for status in statuses %}<option value="{{ status.id }}" {{ status.id in filters.status_id ? 'selected' : '' }}>{{ status.name }}</option>{% endfor %}</select>
                 </label>
                 <label class="checkbox-inline calendar-invert"><input type="checkbox" name="status_invert" value="1" {{ filters.status_invert ? 'checked' : '' }}> {{ t('calendar.exclude_selected') }}</label>
             </div>
