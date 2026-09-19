@@ -258,6 +258,11 @@ final class TaskController
             ];
         }
 
+        $discussionEnabled = $project !== null && $project->isTeamOwned();
+        $discussionStat = $discussionEnabled
+            ? ($this->discussionReads->statsForTasks($userId, [$task->id])[$task->id] ?? ['count' => 0, 'unread' => 0])
+            : ['count' => 0, 'unread' => 0];
+
         $attachments = array_map(
             static fn (AttachmentRecord $attachment): array => [
                 'id' => $attachment->id,
@@ -299,6 +304,10 @@ final class TaskController
             'updated_at' => $task->updatedAt,
             'custom_fields' => $custom,
             'attachments' => $attachments,
+            'discussion_enabled' => $discussionEnabled,
+            'discussion_count' => $discussionStat['count'],
+            'discussion_unread' => $discussionStat['unread'],
+            'discussion_url' => $discussionEnabled ? '/tasks/' . $task->id . '/discussion' : null,
             'edit_url' => '/tasks/' . $task->id . '/edit',
             'quick_update_url' => '/api/tasks/' . $task->id . '/quick-edit',
             'delete_url' => '/tasks/' . $task->id . '/delete',
