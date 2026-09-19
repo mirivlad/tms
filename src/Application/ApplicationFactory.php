@@ -26,6 +26,7 @@ use Tms\Domain\Notification\NotificationSettingsRepository;
 use Tms\Domain\Notification\SmtpSettingsRepository;
 use Tms\Domain\Notification\TelegramLinkTokenRepository;
 use Tms\Domain\Notification\TelegramSystemSettingsRepository;
+use Tms\Domain\Project\ProjectAccessRepository;
 use Tms\Domain\Project\ProjectAttachmentRepository;
 use Tms\Domain\Project\ProjectCustomFieldRepository;
 use Tms\Domain\Project\ProjectRepository;
@@ -159,12 +160,13 @@ final class ApplicationFactory
         $taskTypes = new TaskTypeRepository($db);
         $customers = new CustomerRepository($db);
         $customFields = new CustomFieldRepository($db);
-        $customValues = new TaskCustomFieldValueRepository($db);
+        $customValues = new TaskCustomFieldValueRepository($db, $projectAccess);
+        $projectAccess = new ProjectAccessRepository($db);
         $projects = new ProjectRepository($db);
-        $projectStatuses = new ProjectStatusRepository($db);
-        $projectCustomFields = new ProjectCustomFieldRepository($db);
-        $projectAttachments = new ProjectAttachmentRepository($db);
-        $tasks = new TaskRepository($db);
+        $projectStatuses = new ProjectStatusRepository($db, $projectAccess);
+        $projectCustomFields = new ProjectCustomFieldRepository($db, $projectAccess);
+        $projectAttachments = new ProjectAttachmentRepository($db, $projectAccess);
+        $tasks = new TaskRepository($db, $projectAccess);
         $teams = new TeamRepository($db);
         $teamInvitations = new TeamInvitationRepository($db);
         $attachments = new AttachmentRepository($db);
@@ -181,7 +183,7 @@ final class ApplicationFactory
         }));
         $twig->getEnvironment()->addFunction(new TwigFunction('current_projects', static function () use ($sessions, $projects): array {
             $userId = $sessions->currentUserId();
-            return $userId === null ? [] : $projects->listForUser($userId);
+            return $userId === null ? [] : $projects->listAccessibleForUser($userId);
         }));
         $twig->getEnvironment()->addFunction(new TwigFunction('current_team_invitation_count', static function () use ($sessions, $teamInvitations): int {
             $userId = $sessions->currentUserId();
