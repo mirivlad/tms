@@ -8,7 +8,11 @@
 <header class="page-header compact-page-header">
     <div>
         <h1>{{ project.name }}</h1>
-        <p class="muted">{{ t('projects.status.' ~ project.lifecycleStatus) }} · {{ t('projects.personal') }}</p>
+        <p class="muted">
+            {{ t('projects.status.' ~ project.lifecycleStatus) }} ·
+            {{ project.isTeamOwned ? (project.ownerTeamName ?? t('projects.team')) : t('projects.personal') }}
+            {% if project.isTeamOwned %} · {{ t('projects.access_role.' ~ project.accessRole) }}{% endif %}
+        </p>
     </div>
     <div class="page-header-actions">
         <a class="button-link" href="/tasks/new?project_id={{ project.id }}">{{ t('projects.add_task') }}</a>
@@ -66,6 +70,7 @@
     {% endif %}
 </section>
 
+{% if can_manage %}
 <section class="content-card metadata-section" id="project-statuses">
     <div class="section-heading">
         <div>
@@ -263,6 +268,8 @@
         </div>
     {% endif %}
 </section>
+
+{% endif %}
 
 <section class="content-card task-table-card">
     <div class="section-heading">
