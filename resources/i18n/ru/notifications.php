@@ -20,10 +20,11 @@ return [
     'notifications.collaboration_open' => 'Открыть в TMS',
     'validation.admin_required' => 'Требуются права администратора.',
 
-    'notifications.title' => 'Уведомления',
+    'notifications.title' => 'Настройки уведомлений',
     'notifications.eyebrow' => 'Настройки',
     'notifications.subtitle' => 'Время отправки используется в часовом поясе установки: {timezone}.',
     'notifications.channels' => 'Каналы доставки',
+    'notifications.channels_help' => 'Внутренняя лента TMS работает всегда. Включённые email и Telegram также доставляют упоминания и прямые ответы.',
     'notifications.email_enabled' => 'Отправлять уведомления по email',
     'notifications.email_address' => 'Email для уведомлений',
     'notifications.email_help' => 'Оставьте пустым, чтобы использовать email аккаунта: {email}',
