@@ -24,7 +24,9 @@ final class TeamRepositoryTest extends TestCase
         $this->db->exec('CREATE TABLE users (
             id INTEGER PRIMARY KEY,
             username TEXT NOT NULL,
-            email TEXT NOT NULL
+            email TEXT NOT NULL,
+            is_active INTEGER NOT NULL DEFAULT 1,
+            approved_at TEXT NULL
         )');
         $this->db->exec('CREATE TABLE teams (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -57,10 +59,10 @@ final class TeamRepositoryTest extends TestCase
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )');
 
-        $this->db->exec("INSERT INTO users (id, username, email) VALUES
-            (1, 'lead', 'lead@example.test'),
-            (2, 'member', 'member@example.test'),
-            (3, 'other', 'other@example.test')");
+        $this->db->exec("INSERT INTO users (id, username, email, is_active, approved_at) VALUES
+            (1, 'lead', 'lead@example.test', 1, '2026-01-01'),
+            (2, 'member', 'member@example.test', 1, '2026-01-01'),
+            (3, 'other', 'other@example.test', 1, '2026-01-01')");
 
         $this->teams = new TeamRepository($this->db);
     }
@@ -95,6 +97,24 @@ final class TeamRepositoryTest extends TestCase
 
         $this->expectException(DomainException::class);
         $this->teams->changeRoleForLead(2, $teamId, 2, 'member');
+    }
+
+    public function testInactiveOrUnapprovedLeadDoesNotSatisfyLastLeadGuard(): void
+    {
+        $teamId = $this->teams->createForUser(1, 'Core Team', '');
+        $this->teams->addMember($teamId, 2, 'lead');
+
+        $this->db->exec('UPDATE users SET is_active = 0 WHERE id = 2');
+        try {
+            $this->teams->changeRoleForLead(1, $teamId, 1, 'member');
+            self::fail('Inactive alternate lead must not satisfy the last-lead guard.');
+        } catch (DomainException) {
+            self::assertSame('lead', $this->teams->roleForUser(1, $teamId));
+        }
+
+        $this->db->exec("UPDATE users SET is_active = 1, approved_at = NULL WHERE id = 2");
+        $this->expectException(DomainException::class);
+        $this->teams->leave(1, $teamId);
     }
 
     public function testLastLeadCannotLeaveOrBeRemoved(): void
