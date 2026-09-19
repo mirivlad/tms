@@ -344,7 +344,7 @@ final class ApplicationFactory
             $telegramUpdateHandler,
             $telegramConfiguration,
         );
-        $requireAuth = new RequireAuthMiddleware($sessions);
+        $requireAuth = new RequireAuthMiddleware($sessions, $users);
         $requireAdmin = new RequireAdminMiddleware($sessions, $app->getResponseFactory(), $translator);
         $sanitizeTaskDescription = new SanitizeTaskDescriptionMiddleware($descriptionSanitizer);
 
