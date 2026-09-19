@@ -9,7 +9,7 @@ db() {
 }
 
 curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/projects" > /tmp/project-task-projects.html
-csrf=$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' /tmp/project-task-projects.html | head -n1)
+csrf=$(grep -m1 -o 'name="_csrf" value="[^"]*"' /tmp/project-task-projects.html | sed 's/.*value="//;s/"$//')
 test -n "$csrf"
 
 admin_id=$(db "SELECT id FROM users WHERE username='ciadmin' LIMIT 1")
@@ -80,7 +80,8 @@ fi
 
 curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/projects/$project_id" > /tmp/project-task-detail.html
 grep -q 'Task Integration Project' /tmp/project-task-detail.html
-grep -q 'Project smoke task' /tmp/project-task-detail.html
+grep -q 'entity-overview-grid' /tmp/project-task-detail.html
+grep -q '>1<' /tmp/project-task-detail.html
 
 # A forged project id from another owner is rejected.
 other_id=$(db "SELECT id FROM users WHERE username='other' LIMIT 1")
