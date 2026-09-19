@@ -9,6 +9,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
 use Tms\Domain\Project\ProjectRepository;
+use Tms\Application\TeamInvitationDeliveryService;
 use Tms\Domain\Team\TeamInvitationRepository;
 use Tms\Domain\Team\TeamRepository;
 use Tms\Domain\User\UserRepository;
@@ -23,6 +24,7 @@ final class TeamController
         private readonly TeamRepository $teams,
         private readonly ProjectRepository $projects,
         private readonly TeamInvitationRepository $invitations,
+        private readonly TeamInvitationDeliveryService $invitationDelivery,
         private readonly UserRepository $users,
         private readonly Translator $translator,
     ) {
@@ -129,7 +131,7 @@ final class TeamController
         }
 
         try {
-            $this->invitations->invite($teamId, $user->id, $this->userId());
+            $invitationId = $this->invitations->invite($teamId, $user->id, $this->userId());
         } catch (DomainException $error) {
             $key = match ($error->getMessage()) {
                 'User is already a team member.' => 'teams.invite_already_member',
@@ -138,6 +140,15 @@ final class TeamController
             };
             $this->notice('error', $key);
             return $this->redirect($response, '/teams/' . $teamId);
+        }
+
+        $invitation = $this->invitations->findById($invitationId);
+        if ($invitation !== null) {
+            try {
+                $this->invitationDelivery->deliver($invitation);
+            } catch (\Throwable $error) {
+                error_log('TMS team invitation delivery failed: ' . $error->getMessage());
+            }
         }
 
         $this->notice('success', 'teams.invite_created');
