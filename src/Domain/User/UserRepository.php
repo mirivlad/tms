@@ -274,9 +274,12 @@ final class UserRepository
                AND NOT EXISTS (
                     SELECT 1
                     FROM team_members other
+                    INNER JOIN users other_user ON other_user.id = other.user_id
                     WHERE other.team_id = mine.team_id
                       AND other.role = 'lead'
                       AND other.user_id <> mine.user_id
+                      AND other_user.is_active = 1
+                      AND other_user.approved_at IS NOT NULL
                )
              LIMIT 1"
         );
