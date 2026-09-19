@@ -150,15 +150,77 @@ final class ProjectRepository
 
     public function deleteForUser(int $userId, int $projectId): bool
     {
+        if ($this->findForUser($userId, $projectId) === null) {
+            return false;
+        }
+
+        $this->db->beginTransaction();
+        try {
+            $fallback = $this->personalDefaultStatusId($userId);
+            if ($fallback === null) {
+                throw new DomainException('A personal default status is required before deleting a project.');
+            }
+
+            $remap = $this->db->prepare(
+                'UPDATE tasks t
+                 INNER JOIN statuses ps
+                    ON ps.id = t.status_id
+                   AND ps.project_id = :project_id_status
+                   AND ps.user_id IS NULL
+                 LEFT JOIN statuses source
+                    ON source.id = ps.source_status_id
+                   AND source.user_id = :source_user_id
+                   AND source.project_id IS NULL
+                 SET t.status_id = COALESCE(source.id, :fallback_status),
+                     t.project_id = NULL,
+                     t.updated_at = CURRENT_TIMESTAMP
+                 WHERE t.project_id = :project_id_task
+                   AND t.created_by = :task_user_id'
+            );
+            $remap->execute([
+                'project_id_status' => $projectId,
+                'source_user_id' => $userId,
+                'fallback_status' => $fallback,
+                'project_id_task' => $projectId,
+                'task_user_id' => $userId,
+            ]);
+
+            $stmt = $this->db->prepare(
+                'DELETE FROM projects
+                 WHERE id = :id AND owner_user_id = :user_id AND owner_team_id IS NULL'
+            );
+            $stmt->execute([
+                'id' => $projectId,
+                'user_id' => $userId,
+            ]);
+            $deleted = $stmt->rowCount() === 1;
+            if (!$deleted) {
+                $this->db->rollBack();
+                return false;
+            }
+
+            $this->db->commit();
+            return true;
+        } catch (Throwable $error) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $error;
+        }
+    }
+
+    private function personalDefaultStatusId(int $userId): ?int
+    {
         $stmt = $this->db->prepare(
-            'DELETE FROM projects
-             WHERE id = :id AND owner_user_id = :user_id AND owner_team_id IS NULL'
+            'SELECT id
+             FROM statuses
+             WHERE user_id = :user_id AND project_id IS NULL
+             ORDER BY is_default DESC, sort_order ASC, id ASC
+             LIMIT 1'
         );
-        $stmt->execute([
-            'id' => $projectId,
-            'user_id' => $userId,
-        ]);
-        return $stmt->rowCount() === 1;
+        $stmt->execute(['user_id' => $userId]);
+        $value = $stmt->fetchColumn();
+        return $value === false ? null : (int) $value;
     }
 
     private function normalizeName(string $name): string
