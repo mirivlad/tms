@@ -6,6 +6,7 @@ namespace Tms\Application;
 
 use Tms\Domain\Notification\NotificationSettingsRepository;
 use Tms\Domain\Team\TeamInvitationRecord;
+use Tms\I18n\Translator;
 use Tms\Infrastructure\EmailSender;
 use Tms\Infrastructure\TelegramSender;
 
@@ -16,6 +17,7 @@ final class TeamInvitationDeliveryService
         private readonly EmailSender $email,
         private readonly TelegramSender $telegram,
         private readonly string $appUrl,
+        private readonly Translator $translator,
     ) {
     }
 
@@ -27,16 +29,23 @@ final class TeamInvitationDeliveryService
         $url = rtrim($this->appUrl, '/') . '/invitations';
         $inviter = trim((string) $invitation->invitedByUsername);
         $lead = $inviter !== ''
-            ? $inviter . ' invited you to join the team "' . $invitation->teamName . '".'
-            : 'You were invited to join the team "' . $invitation->teamName . '".';
-        $text = $lead . "\nOpen TMS to accept or decline: " . $url;
+            ? $this->translator->trans('teams.invite_external_by', [
+                'username' => $inviter,
+                'team' => $invitation->teamName,
+            ])
+            : $this->translator->trans('teams.invite_external', ['team' => $invitation->teamName]);
+        $open = $this->translator->trans('teams.invite_external_open');
+        $text = $lead . "\n" . $open . ': ' . $url;
 
         if ($settings->emailEnabled) {
             $stats['attempted']++;
-            $subject = 'TMS: team invitation — ' . $invitation->teamName;
+            $subject = $this->translator->trans(
+                'teams.invite_external_subject',
+                ['team' => $invitation->teamName],
+            );
             $html = '<p>' . htmlspecialchars($lead, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</p>'
                 . '<p><a href="' . htmlspecialchars($url, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '">'
-                . 'Open team invitations</a></p>';
+                . htmlspecialchars($open, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</a></p>';
             if ($this->email->send(
                 $settings->deliveryEmail(),
                 $settings->username,
