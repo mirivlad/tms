@@ -10,7 +10,7 @@ db() {
 }
 
 csrf_from() {
-  sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' "$1" | head -n1
+  grep -m1 -o 'name="_csrf" value="[^"]*"' "$1" | sed 's/.*value="//;s/"$//'
 }
 
 login() {
@@ -209,7 +209,7 @@ code=$(curl --silent -o /dev/null -w '%{http_code}' \
   "$BASE_URL/tasks/$task_b/delete")
 test "$code" = "302"
 
-curl --fail --silent --cookie "$OTHER_COOKIES" "$BASE_URL/projects/$project_b" > /tmp/collab-project-b-final.html
+curl --fail --silent --cookie "$OTHER_COOKIES" "$BASE_URL/projects/$project_b/files" > /tmp/collab-project-b-final.html
 project_b_csrf=$(csrf_from /tmp/collab-project-b-final.html)
 code=$(curl --silent -o /dev/null -w '%{http_code}' \
   --cookie "$OTHER_COOKIES" --data-urlencode "_csrf=$project_b_csrf" \
@@ -220,20 +220,20 @@ code=$(curl --silent -o /dev/null -w '%{http_code}' \
   "$BASE_URL/projects/$project_b/delete")
 test "$code" = "302"
 
-curl --fail --silent --cookie "$OTHER_COOKIES" "$BASE_URL/teams/$team_b" > /tmp/collab-team-b-final.html
+curl --fail --silent --cookie "$OTHER_COOKIES" "$BASE_URL/teams/$team_b/settings" > /tmp/collab-team-b-final.html
 team_b_csrf=$(csrf_from /tmp/collab-team-b-final.html)
 code=$(curl --silent -o /dev/null -w '%{http_code}' \
   --cookie "$OTHER_COOKIES" --data-urlencode "_csrf=$team_b_csrf" \
   "$BASE_URL/teams/$team_b/delete")
 test "$code" = "302"
 
-curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/projects/$project_a" > /tmp/collab-project-a-final.html
+curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/projects/$project_a/settings" > /tmp/collab-project-a-final.html
 project_a_csrf=$(csrf_from /tmp/collab-project-a-final.html)
 code=$(curl --silent -o /dev/null -w '%{http_code}' \
   --cookie "$ADMIN_COOKIES" --data-urlencode "_csrf=$project_a_csrf" \
   "$BASE_URL/projects/$project_a/delete")
 test "$code" = "302"
-curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/teams/$team_a" > /tmp/collab-team-a-final.html
+curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/teams/$team_a/settings" > /tmp/collab-team-a-final.html
 team_a_csrf=$(csrf_from /tmp/collab-team-a-final.html)
 code=$(curl --silent -o /dev/null -w '%{http_code}' \
   --cookie "$ADMIN_COOKIES" --data-urlencode "_csrf=$team_a_csrf" \
