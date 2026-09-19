@@ -1,178 +1,62 @@
 {% extends 'app_layout.twig' %}
-
 {% block title %}{{ team.name }} · TMS{% endblock %}
 {% block styles %}<link rel="stylesheet" href="/assets/metadata.css"><link rel="stylesheet" href="/assets/collaboration.css">{% endblock %}
-
+{% set team_section = 'overview' %}
 {% block content %}
-<header class="page-header compact-page-header">
-    <div>
-        <h1>{{ team.name }}</h1>
-        <p class="muted">{{ t('teams.role.' ~ team.currentUserRole) }}</p>
-    </div>
-    <a class="text-link" href="/teams">{{ t('teams.back') }}</a>
-</header>
+{% include 'teams/_nav.twig' %}
+{% if notice %}<p class="{{ notice.kind == 'error' ? 'alert' : 'success-notice' }}" role="status">{{ notice.message }}</p>{% endif %}
 
-{% if notice %}
-    <p class="{{ notice.kind == 'error' ? 'alert' : 'success-notice' }}" role="status">{{ notice.message }}</p>
-{% endif %}
-
-<div class="team-detail-grid">
-<section class="content-card metadata-section team-about-card">
-    <div class="section-heading">
-        <div>
-            <h2>{{ t('teams.about') }}</h2>
-            <p class="muted">{{ is_lead ? t('teams.about_lead_help') : t('teams.about_member_help') }}</p>
+<div class="entity-overview-grid">
+    <section class="content-card overview-span-2">
+        <div class="section-heading"><div><h2>{{ t('teams.overview_about') }}</h2></div></div>
+        {% if team.description %}<p>{{ team.description|nl2br }}</p>{% else %}<p class="muted">{{ t('teams.overview_no_description') }}</p>{% endif %}
+        <div class="overview-facts">
+            <div><span>{{ t('teams.overview_projects') }}</span><strong>{{ project_count }}</strong></div>
+            <div><span>{{ t('teams.overview_members') }}</span><strong>{{ member_count }}</strong></div>
+            <div><span>{{ t('teams.overview_leads') }}</span><strong>{{ lead_count }}</strong></div>
+            <div><span>{{ t('teams.overview_tasks') }}</span><strong>{{ task_count }}</strong></div>
         </div>
-    </div>
+    </section>
 
-    {% if is_lead %}
-        <form class="metadata-create" method="post" action="/teams/{{ team.id }}">
-            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-            <label>
-                <span>{{ t('teams.name') }}</span>
-                <input type="text" name="name" maxlength="160" value="{{ team.name }}" required>
-            </label>
-            <label class="field-wide">
-                <span>{{ t('teams.description') }}</span>
-                <textarea name="description" rows="4" maxlength="20000">{{ team.description }}</textarea>
-            </label>
-            <button type="submit">{{ t('common.save') }}</button>
-        </form>
-    {% elseif team.description %}
-        <p>{{ team.description }}</p>
-    {% endif %}
-</section>
-
-<section class="content-card metadata-section team-projects-card">
-    <div class="section-heading">
-        <div>
-            <h2>{{ t('teams.projects') }}</h2>
-            <p class="muted">{{ t('teams.projects_help') }}</p>
+    <section class="content-card overview-span-2">
+        <div class="section-heading">
+            <div><h2>{{ t('teams.projects') }}</h2><p class="muted">{{ t('teams.overview_project_load') }}</p></div>
+            {% if is_lead %}<a href="/projects?owner=team:{{ team.id }}">{{ t('teams.create_project') }}</a>{% endif %}
         </div>
-        {% if is_lead %}
-            <a class="button-link" href="/projects?owner=team:{{ team.id }}">{{ t('teams.create_project') }}</a>
-        {% endif %}
-    </div>
-
-    {% if projects is empty %}
-        <div class="empty-state"><strong>{{ t('teams.projects_empty') }}</strong></div>
-    {% else %}
-        <div class="metadata-list team-project-grid">
-            {% for project in projects %}
-                <article class="metadata-item">
-                    <div class="metadata-item-heading">
-                        <strong><a class="text-link" href="/projects/{{ project.id }}">{{ project.name }}</a></strong>
-                        <span class="metadata-badge">{{ t('projects.status.' ~ project.lifecycleStatus) }}</span>
-                    </div>
-                    {% if project.description %}<p class="muted">{{ project.description }}</p>{% endif %}
-                </article>
+        <div class="overview-metrics">
+            <div><strong>{{ project_count }}</strong><span>{{ t('teams.overview_projects') }}</span></div>
+            <div><strong>{{ open_task_count }}</strong><span>{{ t('teams.overview_open_tasks') }}</span></div>
+        </div>
+        {% if project_summaries is empty %}
+            <p class="muted">{{ t('teams.projects_empty') }}</p>
+        {% else %}
+            <div class="team-project-overview-list">
+            {% for item in project_summaries %}
+                <a href="/projects/{{ item.project.id }}">
+                    <span>
+                        <strong>{{ item.project.name }}</strong>
+                        <small class="muted">{{ t('projects.status.' ~ item.project.lifecycleStatus) }}</small>
+                    </span>
+                    <span class="team-project-load">{{ item.open_task_count }} / {{ item.task_count }}</span>
+                </a>
             {% endfor %}
-        </div>
-    {% endif %}
-</section>
+            </div>
+        {% endif %}
+    </section>
 
-<section class="content-card metadata-section team-members-card">
-    <div class="section-heading">
-        <div>
-            <h2>{{ t('teams.members') }}</h2>
-            <p class="muted">{{ t('teams.members_help') }}</p>
+    <section class="content-card overview-span-2">
+        <div class="section-heading">
+            <div><h2>{{ t('teams.members') }}</h2><p class="muted">{{ t('teams.overview_members_help') }}</p></div>
+            <a href="/teams/{{ team.id }}/members">{{ t('teams.action_members') }}</a>
         </div>
-    </div>
-
-    <div class="metadata-list team-member-list">
-        {% for member in members %}
-            <article class="metadata-item">
-                <div class="metadata-item-heading">
-                    <div>
-                        <strong>{{ member.username }}</strong>
-                        <span class="muted"> · {{ member.email }}</span>
-                    </div>
+        <div class="member-preview-grid">
+            {% for member in member_preview %}
+                <article>
+                    <strong>{{ member.username }}</strong>
                     <span class="metadata-badge">{{ t('teams.role.' ~ member.role) }}</span>
-                </div>
-
-                {% if is_lead %}
-                    <div class="metadata-actions">
-                        <form method="post" action="/teams/{{ team.id }}/members/{{ member.userId }}/role">
-                            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                            <select name="role">
-                                {% for role in roles %}
-                                    <option value="{{ role }}" {{ member.role == role ? 'selected' : '' }}>{{ t('teams.role.' ~ role) }}</option>
-                                {% endfor %}
-                            </select>
-                            <button class="secondary compact" type="submit">{{ t('teams.change_role') }}</button>
-                        </form>
-                        <form method="post" action="/teams/{{ team.id }}/members/{{ member.userId }}/remove" onsubmit="return confirm('{{ t('teams.remove_confirm')|e('js') }}')">
-                            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                            <button class="danger-link compact" type="submit">{{ t('teams.remove_member') }}</button>
-                        </form>
-                    </div>
-                {% endif %}
-            </article>
-        {% endfor %}
-    </div>
-</section>
-
-{% if is_lead %}
-<section class="content-card metadata-section team-invite-card">
-    <div class="section-heading">
-        <div>
-            <h2>{{ t('teams.invite_title') }}</h2>
-            <p class="muted">{{ t('teams.invite_help') }}</p>
-        </div>
-    </div>
-
-    <form class="metadata-create" method="post" action="/teams/{{ team.id }}/invitations">
-        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-        <label>
-            <span>{{ t('teams.invite_identifier') }}</span>
-            <input type="text" name="identifier" required placeholder="{{ t('teams.invite_identifier_placeholder') }}">
-        </label>
-        <button type="submit">{{ t('teams.invite_send') }}</button>
-    </form>
-
-    {% if invitations is not empty %}
-        <div class="metadata-list">
-            {% for invitation in invitations %}
-                <article class="metadata-item">
-                    <div class="metadata-item-heading">
-                        <div>
-                            <strong>{{ invitation.invitedUsername }}</strong>
-                            <span class="muted"> · {{ invitation.invitedEmail }}</span>
-                        </div>
-                        <span class="metadata-badge">{{ t('teams.invite_status.' ~ invitation.status) }}</span>
-                    </div>
-                    <p class="muted">{{ t('teams.invite_expires') }}: {{ invitation.expiresAt }}</p>
-                    {% if invitation.status == 'pending' %}
-                        <form method="post" action="/teams/{{ team.id }}/invitations/{{ invitation.id }}/revoke">
-                            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                            <button class="secondary compact" type="submit">{{ t('teams.invite_revoke') }}</button>
-                        </form>
-                    {% endif %}
                 </article>
             {% endfor %}
         </div>
-    {% endif %}
-</section>
-{% endif %}
-
-<section class="content-card metadata-section team-actions-card">
-    <div class="section-heading">
-        <div>
-            <h2>{{ t('teams.membership_actions') }}</h2>
-        </div>
-    </div>
-    <div class="metadata-actions">
-        <form method="post" action="/teams/{{ team.id }}/leave" onsubmit="return confirm('{{ t('teams.leave_confirm')|e('js') }}')">
-            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-            <button class="secondary" type="submit">{{ t('teams.leave') }}</button>
-        </form>
-        {% if is_lead %}
-            <form method="post" action="/teams/{{ team.id }}/delete" onsubmit="return confirm('{{ t('teams.delete_confirm')|e('js') }}')">
-                <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                <button class="danger-link" type="submit">{{ t('teams.delete') }}</button>
-            </form>
-        {% endif %}
-    </div>
-</section>
+    </section>
 </div>
 {% endblock %}
