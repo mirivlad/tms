@@ -22,6 +22,7 @@ use Tms\Domain\Customer\CustomerRepository;
 use Tms\Domain\CustomField\CustomFieldRepository;
 use Tms\Domain\CustomField\CustomFieldValueCodec;
 use Tms\Domain\CustomField\TaskCustomFieldValueRepository;
+use Tms\Domain\Discussion\DiscussionReadRepository;
 use Tms\Domain\Discussion\DiscussionRepository;
 use Tms\Domain\Notification\InternalNotificationRepository;
 use Tms\Domain\Notification\NotificationSettingsRepository;
@@ -64,6 +65,7 @@ use Tms\Http\Controller\QuickTaskController;
 use Tms\Http\Controller\RegistrationController;
 use Tms\Http\Controller\StatusDefaultsController;
 use Tms\Http\Controller\TaskController;
+use Tms\Http\Controller\TaskDiscussionController;
 use Tms\Http\Controller\TaskBulkController;
 use Tms\Http\Controller\TaskDeleteController;
 use Tms\Http\Controller\TaskStatusController;
@@ -165,6 +167,7 @@ final class ApplicationFactory
         $customFields = new CustomFieldRepository($db);
         $customValues = new TaskCustomFieldValueRepository($db);
         $discussions = new DiscussionRepository($db);
+        $discussionReads = new DiscussionReadRepository($db);
         $projects = new ProjectRepository($db);
         $projectStatuses = new ProjectStatusRepository($db);
         $projectCustomFields = new ProjectCustomFieldRepository($db);
@@ -277,14 +280,14 @@ final class ApplicationFactory
         $registrationController = new RegistrationController($twig, $registration, $sessions, $registrationCaptcha, $translator, $registrationEnabled);
         $adminController = new AdminController($twig, $sessions, $users, $rememberTokens, $registration, $userBootstrap, $attachments, $projectAttachments, $attachmentStorage, $translator);
         $profileController = new ProfileController($twig, $sessions, $users, $preferences, $rememberTokens, $translator);
-        $projectController = new ProjectController($twig, $sessions, $projects, $projectAttachments, $attachmentStorage, $tasks, $projectStatuses, $projectCustomFields, $teams, $discussions, $translator);
+        $projectController = new ProjectController($twig, $sessions, $projects, $projectAttachments, $attachmentStorage, $tasks, $projectStatuses, $projectCustomFields, $teams, $discussions, $discussionReads, $translator);
         $projectStatusController = new ProjectStatusController($sessions, $projects, $projectStatuses, $translator);
         $projectCustomFieldController = new ProjectCustomFieldController($sessions, $projects, $projectCustomFields, $translator);
         $projectAttachmentController = new ProjectAttachmentController($sessions, $projects, $projectAttachments, $attachmentPolicy, $attachmentStorage, $translator);
         $teamController = new TeamController($twig, $sessions, $teams, $projects, $tasks, $projectStatuses, $teamInvitations, $teamInvitationDelivery, $users, $translator);
         $teamInvitationController = new TeamInvitationController($twig, $sessions, $teamInvitations, $translator);
         $dashboardController = new DashboardController($twig, $sessions, $tasks, $statuses, $projects, $teams, $dashboardTips, $translator);
-        $taskController = new TaskController($twig, $sessions, $tasks, $attachments, $statuses, $taskTypes, $customers, $projects, $projectStatuses, $projectCustomFields, $teams, $discussions, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator, $descriptionSanitizer);
+        $taskController = new TaskController($twig, $sessions, $tasks, $attachments, $statuses, $taskTypes, $customers, $projects, $projectStatuses, $projectCustomFields, $teams, $discussionReads, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator, $descriptionSanitizer);
         $taskDeleteController = new TaskDeleteController($sessions, $tasks, $attachments, $attachmentStorage);
         $taskBulkController = new TaskBulkController($sessions, $tasks, $attachments, $attachmentStorage, $translator);
         $attachmentController = new AttachmentController($sessions, $tasks, $attachments, $attachmentPolicy, $attachmentStorage, $translator);
@@ -296,6 +299,16 @@ final class ApplicationFactory
             $discussions,
             $discussionNotificationService,
             $descriptionSanitizer,
+            $translator,
+        );
+        $taskDiscussionController = new TaskDiscussionController(
+            $twig,
+            $sessions,
+            $tasks,
+            $projects,
+            $teams,
+            $discussions,
+            $discussionReads,
             $translator,
         );
         $calendarController = new CalendarController($twig, $sessions, $tasks, $statuses, $taskTypes, $customers, $projects, $translator);
@@ -441,6 +454,7 @@ final class ApplicationFactory
         $app->get('/api/task-assignees', [$taskController, 'assigneeOptionsJson'])->add($requireAuth);
         $app->post('/api/tasks/{id:[0-9]+}/quick-edit', [$taskController, 'quickUpdate'])->add($sanitizeTaskDescription)->add($requireAuth);
         $app->get('/tasks/{id:[0-9]+}/edit', [$taskController, 'edit'])->add($requireAuth);
+        $app->get('/tasks/{id:[0-9]+}/discussion', [$taskDiscussionController, 'show'])->add($requireAuth);
         $app->post('/tasks/{id:[0-9]+}', [$taskController, 'update'])->add($sanitizeTaskDescription)->add($requireAuth);
         $app->post('/tasks/{id:[0-9]+}/delete', [$taskDeleteController, 'delete'])->add($requireAuth);
         $app->post('/tasks/bulk', [$taskBulkController, 'apply'])->add($requireAuth);
