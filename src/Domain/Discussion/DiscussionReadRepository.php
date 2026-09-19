@@ -24,14 +24,16 @@ final class DiscussionReadRepository
         }
 
         [$in, $params] = $this->inParams('task', $taskIds);
-        $params['user_id'] = $userId;
+        $params['member_user_id'] = $userId;
+        $params['read_user_id'] = $userId;
+        $params['actor_user_id'] = $userId;
 
         $stmt = $this->db->prepare(
             "SELECT c.task_id AS context_id,
                     COUNT(*) AS comment_count,
                     SUM(
                         CASE
-                            WHEN c.author_user_id <> :user_id
+                            WHEN c.author_user_id <> :actor_user_id
                              AND c.id > COALESCE(r.last_read_comment_id, 0)
                             THEN 1 ELSE 0
                         END
@@ -41,9 +43,10 @@ final class DiscussionReadRepository
              INNER JOIN projects p ON p.id = t.project_id
              INNER JOIN team_members tm
                ON tm.team_id = p.owner_team_id
-              AND tm.user_id = :user_id
+              AND tm.user_id = :member_user_id
              LEFT JOIN discussion_read_markers r
-               ON r.user_id = :user_id
+               ON r.user_id = :read_user_id
+              AND r.team_id = p.owner_team_id
               AND r.context_type = 'task'
               AND r.context_id = c.task_id
              WHERE c.task_id IN ($in)
@@ -106,7 +109,8 @@ final class DiscussionReadRepository
                ON tm.team_id = p.owner_team_id
               AND tm.user_id = :user_id
              LEFT JOIN discussion_read_markers r
-               ON r.user_id = :user_id
+               ON r.user_id = :read_user_id
+              AND r.team_id = p.owner_team_id
               AND r.context_type = CASE WHEN c.task_id IS NULL THEN 'project' ELSE 'task' END
               AND r.context_id = CASE WHEN c.task_id IS NULL THEN c.project_id ELSE c.task_id END
              WHERE p.id IN ($in)
@@ -138,14 +142,14 @@ final class DiscussionReadRepository
     {
         $stmt = $this->db->prepare(
             "INSERT INTO discussion_read_markers (
-                user_id, context_type, context_id, last_read_comment_id, updated_at
+                user_id, team_id, context_type, context_id, last_read_comment_id, updated_at
              )
-             SELECT :user_id, 'task', t.id, COALESCE(MAX(c.id), 0), CURRENT_TIMESTAMP
+             SELECT :insert_user_id, p.owner_team_id, 'task', t.id, COALESCE(MAX(c.id), 0), CURRENT_TIMESTAMP
              FROM tasks t
              INNER JOIN projects p ON p.id = t.project_id
              INNER JOIN team_members tm
                ON tm.team_id = p.owner_team_id
-              AND tm.user_id = :user_id
+              AND tm.user_id = :member_user_id
              LEFT JOIN discussion_comments c
                ON c.task_id = t.id
               AND c.project_id IS NULL
@@ -156,7 +160,11 @@ final class DiscussionReadRepository
                 last_read_comment_id = GREATEST(last_read_comment_id, VALUES(last_read_comment_id)),
                 updated_at = CURRENT_TIMESTAMP"
         );
-        $stmt->execute(['user_id' => $userId, 'task_id' => $taskId]);
+        $stmt->execute([
+            'insert_user_id' => $userId,
+            'member_user_id' => $userId,
+            'task_id' => $taskId,
+        ]);
     }
 
     public function markProjectRead(int $userId, int $projectId): void
@@ -165,13 +173,13 @@ final class DiscussionReadRepository
         try {
             $project = $this->db->prepare(
                 "INSERT INTO discussion_read_markers (
-                    user_id, context_type, context_id, last_read_comment_id, updated_at
+                    user_id, team_id, context_type, context_id, last_read_comment_id, updated_at
                  )
-                 SELECT :user_id, 'project', p.id, COALESCE(MAX(c.id), 0), CURRENT_TIMESTAMP
+                 SELECT :insert_user_id, p.owner_team_id, 'project', p.id, COALESCE(MAX(c.id), 0), CURRENT_TIMESTAMP
                  FROM projects p
                  INNER JOIN team_members tm
                    ON tm.team_id = p.owner_team_id
-                  AND tm.user_id = :user_id
+                  AND tm.user_id = :member_user_id
                  LEFT JOIN discussion_comments c
                    ON c.project_id = p.id
                   AND c.task_id IS NULL
@@ -182,13 +190,17 @@ final class DiscussionReadRepository
                     last_read_comment_id = GREATEST(last_read_comment_id, VALUES(last_read_comment_id)),
                     updated_at = CURRENT_TIMESTAMP"
             );
-            $project->execute(['user_id' => $userId, 'project_id' => $projectId]);
+            $project->execute([
+                'insert_user_id' => $userId,
+                'member_user_id' => $userId,
+                'project_id' => $projectId,
+            ]);
 
             $tasks = $this->db->prepare(
                 "INSERT INTO discussion_read_markers (
-                    user_id, context_type, context_id, last_read_comment_id, updated_at
+                    user_id, team_id, context_type, context_id, last_read_comment_id, updated_at
                  )
-                 SELECT :user_id, 'task', t.id, COALESCE(MAX(c.id), 0), CURRENT_TIMESTAMP
+                 SELECT :insert_user_id, p.owner_team_id, 'task', t.id, COALESCE(MAX(c.id), 0), CURRENT_TIMESTAMP
                  FROM tasks t
                  INNER JOIN projects p ON p.id = t.project_id
                  INNER JOIN team_members tm
@@ -204,7 +216,11 @@ final class DiscussionReadRepository
                     last_read_comment_id = GREATEST(last_read_comment_id, VALUES(last_read_comment_id)),
                     updated_at = CURRENT_TIMESTAMP"
             );
-            $tasks->execute(['user_id' => $userId, 'project_id' => $projectId]);
+            $tasks->execute([
+                'insert_user_id' => $userId,
+                'member_user_id' => $userId,
+                'project_id' => $projectId,
+            ]);
 
             $this->db->commit();
         } catch (\Throwable $error) {
