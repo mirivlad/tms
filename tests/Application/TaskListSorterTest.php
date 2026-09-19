@@ -77,6 +77,7 @@ final class TaskListSorterTest extends TestCase
             priority: 1,
             customerId: null,
             projectId: null,
+            assigneeUserId: null,
             createdAt: '2026-09-12 10:00:00',
             updatedAt: '2026-09-12 10:00:00',
         );
