@@ -27,7 +27,7 @@ return [
     'teams.about_lead_help' => 'Leads can change team settings and membership.',
     'teams.about_member_help' => 'Team settings are managed by Team Leads.',
     'teams.members' => 'Members',
-    'teams.members_help' => 'Membership grants access to team-owned work in the next Teams stage.',
+    'teams.members_help' => 'Membership grants access to the team’s projects, tasks and discussions.',
     'teams.role.lead' => 'Lead',
     'teams.role.member' => 'Member',
     'teams.change_role' => 'Change role',
