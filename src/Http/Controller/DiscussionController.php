@@ -265,7 +265,7 @@ final class DiscussionController
     ): ResponseInterface {
         $location = $projectId !== null
             ? '/projects/' . $projectId . '/discussion#discussion'
-            : '/tasks/' . (int) $taskId . '/edit#discussion';
+            : '/tasks/' . (int) $taskId . '/discussion#discussion';
         return $response->withHeader('Location', $location)->withStatus(302);
     }
 
