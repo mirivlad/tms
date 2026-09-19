@@ -8,7 +8,6 @@ use PDO;
 use PHPUnit\Framework\TestCase;
 use Slim\Psr7\Factory\ResponseFactory;
 use Slim\Psr7\Factory\ServerRequestFactory;
-use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRepository;
 use Tms\Http\Controller\TaskStatusController;
 use Tms\I18n\Translator;
@@ -27,7 +26,9 @@ final class TaskStatusControllerTest extends TestCase
         $this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         $this->db->exec('CREATE TABLE statuses (
             id INTEGER PRIMARY KEY,
-            user_id INTEGER NOT NULL,
+            user_id INTEGER NULL,
+            project_id INTEGER NULL,
+            source_status_id INTEGER NULL,
             name TEXT NOT NULL,
             description TEXT NOT NULL DEFAULT "",
             color TEXT NOT NULL DEFAULT "#6b7280",
@@ -35,6 +36,11 @@ final class TaskStatusControllerTest extends TestCase
             is_default INTEGER NOT NULL DEFAULT 0,
             is_completion INTEGER NOT NULL DEFAULT 0,
             show_on_board INTEGER NOT NULL DEFAULT 1
+        )');
+        $this->db->exec('CREATE TABLE projects (
+            id INTEGER PRIMARY KEY,
+            owner_user_id INTEGER NULL,
+            owner_team_id INTEGER NULL
         )');
         $this->db->exec('CREATE TABLE tasks (
             id INTEGER PRIMARY KEY,
@@ -71,7 +77,6 @@ final class TaskStatusControllerTest extends TestCase
         $this->controller = new TaskStatusController(
             $sessions,
             new TaskRepository($this->db),
-            new StatusRepository($this->db),
             new Translator(dirname(__DIR__, 2) . '/resources/i18n', 'en'),
         );
     }
