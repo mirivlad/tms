@@ -2,107 +2,80 @@
 
 declare(strict_types=1);
 
-namespace Tms\Domain\Status;
+namespace Tms\Domain\Project;
 
 use DomainException;
 use PDO;
 use Throwable;
+use Tms\Domain\Status\StatusRecord;
 
-final class StatusRepository
+final class ProjectStatusRepository
 {
     public function __construct(private readonly PDO $db)
     {
     }
 
     /** @return list<StatusRecord> */
-    public function listForUser(int $userId, bool $boardOnly = false): array
+    public function listForProject(int $userId, int $projectId, bool $boardOnly = false): array
     {
+        if (!$this->projectOwned($userId, $projectId)) {
+            return [];
+        }
+
         $sql = 'SELECT id, user_id, project_id, source_status_id, name, description, color, sort_order,
                        is_default, is_completion, show_on_board
                 FROM statuses
-                WHERE user_id = :user_id AND project_id IS NULL';
+                WHERE user_id IS NULL AND project_id = :project_id';
         if ($boardOnly) {
             $sql .= ' AND show_on_board = 1';
         }
         $sql .= ' ORDER BY sort_order ASC, id ASC';
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute(['user_id' => $userId]);
+        $stmt->execute(['project_id' => $projectId]);
         return $this->fetchAll($stmt);
     }
 
-    /**
-     * Personal statuses plus statuses of personal projects currently accessible
-     * to the user. Teams will extend the project-access half without changing
-     * status ownership.
-     *
-     * @return list<StatusRecord>
-     */
-    public function listAccessibleForUser(int $userId): array
+    public function findForProject(int $userId, int $projectId, int $statusId): ?StatusRecord
     {
-        $stmt = $this->db->prepare(
-            'SELECT s.id, s.user_id, s.project_id, s.source_status_id, s.name, s.description,
-                    s.color, s.sort_order, s.is_default, s.is_completion, s.show_on_board
-             FROM statuses s
-             LEFT JOIN projects p ON p.id = s.project_id
-             WHERE (s.user_id = :personal_user_id AND s.project_id IS NULL)
-                OR (s.user_id IS NULL
-                    AND s.project_id IS NOT NULL
-                    AND p.owner_user_id = :project_user_id
-                    AND p.owner_team_id IS NULL)
-             ORDER BY CASE WHEN s.project_id IS NULL THEN 0 ELSE 1 END,
-                      s.project_id ASC, s.sort_order ASC, s.id ASC'
-        );
-        $stmt->execute([
-            'personal_user_id' => $userId,
-            'project_user_id' => $userId,
-        ]);
-        return $this->fetchAll($stmt);
-    }
+        if (!$this->projectOwned($userId, $projectId)) {
+            return null;
+        }
 
-    public function findForUser(int $userId, int $statusId): ?StatusRecord
-    {
         $stmt = $this->db->prepare(
             'SELECT id, user_id, project_id, source_status_id, name, description, color, sort_order,
                     is_default, is_completion, show_on_board
              FROM statuses
-             WHERE id = :id AND user_id = :user_id AND project_id IS NULL
+             WHERE id = :id AND user_id IS NULL AND project_id = :project_id
              LIMIT 1'
         );
-        $stmt->execute(['id' => $statusId, 'user_id' => $userId]);
+        $stmt->execute(['id' => $statusId, 'project_id' => $projectId]);
         $row = $stmt->fetch();
         return is_array($row) ? $this->hydrate($row) : null;
     }
 
-    public function findAccessibleForUser(int $userId, int $statusId): ?StatusRecord
+    public function defaultForProject(int $userId, int $projectId): ?StatusRecord
     {
+        if (!$this->projectOwned($userId, $projectId)) {
+            return null;
+        }
+
         $stmt = $this->db->prepare(
-            'SELECT s.id, s.user_id, s.project_id, s.source_status_id, s.name, s.description,
-                    s.color, s.sort_order, s.is_default, s.is_completion, s.show_on_board
-             FROM statuses s
-             LEFT JOIN projects p ON p.id = s.project_id
-             WHERE s.id = :id
-               AND (
-                    (s.user_id = :personal_user_id AND s.project_id IS NULL)
-                    OR
-                    (s.user_id IS NULL
-                     AND s.project_id IS NOT NULL
-                     AND p.owner_user_id = :project_user_id
-                     AND p.owner_team_id IS NULL)
-               )
+            'SELECT id, user_id, project_id, source_status_id, name, description, color, sort_order,
+                    is_default, is_completion, show_on_board
+             FROM statuses
+             WHERE user_id IS NULL AND project_id = :project_id AND is_default = 1
+             ORDER BY sort_order ASC, id ASC
              LIMIT 1'
         );
-        $stmt->execute([
-            'id' => $statusId,
-            'personal_user_id' => $userId,
-            'project_user_id' => $userId,
-        ]);
+        $stmt->execute(['project_id' => $projectId]);
         $row = $stmt->fetch();
         return is_array($row) ? $this->hydrate($row) : null;
     }
 
-    public function createForUser(
+    public function createForProject(
         int $userId,
+        int $projectId,
         string $name,
         string $description = '',
         string $color = '#6b7280',
@@ -110,15 +83,16 @@ final class StatusRepository
         bool $isCompletion = false,
         bool $showOnBoard = true,
     ): int {
+        $this->assertProjectOwned($userId, $projectId);
         $name = $this->normalizeName($name);
 
         $this->db->beginTransaction();
         try {
             if ($isDefault) {
-                $this->clearDefault($userId);
+                $this->clearFlag($projectId, 'is_default');
             }
             if ($isCompletion) {
-                $this->clearCompletion($userId);
+                $this->clearFlag($projectId, 'is_completion');
             }
 
             $stmt = $this->db->prepare(
@@ -126,21 +100,20 @@ final class StatusRepository
                     user_id, project_id, source_status_id, name, description, color, sort_order,
                     is_default, is_completion, show_on_board, created_at, updated_at
                  ) VALUES (
-                    :user_id, NULL, NULL, :name, :description, :color, :sort_order,
+                    NULL, :project_id, NULL, :name, :description, :color, :sort_order,
                     :is_default, :is_completion, :show_on_board, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                  )'
             );
             $stmt->execute([
-                'user_id' => $userId,
+                'project_id' => $projectId,
                 'name' => $name,
                 'description' => trim($description),
                 'color' => $this->normalizeColor($color),
-                'sort_order' => $this->nextSortOrder($userId),
+                'sort_order' => $this->nextSortOrder($projectId),
                 'is_default' => $isDefault ? 1 : 0,
                 'is_completion' => $isCompletion ? 1 : 0,
                 'show_on_board' => $showOnBoard ? 1 : 0,
             ]);
-
             $id = (int) $this->db->lastInsertId();
             $this->db->commit();
             return $id;
@@ -152,15 +125,16 @@ final class StatusRepository
         }
     }
 
-    public function updateForUser(
+    public function updateForProject(
         int $userId,
+        int $projectId,
         int $statusId,
         string $name,
         string $description,
         string $color,
         bool $showOnBoard,
     ): bool {
-        if ($this->findForUser($userId, $statusId) === null) {
+        if ($this->findForProject($userId, $projectId, $statusId) === null) {
             return false;
         }
 
@@ -171,7 +145,7 @@ final class StatusRepository
                  color = :color,
                  show_on_board = :show_on_board,
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = :id AND user_id = :user_id AND project_id IS NULL'
+             WHERE id = :id AND user_id IS NULL AND project_id = :project_id'
         );
         $stmt->execute([
             'name' => $this->normalizeName($name),
@@ -179,56 +153,54 @@ final class StatusRepository
             'color' => $this->normalizeColor($color),
             'show_on_board' => $showOnBoard ? 1 : 0,
             'id' => $statusId,
-            'user_id' => $userId,
+            'project_id' => $projectId,
         ]);
         return true;
     }
 
-    public function setDefaultForUser(int $userId, int $statusId): bool
+    public function setDefaultForProject(int $userId, int $projectId, int $statusId): bool
     {
-        return $this->setExclusiveFlag($userId, $statusId, 'is_default');
+        return $this->setExclusiveFlag($userId, $projectId, $statusId, 'is_default');
     }
 
-    public function setCompletionForUser(int $userId, int $statusId): bool
+    public function setCompletionForProject(int $userId, int $projectId, int $statusId): bool
     {
-        return $this->setExclusiveFlag($userId, $statusId, 'is_completion');
+        return $this->setExclusiveFlag($userId, $projectId, $statusId, 'is_completion');
     }
 
-    public function deleteForUser(int $userId, int $statusId): bool
+    public function deleteForProject(int $userId, int $projectId, int $statusId): bool
     {
-        $status = $this->findForUser($userId, $statusId);
+        $status = $this->findForProject($userId, $projectId, $statusId);
         if ($status === null || $status->isDefault || $status->isCompletion) {
             return false;
         }
 
         $used = $this->db->prepare(
-            'SELECT 1 FROM tasks
-             WHERE status_id = :status_id AND created_by = :user_id AND project_id IS NULL
-             LIMIT 1'
+            'SELECT 1 FROM tasks WHERE project_id = :project_id AND status_id = :status_id LIMIT 1'
         );
-        $used->execute(['status_id' => $statusId, 'user_id' => $userId]);
+        $used->execute(['project_id' => $projectId, 'status_id' => $statusId]);
         if ($used->fetchColumn() !== false) {
             return false;
         }
 
         $stmt = $this->db->prepare(
-            'DELETE FROM statuses WHERE id = :id AND user_id = :user_id AND project_id IS NULL'
+            'DELETE FROM statuses
+             WHERE id = :id AND user_id IS NULL AND project_id = :project_id'
         );
-        $stmt->execute(['id' => $statusId, 'user_id' => $userId]);
+        $stmt->execute(['id' => $statusId, 'project_id' => $projectId]);
         return $stmt->rowCount() === 1;
     }
 
     /** @param list<int> $statusIds */
-    public function reorderForUser(int $userId, array $statusIds): bool
+    public function reorderForProject(int $userId, int $projectId, array $statusIds): bool
     {
         $owned = array_map(
             static fn (StatusRecord $record): int => $record->id,
-            $this->listForUser($userId),
+            $this->listForProject($userId, $projectId),
         );
         sort($owned);
         $requested = $statusIds;
         sort($requested);
-
         if ($owned !== $requested || count($statusIds) !== count(array_unique($statusIds))) {
             return false;
         }
@@ -237,13 +209,13 @@ final class StatusRepository
         try {
             $stmt = $this->db->prepare(
                 'UPDATE statuses SET sort_order = :sort_order, updated_at = CURRENT_TIMESTAMP
-                 WHERE id = :id AND user_id = :user_id AND project_id IS NULL'
+                 WHERE id = :id AND user_id IS NULL AND project_id = :project_id'
             );
             foreach ($statusIds as $index => $statusId) {
                 $stmt->execute([
                     'sort_order' => $index + 1,
                     'id' => $statusId,
-                    'user_id' => $userId,
+                    'project_id' => $projectId,
                 ]);
             }
             $this->db->commit();
@@ -256,28 +228,23 @@ final class StatusRepository
         }
     }
 
-    private function setExclusiveFlag(int $userId, int $statusId, string $column): bool
+    private function setExclusiveFlag(int $userId, int $projectId, int $statusId, string $column): bool
     {
         if (!in_array($column, ['is_default', 'is_completion'], true)) {
             throw new DomainException('Unsupported status role.');
         }
-        if ($this->findForUser($userId, $statusId) === null) {
+        if ($this->findForProject($userId, $projectId, $statusId) === null) {
             return false;
         }
 
         $this->db->beginTransaction();
         try {
-            $clear = $this->db->prepare(
-                "UPDATE statuses SET {$column} = 0 WHERE user_id = :user_id AND project_id IS NULL"
-            );
-            $clear->execute(['user_id' => $userId]);
-
-            $set = $this->db->prepare(
+            $this->clearFlag($projectId, $column);
+            $stmt = $this->db->prepare(
                 "UPDATE statuses SET {$column} = 1, updated_at = CURRENT_TIMESTAMP
-                 WHERE id = :id AND user_id = :user_id AND project_id IS NULL"
+                 WHERE id = :id AND user_id IS NULL AND project_id = :project_id"
             );
-            $set->execute(['id' => $statusId, 'user_id' => $userId]);
-
+            $stmt->execute(['id' => $statusId, 'project_id' => $projectId]);
             $this->db->commit();
             return true;
         } catch (Throwable $error) {
@@ -288,31 +255,44 @@ final class StatusRepository
         }
     }
 
-    private function clearDefault(int $userId): void
+    private function clearFlag(int $projectId, string $column): void
     {
+        if (!in_array($column, ['is_default', 'is_completion'], true)) {
+            throw new DomainException('Unsupported status role.');
+        }
         $stmt = $this->db->prepare(
-            'UPDATE statuses SET is_default = 0 WHERE user_id = :user_id AND project_id IS NULL'
+            "UPDATE statuses SET {$column} = 0 WHERE user_id IS NULL AND project_id = :project_id"
         );
-        $stmt->execute(['user_id' => $userId]);
+        $stmt->execute(['project_id' => $projectId]);
     }
 
-    private function clearCompletion(int $userId): void
-    {
-        $stmt = $this->db->prepare(
-            'UPDATE statuses SET is_completion = 0 WHERE user_id = :user_id AND project_id IS NULL'
-        );
-        $stmt->execute(['user_id' => $userId]);
-    }
-
-    private function nextSortOrder(int $userId): int
+    private function nextSortOrder(int $projectId): int
     {
         $stmt = $this->db->prepare(
             'SELECT COALESCE(MAX(sort_order), 0)
              FROM statuses
-             WHERE user_id = :user_id AND project_id IS NULL'
+             WHERE user_id IS NULL AND project_id = :project_id'
         );
-        $stmt->execute(['user_id' => $userId]);
+        $stmt->execute(['project_id' => $projectId]);
         return (int) $stmt->fetchColumn() + 1;
+    }
+
+    private function assertProjectOwned(int $userId, int $projectId): void
+    {
+        if (!$this->projectOwned($userId, $projectId)) {
+            throw new DomainException('Project is unavailable.');
+        }
+    }
+
+    private function projectOwned(int $userId, int $projectId): bool
+    {
+        $stmt = $this->db->prepare(
+            'SELECT 1 FROM projects
+             WHERE id = :id AND owner_user_id = :user_id AND owner_team_id IS NULL
+             LIMIT 1'
+        );
+        $stmt->execute(['id' => $projectId, 'user_id' => $userId]);
+        return $stmt->fetchColumn() !== false;
     }
 
     private function normalizeName(string $name): string

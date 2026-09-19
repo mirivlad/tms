@@ -32,6 +32,36 @@ final class ProjectRepositoryTest extends TestCase
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )');
 
+        $this->db->exec('CREATE TABLE statuses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NULL,
+            project_id INTEGER NULL,
+            source_status_id INTEGER NULL,
+            name TEXT NOT NULL,
+            description TEXT NOT NULL DEFAULT "",
+            color TEXT NOT NULL DEFAULT "#6b7280",
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            is_default INTEGER NOT NULL DEFAULT 0,
+            is_completion INTEGER NOT NULL DEFAULT 0,
+            show_on_board INTEGER NOT NULL DEFAULT 1,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )');
+        $this->db->exec('CREATE TABLE tasks (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_by INTEGER NOT NULL,
+            title TEXT NOT NULL DEFAULT "",
+            status_id INTEGER NULL,
+            project_id INTEGER NULL,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )');
+        $this->db->exec("INSERT INTO statuses (
+            id, user_id, project_id, source_status_id, name, sort_order, is_default, is_completion
+        ) VALUES
+            (10, 1, NULL, NULL, 'Inbox', 1, 1, 0),
+            (11, 1, NULL, NULL, 'Done', 2, 0, 1),
+            (20, 2, NULL, NULL, 'Foreign Inbox', 1, 1, 0)");
+
         $this->db->exec("INSERT INTO projects (
             id, owner_user_id, owner_team_id, created_by, name, description, lifecycle_status
         ) VALUES
@@ -52,6 +82,17 @@ final class ProjectRepositoryTest extends TestCase
         self::assertTrue($project->isPersonal());
         self::assertSame('TOS', $project->name);
 
+        $cloned = $this->db->query(
+            'SELECT source_status_id, is_default, is_completion
+             FROM statuses
+             WHERE project_id = ' . $id . '
+             ORDER BY sort_order, id'
+        )?->fetchAll();
+        self::assertSame([
+            ['source_status_id' => 10, 'is_default' => 1, 'is_completion' => 0],
+            ['source_status_id' => 11, 'is_default' => 0, 'is_completion' => 1],
+        ], $cloned);
+
         self::assertTrue($this->projects->updateForUser(1, $id, 'TOS Core', 'Updated', 'paused'));
         self::assertSame('TOS Core', $this->projects->findForUser(1, $id)?->name);
         self::assertSame('paused', $this->projects->findForUser(1, $id)?->lifecycleStatus);
@@ -61,8 +102,19 @@ final class ProjectRepositoryTest extends TestCase
         self::assertFalse($this->projects->updateForUser(1, 50, 'Stolen', '', 'active'));
         self::assertFalse($this->projects->deleteForUser(1, 50));
 
+        $projectStatusId = (int) $this->db->query(
+            'SELECT id FROM statuses WHERE project_id = ' . $id . ' AND source_status_id = 11'
+        )?->fetchColumn();
+        $stmt = $this->db->prepare(
+            'INSERT INTO tasks (created_by, title, status_id, project_id) VALUES (1, :title, :status_id, :project_id)'
+        );
+        $stmt->execute(['title' => 'Project task', 'status_id' => $projectStatusId, 'project_id' => $id]);
+        $taskId = (int) $this->db->lastInsertId();
+
         self::assertTrue($this->projects->deleteForUser(1, $id));
         self::assertNull($this->projects->findForUser(1, $id));
+        $task = $this->db->query('SELECT status_id, project_id FROM tasks WHERE id = ' . $taskId)?->fetch();
+        self::assertSame(['status_id' => 11, 'project_id' => null], $task);
     }
 
     public function testListIncludesOnlyPersonalProjectsOwnedByUser(): void

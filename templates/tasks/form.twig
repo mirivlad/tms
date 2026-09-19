@@ -12,7 +12,7 @@
 <section class="content-card form-card">
     {% if error %}<div class="alert">{{ error }}</div>{% endif %}
 
-    <form class="task-form" method="post" action="{{ task ? '/tasks/' ~ task.id : '/tasks' }}" data-task-form>
+    <form class="task-form" method="post" action="{{ task ? '/tasks/' ~ task.id : '/tasks' }}" data-task-form data-status-options-url="{{ status_options_url }}">
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
 
         <label class="field-wide">
@@ -40,7 +40,7 @@
 
         <label>
             {{ t('projects.task_project') }}
-            <select name="project_id">
+            <select name="project_id" data-project-select>
                 <option value="">{{ t('projects.no_project') }}</option>
                 {% for project in projects %}
                     <option value="{{ project.id }}" {{ form.project_id == project.id ? 'selected' : '' }}>{{ project.name }}</option>
@@ -50,7 +50,7 @@
 
         <label>
             {{ t('task_form.status') }}
-            <select name="status_id" required>
+            <select name="status_id" required data-status-select>
                 {% for status in statuses %}
                     <option value="{{ status.id }}" {{ form.status_id == status.id ? 'selected' : '' }}>{{ status.name }}</option>
                 {% endfor %}

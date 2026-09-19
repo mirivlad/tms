@@ -137,7 +137,7 @@ final class CalendarController
             'today_query' => $this->monthQuery(new DateTimeImmutable('first day of this month'), $filters),
             'days' => $days,
             'filters' => $filters,
-            'statuses' => $this->statuses->listForUser($userId),
+            'statuses' => $this->statuses->listAccessibleForUser($userId),
             'types' => $this->taskTypes->listForUser($userId),
             'customers' => $this->customers->listForUser($userId, 500),
             'projects' => $this->projects->listForUser($userId),
@@ -260,7 +260,7 @@ final class CalendarController
     private function statusMap(int $userId): array
     {
         $map = [];
-        foreach ($this->statuses->listForUser($userId) as $status) {
+        foreach ($this->statuses->listAccessibleForUser($userId) as $status) {
             $map[$status->id] = $status;
         }
         return $map;

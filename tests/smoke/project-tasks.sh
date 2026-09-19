@@ -14,9 +14,19 @@ test -n "$csrf"
 
 admin_id=$(db "SELECT id FROM users WHERE username='ciadmin' LIMIT 1")
 test -n "$admin_id"
-db "INSERT INTO projects (owner_user_id, owner_team_id, created_by, name, description, lifecycle_status) VALUES ($admin_id, NULL, $admin_id, 'Task Integration Project', 'Smoke project', 'active')"
+
+create_project_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
+  --cookie "$COOKIE_JAR" \
+  --data-urlencode "_csrf=$csrf" \
+  --data-urlencode 'name=Task Integration Project' \
+  --data-urlencode 'description=Smoke project' \
+  --data-urlencode 'lifecycle_status=active' \
+  "$BASE_URL/projects")
+test "$create_project_status" = "302"
+
 project_id=$(db "SELECT id FROM projects WHERE owner_user_id=$admin_id AND name='Task Integration Project' LIMIT 1")
 test -n "$project_id"
+test "$(db "SELECT COUNT(*) FROM statuses WHERE project_id=$project_id")" -gt 0
 
 curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/tasks/new?project_id=$project_id" > /tmp/project-task-new.html
 grep -Eq "option value=\"$project_id\" selected" /tmp/project-task-new.html
@@ -49,7 +59,7 @@ if grep -q 'Project smoke task' /tmp/project-task-none.html; then
   exit 1
 fi
 
-board_status_id=$(db "SELECT id FROM statuses WHERE user_id=$admin_id AND show_on_board=1 AND is_completion=0 ORDER BY sort_order, id LIMIT 1")
+board_status_id=$(db "SELECT id FROM statuses WHERE project_id=$project_id AND show_on_board=1 AND is_completion=0 ORDER BY sort_order, id LIMIT 1")
 test -n "$board_status_id"
 db "UPDATE tasks SET status_id=$board_status_id WHERE id=$task_id"
 

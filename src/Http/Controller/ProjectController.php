@@ -10,7 +10,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
 use Tms\Domain\Project\ProjectAttachmentRepository;
 use Tms\Domain\Project\ProjectRepository;
-use Tms\Domain\Status\StatusRepository;
+use Tms\Domain\Project\ProjectStatusRepository;
 use Tms\Domain\Task\TaskRepository;
 use Tms\I18n\Translator;
 use Tms\Infrastructure\AttachmentStorage;
@@ -25,7 +25,7 @@ final class ProjectController
         private readonly ProjectAttachmentRepository $attachments,
         private readonly AttachmentStorage $storage,
         private readonly TaskRepository $tasks,
-        private readonly StatusRepository $statuses,
+        private readonly ProjectStatusRepository $statuses,
         private readonly Translator $translator,
     ) {
     }
@@ -49,8 +49,14 @@ final class ProjectController
         }
 
         $statusMap = [];
-        foreach ($this->statuses->listForUser($userId) as $status) {
+        foreach ($this->statuses->listForProject($userId, $project->id) as $status) {
             $statusMap[$status->id] = $status;
+        }
+
+        $statusNotice = $_SESSION['project_status_notice'] ?? null;
+        unset($_SESSION['project_status_notice']);
+        if (!is_array($statusNotice) || !is_string($statusNotice['message'] ?? null)) {
+            $statusNotice = null;
         }
 
         return $this->view->render($response, 'projects/show.twig', [
@@ -59,7 +65,9 @@ final class ProjectController
             'project' => $project,
             'tasks' => $this->tasks->listForProjectForUser($userId, $project->id),
             'attachments' => $this->attachments->listForProject($userId, $project->id),
+            'statuses' => array_values($statusMap),
             'status_map' => $statusMap,
+            'status_notice' => $statusNotice,
         ]);
     }
 

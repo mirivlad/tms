@@ -19,6 +19,7 @@ use Tms\Domain\CustomField\CustomFieldRepository;
 use Tms\Domain\CustomField\CustomFieldValueCodec;
 use Tms\Domain\CustomField\TaskCustomFieldValueRepository;
 use Tms\Domain\Project\ProjectRecord;
+use Tms\Domain\Project\ProjectStatusRepository;
 use Tms\Domain\Project\ProjectRepository;
 use Tms\Domain\Status\StatusRecord;
 use Tms\Domain\Status\StatusRepository;
@@ -48,6 +49,7 @@ final class TaskController
         private readonly TaskTypeRepository $taskTypes,
         private readonly CustomerRepository $customers,
         private readonly ProjectRepository $projects,
+        private readonly ProjectStatusRepository $projectStatuses,
         private readonly CustomFieldRepository $customFields,
         private readonly TaskCustomFieldValueRepository $customValues,
         private readonly CustomFieldValueCodec $customValueCodec,
@@ -62,6 +64,9 @@ final class TaskController
         $userId = $this->userId();
         $query = $request->getQueryParams();
         $statusId = $this->queryInt($query, 'status_id');
+        if ($statusId !== null && $this->statuses->findAccessibleForUser($userId, $statusId) === null) {
+            $statusId = null;
+        }
         $statusInvert = $statusId !== null && ($query['status_invert'] ?? null) === '1';
         $typeId = $this->queryInt($query, 'type_id');
         $priorityName = is_string($query['priority'] ?? null) ? trim((string) $query['priority']) : '';
@@ -254,7 +259,7 @@ final class TaskController
                     'name' => $option->name,
                     'color' => $option->color,
                 ],
-                $this->statuses->listForUser($userId),
+                $this->statusesForScope($userId, $task->projectId),
             ),
             'status_color' => $status?->color,
             'type' => $type?->name,
@@ -280,7 +285,8 @@ final class TaskController
     {
         $userId = $this->userId();
         $taskId = $this->taskId($args);
-        if ($this->tasks->findForUser($userId, $taskId) === null) {
+        $task = $this->tasks->findForUser($userId, $taskId);
+        if ($task === null) {
             return $this->json($response, ['error' => $this->translator->trans('task_preview.not_found')], 404);
         }
 
@@ -290,7 +296,7 @@ final class TaskController
             if ($statusId === null) {
                 throw new DomainException($this->translator->trans('validation.task_status_required'));
             }
-            $this->assertMetadataForUser($userId, $statusId, null);
+            $this->assertStatusForScope($userId, $statusId, $task->projectId);
             $description = is_string($body['description'] ?? null) ? (string) $body['description'] : '';
             $deadline = $this->normalizeDeadline($body['deadline'] ?? null);
 
@@ -310,11 +316,41 @@ final class TaskController
         }
     }
 
+    public function statusOptionsJson(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $userId = $this->userId();
+        $query = $request->getQueryParams();
+        $projectId = $this->queryInt($query, 'project_id');
+        if ($projectId !== null && $this->projects->findForUser($userId, $projectId) === null) {
+            return $this->json($response, ['error' => $this->translator->trans('validation.selected_project_unavailable')], 404);
+        }
+
+        $statuses = $this->statusesForScope($userId, $projectId);
+        return $this->json($response, [
+            'statuses' => array_map(
+                static fn (StatusRecord $status): array => [
+                    'id' => $status->id,
+                    'name' => $status->name,
+                    'color' => $status->color,
+                    'default' => $status->isDefault,
+                ],
+                $statuses,
+            ),
+            'default_status_id' => $this->defaultStatusId($statuses),
+        ]);
+    }
+
     public function board(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $userId = $this->userId();
         [$projectId, $withoutProject, $projectFilter] = $this->projectFilter($request->getQueryParams(), $userId);
-        $statuses = $this->statuses->listForUser($userId, true);
+        if ($projectId === null) {
+            $withoutProject = true;
+            $projectFilter = 'none';
+        }
+        $statuses = $projectId === null
+            ? $this->statuses->listForUser($userId, true)
+            : $this->projectStatuses->listForProject($userId, $projectId, true);
         $tasksByStatus = [];
         foreach ($statuses as $status) {
             $tasksByStatus[$status->id] = [];
@@ -352,18 +388,12 @@ final class TaskController
     public function new(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $userId = $this->userId();
-        $statuses = $this->statuses->listForUser($userId);
-        $defaultStatusId = null;
-        foreach ($statuses as $status) {
-            if ($status->isDefault) {
-                $defaultStatusId = $status->id;
-                break;
-            }
-        }
         $projectId = $this->queryInt($request->getQueryParams(), 'project_id');
         if ($projectId !== null && $this->projects->findForUser($userId, $projectId) === null) {
             $projectId = null;
         }
+        $statuses = $this->statusesForScope($userId, $projectId);
+        $defaultStatusId = $this->defaultStatusId($statuses);
 
         return $this->renderForm($request, $response, [
             'title' => '',
@@ -412,8 +442,9 @@ final class TaskController
         try {
             $input = $this->taskInput($body);
             $userId = $this->userId();
-            $this->assertMetadataForUser($userId, $input['status_id'], $input['type_id']);
             $this->assertProjectForUser($userId, $input['project_id']);
+            $this->assertStatusForScope($userId, $input['status_id'], $input['project_id']);
+            $this->assertMetadataForUser($userId, $input['type_id']);
             $customInput = $this->customInput($body, $this->customFields->listForUser($userId));
             $customerId = $this->resolveCustomer($userId, $input['customer']);
 
@@ -449,8 +480,9 @@ final class TaskController
         $body = $this->body($request);
         try {
             $input = $this->taskInput($body);
-            $this->assertMetadataForUser($userId, $input['status_id'], $input['type_id']);
             $this->assertProjectForUser($userId, $input['project_id']);
+            $this->assertStatusForScope($userId, $input['status_id'], $input['project_id']);
+            $this->assertMetadataForUser($userId, $input['type_id']);
             $customInput = $this->customInput($body, $this->customFields->listForUser($userId));
             $customerId = $this->resolveCustomer($userId, $input['customer']);
 
@@ -509,7 +541,8 @@ final class TaskController
             'task' => $task,
             'form' => $formData,
             'error' => $error,
-            'statuses' => $this->statuses->listForUser($userId),
+            'statuses' => $this->statusesForScope($userId, $this->formProjectId($formData, $task)),
+            'status_options_url' => '/api/task-statuses',
             'types' => $this->taskTypes->listForUser($userId),
             'projects' => $this->projects->listForUser($userId),
             'custom_fields' => $fields,
@@ -794,14 +827,57 @@ final class TaskController
         return false;
     }
 
-    private function assertMetadataForUser(int $userId, int $statusId, ?int $typeId): void
+    private function assertMetadataForUser(int $userId, ?int $typeId): void
     {
-        if ($this->statuses->findForUser($userId, $statusId) === null) {
-            throw new DomainException($this->translator->trans('validation.selected_status_unavailable'));
-        }
         if ($typeId !== null && $this->taskTypes->findForUser($userId, $typeId) === null) {
             throw new DomainException($this->translator->trans('validation.selected_type_unavailable'));
         }
+    }
+
+    private function assertStatusForScope(int $userId, int $statusId, ?int $projectId): void
+    {
+        $status = $projectId === null
+            ? $this->statuses->findForUser($userId, $statusId)
+            : $this->projectStatuses->findForProject($userId, $projectId, $statusId);
+        if ($status === null) {
+            throw new DomainException($this->translator->trans('validation.selected_status_unavailable'));
+        }
+    }
+
+    /** @return list<StatusRecord> */
+    private function statusesForScope(int $userId, ?int $projectId): array
+    {
+        return $projectId === null
+            ? $this->statuses->listForUser($userId)
+            : $this->projectStatuses->listForProject($userId, $projectId);
+    }
+
+    /** @param list<StatusRecord> $statuses */
+    private function defaultStatusId(array $statuses): ?int
+    {
+        $fallback = null;
+        foreach ($statuses as $status) {
+            $fallback ??= $status->id;
+            if ($status->isDefault) {
+                return $status->id;
+            }
+        }
+        return $fallback;
+    }
+
+    /** @param array<string, mixed> $formData */
+    private function formProjectId(array $formData, ?TaskRecord $task): ?int
+    {
+        if (array_key_exists('project_id', $formData)) {
+            $raw = $formData['project_id'];
+            if ($raw === '' || $raw === null) {
+                return null;
+            }
+            if (is_scalar($raw) && ctype_digit((string) $raw) && (int) $raw > 0) {
+                return (int) $raw;
+            }
+        }
+        return $task?->projectId;
     }
 
     private function assertProjectForUser(int $userId, ?int $projectId): void
@@ -871,7 +947,7 @@ final class TaskController
     private function statusMap(int $userId): array
     {
         $map = [];
-        foreach ($this->statuses->listForUser($userId) as $status) {
+        foreach ($this->statuses->listAccessibleForUser($userId) as $status) {
             $map[$status->id] = $status;
         }
         return $map;

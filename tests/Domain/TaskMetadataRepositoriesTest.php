@@ -29,7 +29,9 @@ final class TaskMetadataRepositoriesTest extends TestCase
         $this->db->exec(
             'CREATE TABLE statuses (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
+                user_id INTEGER NULL,
+                project_id INTEGER NULL,
+                source_status_id INTEGER NULL,
                 name TEXT NOT NULL,
                 description TEXT NOT NULL DEFAULT "",
                 color TEXT NOT NULL DEFAULT "#6b7280",
@@ -75,6 +77,7 @@ final class TaskMetadataRepositoriesTest extends TestCase
                 type_id INTEGER NULL,
                 priority INTEGER NOT NULL DEFAULT 0,
                 customer_id INTEGER NULL,
+                project_id INTEGER NULL,
                 created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
                 updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
             )'

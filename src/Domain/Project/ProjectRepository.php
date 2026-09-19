@@ -6,6 +6,7 @@ namespace Tms\Domain\Project;
 
 use DomainException;
 use PDO;
+use Throwable;
 
 final class ProjectRepository
 {
@@ -73,24 +74,48 @@ final class ProjectRepository
         $description = $this->normalizeDescription($description);
         $lifecycleStatus = $this->normalizeLifecycleStatus($lifecycleStatus);
 
-        $stmt = $this->db->prepare(
-            'INSERT INTO projects (
-                owner_user_id, owner_team_id, created_by, name, description,
-                lifecycle_status, created_at, updated_at
-             ) VALUES (
-                :user_id, NULL, :created_by, :name, :description,
-                :lifecycle_status, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-             )'
-        );
-        $stmt->execute([
-            'user_id' => $userId,
-            'created_by' => $userId,
-            'name' => $name,
-            'description' => $description,
-            'lifecycle_status' => $lifecycleStatus,
-        ]);
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare(
+                'INSERT INTO projects (
+                    owner_user_id, owner_team_id, created_by, name, description,
+                    lifecycle_status, created_at, updated_at
+                 ) VALUES (
+                    :user_id, NULL, :created_by, :name, :description,
+                    :lifecycle_status, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                 )'
+            );
+            $stmt->execute([
+                'user_id' => $userId,
+                'created_by' => $userId,
+                'name' => $name,
+                'description' => $description,
+                'lifecycle_status' => $lifecycleStatus,
+            ]);
+            $projectId = (int) $this->db->lastInsertId();
 
-        return (int) $this->db->lastInsertId();
+            $clone = $this->db->prepare(
+                'INSERT INTO statuses (
+                    user_id, project_id, source_status_id, name, description, color, sort_order,
+                    is_default, is_completion, show_on_board, created_at, updated_at
+                 )
+                 SELECT
+                    NULL, :project_id, id, name, description, color, sort_order,
+                    is_default, is_completion, show_on_board, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                 FROM statuses
+                 WHERE user_id = :user_id AND project_id IS NULL
+                 ORDER BY sort_order ASC, id ASC'
+            );
+            $clone->execute(['project_id' => $projectId, 'user_id' => $userId]);
+
+            $this->db->commit();
+            return $projectId;
+        } catch (Throwable $error) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $error;
+        }
     }
 
     public function updateForUser(
@@ -125,15 +150,112 @@ final class ProjectRepository
 
     public function deleteForUser(int $userId, int $projectId): bool
     {
+        if ($this->findForUser($userId, $projectId) === null) {
+            return false;
+        }
+
+        $this->db->beginTransaction();
+        try {
+            $fallback = $this->personalDefaultStatusId($userId);
+            if ($fallback === null) {
+                throw new DomainException('A personal default status is required before deleting a project.');
+            }
+
+            $statusRows = $this->db->prepare(
+                'SELECT id, source_status_id
+                 FROM statuses
+                 WHERE user_id IS NULL AND project_id = :project_id
+                 ORDER BY id ASC'
+            );
+            $statusRows->execute(['project_id' => $projectId]);
+
+            $sourceOwned = $this->db->prepare(
+                'SELECT 1 FROM statuses
+                 WHERE id = :status_id AND user_id = :user_id AND project_id IS NULL
+                 LIMIT 1'
+            );
+            $remapOne = $this->db->prepare(
+                'UPDATE tasks
+                 SET status_id = :target_status,
+                     project_id = NULL,
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE project_id = :project_id
+                   AND created_by = :user_id
+                   AND status_id = :project_status'
+            );
+
+            while (($row = $statusRows->fetch()) !== false) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $target = $fallback;
+                if ($row['source_status_id'] !== null) {
+                    $sourceOwned->execute([
+                        'status_id' => (int) $row['source_status_id'],
+                        'user_id' => $userId,
+                    ]);
+                    if ($sourceOwned->fetchColumn() !== false) {
+                        $target = (int) $row['source_status_id'];
+                    }
+                }
+
+                $remapOne->execute([
+                    'target_status' => $target,
+                    'project_id' => $projectId,
+                    'user_id' => $userId,
+                    'project_status' => (int) $row['id'],
+                ]);
+            }
+
+            $remapRemaining = $this->db->prepare(
+                'UPDATE tasks
+                 SET status_id = :fallback_status,
+                     project_id = NULL,
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE project_id = :project_id AND created_by = :user_id'
+            );
+            $remapRemaining->execute([
+                'fallback_status' => $fallback,
+                'project_id' => $projectId,
+                'user_id' => $userId,
+            ]);
+
+            $stmt = $this->db->prepare(
+                'DELETE FROM projects
+                 WHERE id = :id AND owner_user_id = :user_id AND owner_team_id IS NULL'
+            );
+            $stmt->execute([
+                'id' => $projectId,
+                'user_id' => $userId,
+            ]);
+            $deleted = $stmt->rowCount() === 1;
+            if (!$deleted) {
+                $this->db->rollBack();
+                return false;
+            }
+
+            $this->db->commit();
+            return true;
+        } catch (Throwable $error) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $error;
+        }
+    }
+
+    private function personalDefaultStatusId(int $userId): ?int
+    {
         $stmt = $this->db->prepare(
-            'DELETE FROM projects
-             WHERE id = :id AND owner_user_id = :user_id AND owner_team_id IS NULL'
+            'SELECT id
+             FROM statuses
+             WHERE user_id = :user_id AND project_id IS NULL
+             ORDER BY is_default DESC, sort_order ASC, id ASC
+             LIMIT 1'
         );
-        $stmt->execute([
-            'id' => $projectId,
-            'user_id' => $userId,
-        ]);
-        return $stmt->rowCount() === 1;
+        $stmt->execute(['user_id' => $userId]);
+        $value = $stmt->fetchColumn();
+        return $value === false ? null : (int) $value;
     }
 
     private function normalizeName(string $name): string
