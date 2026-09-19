@@ -187,7 +187,7 @@ test "$(db "SELECT COUNT(*) FROM internal_notifications
               AND notification_type='discussion_mention'")" = "1"
 
 # A new comment from another team member is unread until the discussion is opened.
-curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/tasks" > /tmp/discussion-task-list-unread.html
+curl --fail --silent --get --cookie "$ADMIN_COOKIES" --data-urlencode "project=$project_id" "$BASE_URL/tasks" > /tmp/discussion-task-list-unread.html
 grep -q "href=\"/tasks/$task_id/discussion\"" /tmp/discussion-task-list-unread.html
 grep -q 'discussion-unread-badge' /tmp/discussion-task-list-unread.html
 
