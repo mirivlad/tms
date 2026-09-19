@@ -25,11 +25,16 @@
             <div class="nav-dropdown-panel">
                 <a href="/metadata" data-nav-path="/metadata">{{ t('nav.metadata') }}</a>
                 <a href="/custom-fields" data-nav-path="/custom-fields">{{ t('nav.custom_fields') }}</a>
-                <a href="/settings/notifications" data-nav-path="/settings/notifications">{{ t('nav.notifications') }}</a>
+                <a href="/settings/notifications" data-nav-path="/settings/notifications">{{ t('nav.notification_settings') }}</a>
             </div>
         </details>
     </nav>
     <div class="topbar-actions">
+        {% set notification_count = current_notification_count() %}
+        <a class="nav-invitations {{ notification_count > 0 ? 'has-unread' : '' }}" href="/notifications" data-nav-path="/notifications">
+            {{ t('nav.notifications') }}
+            {% if notification_count > 0 %}<span class="nav-badge" aria-label="{{ notification_count }}">{{ notification_count }}</span>{% endif %}
+        </a>
         {% set team_invitation_count = current_team_invitation_count() %}
         <a class="nav-invitations {{ team_invitation_count > 0 ? 'has-unread' : '' }}" href="/invitations" data-nav-path="/invitations">
             {{ t('nav.team_invitations') }}
