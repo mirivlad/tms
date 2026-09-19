@@ -2,7 +2,7 @@
 
 CREATE TABLE discussion_comments (
     id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
-    project_id BIGINT UNSIGNED NOT NULL,
+    project_id BIGINT UNSIGNED NULL,
     task_id BIGINT UNSIGNED NULL,
     parent_comment_id BIGINT UNSIGNED NULL,
     author_user_id BIGINT UNSIGNED NOT NULL,
@@ -15,6 +15,9 @@ CREATE TABLE discussion_comments (
     KEY idx_discussion_task (task_id, created_at, id),
     KEY idx_discussion_parent (parent_comment_id, created_at, id),
     KEY idx_discussion_author (author_user_id, created_at),
+    CONSTRAINT chk_discussion_context
+        CHECK ((project_id IS NOT NULL AND task_id IS NULL)
+            OR (project_id IS NULL AND task_id IS NOT NULL)),
     CONSTRAINT fk_discussion_project
         FOREIGN KEY (project_id) REFERENCES projects (id)
         ON UPDATE RESTRICT ON DELETE CASCADE,
