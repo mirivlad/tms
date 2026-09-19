@@ -252,7 +252,7 @@ final class ApplicationFactory
         $registrationController = new RegistrationController($twig, $registration, $sessions, $registrationCaptcha, $translator, $registrationEnabled);
         $adminController = new AdminController($twig, $sessions, $users, $rememberTokens, $registration, $userBootstrap, $attachments, $projectAttachments, $attachmentStorage, $translator);
         $profileController = new ProfileController($twig, $sessions, $users, $preferences, $rememberTokens, $translator);
-        $projectController = new ProjectController($twig, $sessions, $projects, $projectAttachments, $attachmentStorage, $tasks, $projectStatuses, $projectCustomFields, $translator);
+        $projectController = new ProjectController($twig, $sessions, $projects, $projectAttachments, $attachmentStorage, $tasks, $projectStatuses, $projectCustomFields, $teams, $translator);
         $projectStatusController = new ProjectStatusController($sessions, $projects, $projectStatuses, $translator);
         $projectCustomFieldController = new ProjectCustomFieldController($sessions, $projects, $projectCustomFields, $translator);
         $projectAttachmentController = new ProjectAttachmentController($sessions, $projects, $projectAttachments, $attachmentPolicy, $attachmentStorage, $translator);
