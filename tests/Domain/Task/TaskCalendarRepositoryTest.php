@@ -17,6 +17,17 @@ final class TaskCalendarRepositoryTest extends TestCase
         $db = new PDO('sqlite::memory:');
         $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        $db->exec('CREATE TABLE projects (
+            id INTEGER PRIMARY KEY,
+            owner_user_id INTEGER NULL,
+            owner_team_id INTEGER NULL
+        )');
+        $db->exec('CREATE TABLE team_members (
+            team_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL,
+            PRIMARY KEY (team_id, user_id)
+        )');
         $db->exec('CREATE TABLE tasks (
             id INTEGER PRIMARY KEY,
             created_by INTEGER NOT NULL,
