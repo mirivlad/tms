@@ -59,7 +59,7 @@ if grep -q 'Project smoke task' /tmp/project-task-none.html; then
   exit 1
 fi
 
-board_status_id=$(db "SELECT id FROM statuses WHERE user_id=$admin_id AND show_on_board=1 AND is_completion=0 ORDER BY sort_order, id LIMIT 1")
+board_status_id=$(db "SELECT id FROM statuses WHERE project_id=$project_id AND show_on_board=1 AND is_completion=0 ORDER BY sort_order, id LIMIT 1")
 test -n "$board_status_id"
 db "UPDATE tasks SET status_id=$board_status_id WHERE id=$task_id"
 
