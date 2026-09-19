@@ -32,8 +32,6 @@ grep -q 'CI Project' /tmp/projects-after-create.html
 grep -q "href=\"/projects/$project_id\"" /tmp/projects-after-create.html
 
 curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/projects/$project_id" > /tmp/project-detail.html
-project_csrf=$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' /tmp/project-detail.html | head -n1)
-test -n "$project_csrf"
 grep -q 'project-settings-card' /tmp/project-detail.html
 grep -q "href=\"/projects/$project_id\"" /tmp/projects-after-create.html
 if grep -q "action=\"/projects/$project_id\"" /tmp/projects-after-create.html; then
@@ -49,7 +47,7 @@ grep -q 'project-settings-card' /tmp/project-detail.html
 
 update_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
   --cookie "$COOKIE_JAR" \
-  --data-urlencode "_csrf=$project_csrf" \
+  --data-urlencode "_csrf=$csrf" \
   --data-urlencode "name=CI Project Updated" \
   --data-urlencode "description=Updated project description" \
   --data-urlencode "lifecycle_status=paused" \
