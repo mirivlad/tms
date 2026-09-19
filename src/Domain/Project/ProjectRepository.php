@@ -203,6 +203,85 @@ final class ProjectRepository
         }
     }
 
+    public function createForTeam(
+        int $userId,
+        int $teamId,
+        string $name,
+        string $description,
+        string $lifecycleStatus = 'active',
+    ): int {
+        $lead = $this->db->prepare(
+            "SELECT 1 FROM team_members
+             WHERE team_id = :team_id AND user_id = :user_id AND role = 'lead'
+             LIMIT 1"
+        );
+        $lead->execute(['team_id' => $teamId, 'user_id' => $userId]);
+        if ($lead->fetchColumn() === false) {
+            throw new DomainException('Only a Team Lead can create a team project.');
+        }
+
+        $name = $this->normalizeName($name);
+        $description = $this->normalizeDescription($description);
+        $lifecycleStatus = $this->normalizeLifecycleStatus($lifecycleStatus);
+
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare(
+                'INSERT INTO projects (
+                    owner_user_id, owner_team_id, created_by, name, description,
+                    lifecycle_status, created_at, updated_at
+                 ) VALUES (
+                    NULL, :team_id, :created_by, :name, :description,
+                    :lifecycle_status, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                 )'
+            );
+            $stmt->execute([
+                'team_id' => $teamId,
+                'created_by' => $userId,
+                'name' => $name,
+                'description' => $description,
+                'lifecycle_status' => $lifecycleStatus,
+            ]);
+            $projectId = (int) $this->db->lastInsertId();
+
+            $cloneStatuses = $this->db->prepare(
+                'INSERT INTO statuses (
+                    user_id, project_id, source_status_id, name, description, color, sort_order,
+                    is_default, is_completion, show_on_board, created_at, updated_at
+                 )
+                 SELECT
+                    NULL, :project_id, id, name, description, color, sort_order,
+                    is_default, is_completion, show_on_board, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                 FROM statuses
+                 WHERE user_id = :user_id AND project_id IS NULL
+                 ORDER BY sort_order ASC, id ASC'
+            );
+            $cloneStatuses->execute(['project_id' => $projectId, 'user_id' => $userId]);
+
+            $cloneFields = $this->db->prepare(
+                'INSERT INTO custom_fields (
+                    user_id, project_id, source_field_id, name, field_type, options_json,
+                    is_required, sort_order, created_at, updated_at
+                 )
+                 SELECT
+                    NULL, :project_id, id, name, field_type, options_json,
+                    is_required, sort_order, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                 FROM custom_fields
+                 WHERE user_id = :user_id AND project_id IS NULL
+                 ORDER BY sort_order ASC, id ASC'
+            );
+            $cloneFields->execute(['project_id' => $projectId, 'user_id' => $userId]);
+
+            $this->db->commit();
+            return $projectId;
+        } catch (Throwable $error) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $error;
+        }
+    }
+
     public function updateForUser(
         int $userId,
         int $projectId,
@@ -210,7 +289,7 @@ final class ProjectRepository
         string $description,
         string $lifecycleStatus,
     ): bool {
-        if ($this->findForUser($userId, $projectId) === null) {
+        if ($this->findManageableForUser($userId, $projectId) === null) {
             return false;
         }
 
@@ -220,14 +299,13 @@ final class ProjectRepository
                  description = :description,
                  lifecycle_status = :lifecycle_status,
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = :id AND owner_user_id = :user_id AND owner_team_id IS NULL'
+             WHERE id = :id'
         );
         $stmt->execute([
             'name' => $this->normalizeName($name),
             'description' => $this->normalizeDescription($description),
             'lifecycle_status' => $this->normalizeLifecycleStatus($lifecycleStatus),
             'id' => $projectId,
-            'user_id' => $userId,
         ]);
 
         return true;
