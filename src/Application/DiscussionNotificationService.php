@@ -96,7 +96,7 @@ final class DiscussionNotificationService
     ): void {
         $targetUrl = $context['task_id'] !== null
             ? '/tasks/' . $context['task_id'] . '/edit#comment-' . $context['comment_id']
-            : '/projects/' . $context['effective_project_id'] . '#comment-' . $context['comment_id'];
+            : '/projects/' . $context['effective_project_id'] . '/discussion#comment-' . $context['comment_id'];
 
         $dedupeKey = hash(
             'sha256',
