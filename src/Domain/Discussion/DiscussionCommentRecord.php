@@ -8,7 +8,7 @@ final readonly class DiscussionCommentRecord
 {
     public function __construct(
         public int $id,
-        public int $projectId,
+        public ?int $projectId,
         public ?int $taskId,
         public ?int $parentCommentId,
         public int $authorUserId,
