@@ -335,6 +335,9 @@ final class ProjectController
         if ($createForm === null) {
             $owner = $request->getQueryParams()['owner'] ?? null;
             $createForm = is_string($owner) ? ['owner_scope' => $owner] : [];
+            if (is_string($owner) && $owner !== '') {
+                $openCreateDialog = true;
+            }
         }
 
         return $this->view->render($response, 'projects/index.twig', [
