@@ -39,7 +39,7 @@
             {{ t('nav.team_invitations') }}
             {% if team_invitation_count > 0 %}<span class="nav-badge" aria-label="{{ team_invitation_count }}">{{ team_invitation_count }}</span>{% endif %}
         </a>
-        <a class="nav-create-task" href="/tasks/new" data-quick-add-trigger>{{ t('nav.new_task') }}</a>
+        <a class="nav-create-task" href="/tasks/new" data-quick-add-trigger aria-label="{{ t('nav.new_task') }}"><span class="nav-create-task-icon" aria-hidden="true">+</span><span class="nav-create-task-label">{{ t('nav.new_task') }}</span></a>
         <details class="nav-dropdown user-menu" data-nav-menu>
             <summary title="{{ t('nav.user_menu') }}"><span class="user-menu-name">{{ username }}</span> <span class="nav-dropdown-chevron" aria-hidden="true">▾</span></summary>
             <div class="nav-dropdown-panel">
