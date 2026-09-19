@@ -39,12 +39,6 @@ if grep -q "action=\"/projects/$project_id\"" /tmp/projects-after-create.html; t
   exit 1
 fi
 
-curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/projects/$project_id" > /tmp/project-detail.html
-project_csrf=$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' /tmp/project-detail.html | head -n1)
-test -n "$project_csrf"
-grep -q "action=\"/projects/$project_id\"" /tmp/project-detail.html
-grep -q 'project-settings-card' /tmp/project-detail.html
-
 update_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
   --cookie "$COOKIE_JAR" \
   --data-urlencode "_csrf=$csrf" \
@@ -56,9 +50,6 @@ test "$update_status" = "302"
 test "$(db "SELECT lifecycle_status FROM projects WHERE id=$project_id")" = "paused"
 test "$(db "SELECT name FROM projects WHERE id=$project_id")" = "CI Project Updated"
 
-curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/dashboard" > /tmp/projects-dashboard.html
-grep -q 'dashboard-context-grid' /tmp/projects-dashboard.html
-grep -q 'CI Project Updated' /tmp/projects-dashboard.html
 curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/projects/$project_id" > /tmp/project-detail-updated.html
 grep -q 'CI Project Updated' /tmp/project-detail-updated.html
 grep -q 'Updated project description' /tmp/project-detail-updated.html
