@@ -9,13 +9,25 @@ final readonly class CustomFieldRecord
     /** @param list<string> $options */
     public function __construct(
         public int $id,
-        public int $userId,
+        public ?int $userId,
         public string $name,
         public string $type,
         public array $options,
         public bool $isRequired,
         public int $sortOrder,
+        public ?int $projectId = null,
+        public ?int $sourceFieldId = null,
     ) {
+    }
+
+    public function isPersonal(): bool
+    {
+        return $this->userId !== null && $this->projectId === null;
+    }
+
+    public function isProjectScoped(): bool
+    {
+        return $this->userId === null && $this->projectId !== null;
     }
 
     public function hasOptions(): bool

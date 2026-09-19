@@ -108,6 +108,20 @@ final class ProjectRepository
             );
             $clone->execute(['project_id' => $projectId, 'user_id' => $userId]);
 
+            $cloneFields = $this->db->prepare(
+                'INSERT INTO custom_fields (
+                    user_id, project_id, source_field_id, name, field_type, options_json,
+                    is_required, sort_order, created_at, updated_at
+                 )
+                 SELECT
+                    NULL, :project_id, id, name, field_type, options_json,
+                    is_required, sort_order, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                 FROM custom_fields
+                 WHERE user_id = :user_id AND project_id IS NULL
+                 ORDER BY sort_order ASC, id ASC'
+            );
+            $cloneFields->execute(['project_id' => $projectId, 'user_id' => $userId]);
+
             $this->db->commit();
             return $projectId;
         } catch (Throwable $error) {
@@ -159,6 +173,82 @@ final class ProjectRepository
             $fallback = $this->personalDefaultStatusId($userId);
             if ($fallback === null) {
                 throw new DomainException('A personal default status is required before deleting a project.');
+            }
+
+            $projectFields = $this->db->prepare(
+                'SELECT id, source_field_id, field_type
+                 FROM custom_fields
+                 WHERE user_id IS NULL AND project_id = :project_id
+                 ORDER BY id ASC'
+            );
+            $projectFields->execute(['project_id' => $projectId]);
+
+            $sourceField = $this->db->prepare(
+                'SELECT field_type, options_json
+                 FROM custom_fields
+                 WHERE id = :field_id AND user_id = :user_id AND project_id IS NULL
+                 LIMIT 1'
+            );
+            $projectValues = $this->db->prepare(
+                'SELECT v.task_id, v.user_id, v.value
+                 FROM task_custom_field_values v
+                 INNER JOIN tasks t
+                    ON t.id = v.task_id
+                   AND t.created_by = v.user_id
+                 WHERE v.field_id = :field_id
+                   AND t.project_id = :project_id
+                   AND t.created_by = :user_id'
+            );
+            $deletePersonalValue = $this->db->prepare(
+                'DELETE FROM task_custom_field_values
+                 WHERE task_id = :task_id AND field_id = :field_id AND user_id = :user_id'
+            );
+            $insertPersonalValue = $this->db->prepare(
+                'INSERT INTO task_custom_field_values (
+                    task_id, field_id, user_id, value, created_at, updated_at
+                 ) VALUES (
+                    :task_id, :field_id, :user_id, :value, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                 )'
+            );
+
+            while (($field = $projectFields->fetch()) !== false) {
+                if (!is_array($field) || $field['source_field_id'] === null) {
+                    continue;
+                }
+
+                $sourceId = (int) $field['source_field_id'];
+                $sourceField->execute(['field_id' => $sourceId, 'user_id' => $userId]);
+                $source = $sourceField->fetch();
+                if (!is_array($source) || (string) $source['field_type'] !== (string) $field['field_type']) {
+                    continue;
+                }
+
+                $projectValues->execute([
+                    'field_id' => (int) $field['id'],
+                    'project_id' => $projectId,
+                    'user_id' => $userId,
+                ]);
+                while (($value = $projectValues->fetch()) !== false) {
+                    if (!is_array($value)) {
+                        continue;
+                    }
+                    $storedValue = (string) $value['value'];
+                    if (!$this->customValueCompatibleWithSourceField(
+                        (string) $source['field_type'],
+                        is_string($source['options_json'] ?? null) ? (string) $source['options_json'] : null,
+                        $storedValue,
+                    )) {
+                        continue;
+                    }
+
+                    $params = [
+                        'task_id' => (int) $value['task_id'],
+                        'field_id' => $sourceId,
+                        'user_id' => (int) $value['user_id'],
+                    ];
+                    $deletePersonalValue->execute($params);
+                    $insertPersonalValue->execute($params + ['value' => $storedValue]);
+                }
             }
 
             $statusRows = $this->db->prepare(
@@ -242,6 +332,47 @@ final class ProjectRepository
             }
             throw $error;
         }
+    }
+
+    private function customValueCompatibleWithSourceField(
+        string $type,
+        ?string $optionsJson,
+        string $value,
+    ): bool {
+        if ($type === 'checkbox') {
+            return in_array($value, ['0', '1'], true);
+        }
+        if ($type === 'select') {
+            $options = $this->decodeFieldOptions($optionsJson);
+            return in_array($value, $options, true);
+        }
+        if ($type === 'checkbox_list') {
+            $options = $this->decodeFieldOptions($optionsJson);
+            $decoded = json_decode($value, true);
+            if (!is_array($decoded)) {
+                return false;
+            }
+            foreach ($decoded as $selected) {
+                if (!is_string($selected) || !in_array($selected, $options, true)) {
+                    return false;
+                }
+            }
+            return true;
+        }
+        return in_array($type, ['text', 'textarea', 'money'], true);
+    }
+
+    /** @return list<string> */
+    private function decodeFieldOptions(?string $optionsJson): array
+    {
+        if ($optionsJson === null || $optionsJson === '') {
+            return [];
+        }
+        $decoded = json_decode($optionsJson, true);
+        if (!is_array($decoded)) {
+            return [];
+        }
+        return array_values(array_filter($decoded, 'is_string'));
     }
 
     private function personalDefaultStatusId(int $userId): ?int

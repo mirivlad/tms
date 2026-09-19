@@ -29,8 +29,10 @@
         return grouped;
     };
 
-    document.querySelectorAll('[data-money-input]').forEach((input) => {
-        if (!(input instanceof HTMLInputElement)) return;
+    const init = (root = document) => {
+        root.querySelectorAll('[data-money-input]').forEach((input) => {
+        if (!(input instanceof HTMLInputElement) || input.dataset.moneyReady === '1') return;
+        input.dataset.moneyReady = '1';
         input.value = format(input.value, false);
         input.addEventListener('keydown', (event) => {
             if (event.ctrlKey || event.metaKey || event.altKey) return;
@@ -52,5 +54,12 @@
         input.addEventListener('blur', () => {
             if (input.value !== '') input.value = format(input.value, true);
         });
+        });
+    };
+
+    init();
+    document.addEventListener('tms:dynamic-fields', (event) => {
+        const root = event.detail && event.detail.root instanceof Element ? event.detail.root : document;
+        init(root);
     });
 })();

@@ -238,6 +238,9 @@ jobs:
       - name: Exercise rich task form workflow
         run: bash tests/smoke/task-form.sh
 
+      - name: Exercise project custom field workflow
+        run: bash tests/smoke/project-custom-fields.sh
+
       - name: Exercise custom field workflow
         run: bash tests/smoke/custom-fields.sh
 

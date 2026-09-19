@@ -55,12 +55,41 @@ final class ProjectRepositoryTest extends TestCase
             project_id INTEGER NULL,
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )');
+        $this->db->exec('CREATE TABLE custom_fields (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NULL,
+            project_id INTEGER NULL,
+            source_field_id INTEGER NULL,
+            name TEXT NOT NULL,
+            field_type TEXT NOT NULL,
+            options_json TEXT NULL,
+            is_required INTEGER NOT NULL DEFAULT 0,
+            sort_order INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )');
+        $this->db->exec('CREATE TABLE task_custom_field_values (
+            task_id INTEGER NOT NULL,
+            field_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            value TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (task_id, field_id)
+        )');
         $this->db->exec("INSERT INTO statuses (
             id, user_id, project_id, source_status_id, name, sort_order, is_default, is_completion
         ) VALUES
             (10, 1, NULL, NULL, 'Inbox', 1, 1, 0),
             (11, 1, NULL, NULL, 'Done', 2, 0, 1),
             (20, 2, NULL, NULL, 'Foreign Inbox', 1, 1, 0)");
+
+        $this->db->exec("INSERT INTO custom_fields (
+            id, user_id, project_id, source_field_id, name, field_type, options_json, is_required, sort_order
+        ) VALUES
+            (100, 1, NULL, NULL, 'Reference', 'text', NULL, 1, 1),
+            (101, 1, NULL, NULL, 'Environment', 'select', '[\"Prod\",\"QA\"]', 0, 2),
+            (200, 2, NULL, NULL, 'Foreign', 'text', NULL, 0, 1)");
 
         $this->db->exec("INSERT INTO projects (
             id, owner_user_id, owner_team_id, created_by, name, description, lifecycle_status
@@ -93,6 +122,17 @@ final class ProjectRepositoryTest extends TestCase
             ['source_status_id' => 11, 'is_default' => 0, 'is_completion' => 1],
         ], $cloned);
 
+        $clonedFields = $this->db->query(
+            'SELECT source_field_id, field_type, is_required
+             FROM custom_fields
+             WHERE project_id = ' . $id . '
+             ORDER BY sort_order, id'
+        )?->fetchAll();
+        self::assertSame([
+            ['source_field_id' => 100, 'field_type' => 'text', 'is_required' => 1],
+            ['source_field_id' => 101, 'field_type' => 'select', 'is_required' => 0],
+        ], $clonedFields);
+
         self::assertTrue($this->projects->updateForUser(1, $id, 'TOS Core', 'Updated', 'paused'));
         self::assertSame('TOS Core', $this->projects->findForUser(1, $id)?->name);
         self::assertSame('paused', $this->projects->findForUser(1, $id)?->lifecycleStatus);
@@ -111,10 +151,28 @@ final class ProjectRepositoryTest extends TestCase
         $stmt->execute(['title' => 'Project task', 'status_id' => $projectStatusId, 'project_id' => $id]);
         $taskId = (int) $this->db->lastInsertId();
 
+        $projectFieldId = (int) $this->db->query(
+            'SELECT id FROM custom_fields WHERE project_id = ' . $id . ' AND source_field_id = 100'
+        )?->fetchColumn();
+        $valueStmt = $this->db->prepare(
+            'INSERT INTO task_custom_field_values (task_id, field_id, user_id, value)
+             VALUES (:task_id, :field_id, 1, :value)'
+        );
+        $valueStmt->execute([
+            'task_id' => $taskId,
+            'field_id' => $projectFieldId,
+            'value' => 'REF-PROJECT',
+        ]);
+
         self::assertTrue($this->projects->deleteForUser(1, $id));
         self::assertNull($this->projects->findForUser(1, $id));
         $task = $this->db->query('SELECT status_id, project_id FROM tasks WHERE id = ' . $taskId)?->fetch();
         self::assertSame(['status_id' => 11, 'project_id' => null], $task);
+        $value = $this->db->query(
+            'SELECT value FROM task_custom_field_values
+             WHERE task_id = ' . $taskId . ' AND field_id = 100'
+        )?->fetchColumn();
+        self::assertSame('REF-PROJECT', $value);
     }
 
     public function testListIncludesOnlyPersonalProjectsOwnedByUser(): void

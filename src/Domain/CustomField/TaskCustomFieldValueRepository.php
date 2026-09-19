@@ -67,12 +67,13 @@ final class TaskCustomFieldValueRepository
     /** @param array<int, string|null> $values */
     public function replaceForTask(int $userId, int $taskId, array $values): void
     {
-        if (!$this->taskBelongsToUser($userId, $taskId)) {
+        $taskScope = $this->taskScopeForUser($userId, $taskId);
+        if ($taskScope === null) {
             throw new DomainException('Task is unavailable.');
         }
 
         $fieldIds = array_map('intval', array_keys($values));
-        if (!$this->fieldsBelongToUser($userId, $fieldIds)) {
+        if (!$this->fieldsBelongToScope($userId, $taskScope['project_id'], $fieldIds)) {
             throw new DomainException('Custom field is unavailable.');
         }
 
@@ -112,17 +113,27 @@ final class TaskCustomFieldValueRepository
         }
     }
 
-    private function taskBelongsToUser(int $userId, int $taskId): bool
+    /** @return array{project_id:?int}|null */
+    private function taskScopeForUser(int $userId, int $taskId): ?array
     {
         $stmt = $this->db->prepare(
-            'SELECT 1 FROM tasks WHERE id = :id AND created_by = :user_id LIMIT 1'
+            'SELECT project_id
+             FROM tasks
+             WHERE id = :id AND created_by = :user_id
+             LIMIT 1'
         );
         $stmt->execute(['id' => $taskId, 'user_id' => $userId]);
-        return $stmt->fetchColumn() !== false;
+        $row = $stmt->fetch();
+        if (!is_array($row)) {
+            return null;
+        }
+        return [
+            'project_id' => $row['project_id'] !== null ? (int) $row['project_id'] : null,
+        ];
     }
 
     /** @param list<int> $fieldIds */
-    private function fieldsBelongToUser(int $userId, array $fieldIds): bool
+    private function fieldsBelongToScope(int $userId, ?int $projectId, array $fieldIds): bool
     {
         $fieldIds = array_values(array_unique(array_filter(
             $fieldIds,
@@ -133,11 +144,27 @@ final class TaskCustomFieldValueRepository
         }
 
         $placeholders = implode(',', array_fill(0, count($fieldIds), '?'));
-        $stmt = $this->db->prepare(
-            "SELECT COUNT(*) FROM custom_fields
-             WHERE user_id = ? AND id IN ({$placeholders})"
-        );
-        $stmt->execute([$userId, ...$fieldIds]);
+        if ($projectId === null) {
+            $stmt = $this->db->prepare(
+                "SELECT COUNT(*)
+                 FROM custom_fields
+                 WHERE user_id = ? AND project_id IS NULL
+                   AND id IN ({$placeholders})"
+            );
+            $stmt->execute([$userId, ...$fieldIds]);
+        } else {
+            $stmt = $this->db->prepare(
+                "SELECT COUNT(*)
+                 FROM custom_fields f
+                 INNER JOIN projects p ON p.id = f.project_id
+                 WHERE f.user_id IS NULL
+                   AND f.project_id = ?
+                   AND p.owner_user_id = ?
+                   AND p.owner_team_id IS NULL
+                   AND f.id IN ({$placeholders})"
+            );
+            $stmt->execute([$projectId, $userId, ...$fieldIds]);
+        }
 
         return (int) $stmt->fetchColumn() === count($fieldIds);
     }
