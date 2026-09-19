@@ -28,6 +28,17 @@
             <input type="text" name="name" maxlength="160" required value="{{ create_form.name|default('') }}">
         </label>
         <label>
+            <span>{{ t('projects.owner') }}</span>
+            {% set owner_scope = create_form.owner_scope|default('personal') %}
+            <select name="owner_scope">
+                <option value="personal" {{ owner_scope == 'personal' ? 'selected' : '' }}>{{ t('projects.owner_personal') }}</option>
+                {% for team in lead_teams %}
+                    {% set value = 'team:' ~ team.id %}
+                    <option value="{{ value }}" {{ owner_scope == value ? 'selected' : '' }}>{{ t('projects.owner_team', {'team': team.name}) }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
             <span>{{ t('projects.status') }}</span>
             {% set create_status = create_form.lifecycle_status|default('active') %}
             <select name="lifecycle_status">
@@ -68,12 +79,17 @@
                     <strong><a class="text-link" href="/projects/{{ project.id }}">{{ project.name }}</a></strong>
                     <div class="metadata-badges">
                         <span class="metadata-badge">{{ t('projects.status.' ~ project.lifecycleStatus) }}</span>
-                        <span class="metadata-badge">{{ t('projects.personal') }}</span>
+                        {% if project.isTeamOwned %}
+                            <span class="metadata-badge">{{ t('projects.owner_team', {'team': team_map[project.ownerTeamId].name|default('—')}) }}</span>
+                        {% else %}
+                            <span class="metadata-badge">{{ t('projects.personal') }}</span>
+                        {% endif %}
                     </div>
                 </div>
 
-                {% if editing and error %}<p class="alert" role="alert">{{ error }}</p>{% endif %}
+                {% if editing and error and manageable_projects[project.id]|default(false) %}<p class="alert" role="alert">{{ error }}</p>{% endif %}
 
+                {% if manageable_projects[project.id]|default(false) %}
                 <form class="metadata-edit" method="post" action="/projects/{{ project.id }}">
                     <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                     <label>
@@ -101,6 +117,9 @@
                         <button class="danger-link compact" type="submit">{{ t('common.delete') }}</button>
                     </form>
                 </div>
+                {% elseif project.isTeamOwned %}
+                    <p class="muted">{{ t('projects.team_member_readonly') }}</p>
+                {% endif %}
             </article>
         {% endfor %}
         </div>
