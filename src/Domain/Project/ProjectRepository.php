@@ -21,21 +21,28 @@ final class ProjectRepository
     public function listForUser(int $userId): array
     {
         $stmt = $this->db->prepare(
-            'SELECT id, owner_user_id, owner_team_id, created_by, name, description,
-                    lifecycle_status, created_at, updated_at
-             FROM projects
-             WHERE owner_user_id = :user_id AND owner_team_id IS NULL
+            'SELECT DISTINCT p.id, p.owner_user_id, p.owner_team_id, p.created_by, p.name, p.description,
+                    p.lifecycle_status, p.created_at, p.updated_at
+             FROM projects p
+             LEFT JOIN team_members tm
+               ON tm.team_id = p.owner_team_id
+              AND tm.user_id = :team_user_id
+             WHERE (p.owner_user_id = :personal_user_id AND p.owner_team_id IS NULL)
+                OR (p.owner_user_id IS NULL AND p.owner_team_id IS NOT NULL AND tm.user_id IS NOT NULL)
              ORDER BY
-                CASE lifecycle_status
+                CASE p.lifecycle_status
                     WHEN \'active\' THEN 0
                     WHEN \'paused\' THEN 1
                     WHEN \'done\' THEN 2
                     ELSE 3
                 END,
-                updated_at DESC,
-                id DESC'
+                p.updated_at DESC,
+                p.id DESC'
         );
-        $stmt->execute(['user_id' => $userId]);
+        $stmt->execute([
+            'team_user_id' => $userId,
+            'personal_user_id' => $userId,
+        ]);
 
         $projects = [];
         while (($row = $stmt->fetch()) !== false) {
@@ -49,19 +56,83 @@ final class ProjectRepository
     public function findForUser(int $userId, int $projectId): ?ProjectRecord
     {
         $stmt = $this->db->prepare(
-            'SELECT id, owner_user_id, owner_team_id, created_by, name, description,
-                    lifecycle_status, created_at, updated_at
-             FROM projects
-             WHERE id = :id AND owner_user_id = :user_id AND owner_team_id IS NULL
+            'SELECT p.id, p.owner_user_id, p.owner_team_id, p.created_by, p.name, p.description,
+                    p.lifecycle_status, p.created_at, p.updated_at
+             FROM projects p
+             LEFT JOIN team_members tm
+               ON tm.team_id = p.owner_team_id
+              AND tm.user_id = :team_user_id
+             WHERE p.id = :id
+               AND (
+                    (p.owner_user_id = :personal_user_id AND p.owner_team_id IS NULL)
+                    OR
+                    (p.owner_user_id IS NULL AND p.owner_team_id IS NOT NULL AND tm.user_id IS NOT NULL)
+               )
              LIMIT 1'
         );
         $stmt->execute([
             'id' => $projectId,
-            'user_id' => $userId,
+            'team_user_id' => $userId,
+            'personal_user_id' => $userId,
         ]);
 
         $row = $stmt->fetch();
         return is_array($row) ? $this->hydrate($row) : null;
+    }
+
+    public function findManageableForUser(int $userId, int $projectId): ?ProjectRecord
+    {
+        $stmt = $this->db->prepare(
+            'SELECT p.id, p.owner_user_id, p.owner_team_id, p.created_by, p.name, p.description,
+                    p.lifecycle_status, p.created_at, p.updated_at
+             FROM projects p
+             LEFT JOIN team_members tm
+               ON tm.team_id = p.owner_team_id
+              AND tm.user_id = :team_user_id
+             WHERE p.id = :id
+               AND (
+                    (p.owner_user_id = :personal_user_id AND p.owner_team_id IS NULL)
+                    OR
+                    (p.owner_user_id IS NULL AND p.owner_team_id IS NOT NULL AND tm.role = \'lead\')
+               )
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'id' => $projectId,
+            'team_user_id' => $userId,
+            'personal_user_id' => $userId,
+        ]);
+        $row = $stmt->fetch();
+        return is_array($row) ? $this->hydrate($row) : null;
+    }
+
+    public function canManageForUser(int $userId, int $projectId): bool
+    {
+        return $this->findManageableForUser($userId, $projectId) !== null;
+    }
+
+    /** @return list<ProjectRecord> */
+    public function listForTeamForUser(int $userId, int $teamId): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT p.id, p.owner_user_id, p.owner_team_id, p.created_by, p.name, p.description,
+                    p.lifecycle_status, p.created_at, p.updated_at
+             FROM projects p
+             INNER JOIN team_members tm ON tm.team_id = p.owner_team_id
+             WHERE p.owner_team_id = :team_id
+               AND p.owner_user_id IS NULL
+               AND tm.user_id = :user_id
+             ORDER BY p.updated_at DESC, p.id DESC'
+        );
+        $stmt->execute(['team_id' => $teamId, 'user_id' => $userId]);
+
+        $projects = [];
+        while (($row = $stmt->fetch()) !== false) {
+            if (is_array($row)) {
+                $projects[] = $this->hydrate($row);
+            }
+        }
+        return $projects;
     }
 
     public function createForUser(
