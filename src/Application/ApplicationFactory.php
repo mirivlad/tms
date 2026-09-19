@@ -404,6 +404,11 @@ final class ApplicationFactory
         $app->post('/invitations/{id:[0-9]+}/decline', [$teamInvitationController, 'decline'])->add($requireAuth);
         $app->get('/projects', [$projectController, 'index'])->add($requireAuth);
         $app->get('/projects/{id:[0-9]+}', [$projectController, 'show'])->add($requireAuth);
+        $app->get('/projects/{id:[0-9]+}/settings', [$projectController, 'settings'])->add($requireAuth);
+        $app->get('/projects/{id:[0-9]+}/statuses', [$projectController, 'statuses'])->add($requireAuth);
+        $app->get('/projects/{id:[0-9]+}/fields', [$projectController, 'fields'])->add($requireAuth);
+        $app->get('/projects/{id:[0-9]+}/files', [$projectController, 'files'])->add($requireAuth);
+        $app->get('/projects/{id:[0-9]+}/discussion', [$projectController, 'discussion'])->add($requireAuth);
         $app->post('/projects', [$projectController, 'create'])->add($requireAuth);
         $app->post('/projects/{id:[0-9]+}', [$projectController, 'update'])->add($requireAuth);
         $app->post('/projects/{id:[0-9]+}/delete', [$projectController, 'delete'])->add($requireAuth);
