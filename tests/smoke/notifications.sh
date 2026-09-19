@@ -43,7 +43,7 @@ docker compose exec -T app test -s /var/www/html/var/secrets/notification.key
 login ciadmin ci-admin-password-12345 "$admin_cookies"
 
 curl --fail --silent --cookie "$admin_cookies" "$base_url/settings/notifications" > /tmp/notify-settings.html
-grep -q '>Notifications<' /tmp/notify-settings.html
+grep -q '>Notification settings<' /tmp/notify-settings.html
 grep -q 'name="notify_upcoming"' /tmp/notify-settings.html
 grep -q 'Send test message' /tmp/notify-settings.html
 if grep -q '/admin/notifications' /tmp/notify-settings.html; then

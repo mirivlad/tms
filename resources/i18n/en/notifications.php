@@ -4,12 +4,27 @@ declare(strict_types=1);
 
 return [
     'nav.notifications' => 'Notifications',
+    'nav.notification_settings' => 'Notification settings',
+
+    'notifications.inbox_title' => 'Notifications',
+    'notifications.inbox_subtitle' => 'Mentions and replies from your team work appear here.',
+    'notifications.inbox_empty' => 'No notifications yet.',
+    'notifications.inbox_empty_help' => 'Mentions and replies will appear here when they need your attention.',
+    'notifications.mark_all_read' => 'Mark all as read',
+    'notifications.settings_link' => 'Notification settings',
+    'notifications.unread' => 'Unread',
+    'notifications.inbox_not_found' => 'Notification not found.',
+    'notifications.discussion_mention' => '{actor} mentioned you in {context}',
+    'notifications.discussion_reply' => '{actor} replied to you in {context}',
+    'notifications.collaboration_subject' => 'TMS: {context}',
+    'notifications.collaboration_open' => 'Open in TMS',
     'validation.admin_required' => 'Administrator access is required.',
 
-    'notifications.title' => 'Notifications',
+    'notifications.title' => 'Notification settings',
     'notifications.eyebrow' => 'Preferences',
     'notifications.subtitle' => 'Delivery times use the deployment timezone: {timezone}.',
     'notifications.channels' => 'Delivery channels',
+    'notifications.channels_help' => 'The in-app inbox is always available. Enabled email and Telegram channels also carry mentions and direct replies.',
     'notifications.email_enabled' => 'Send email notifications',
     'notifications.email_address' => 'Notification email',
     'notifications.email_help' => 'Leave empty to use account email: {email}',

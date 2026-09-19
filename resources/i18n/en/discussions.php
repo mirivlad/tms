@@ -7,6 +7,7 @@ return [
     'discussions.help' => 'Keep project and task context here instead of losing it in external chats.',
     'discussions.new' => 'New comment',
     'discussions.body_placeholder' => 'Write a comment…',
+    'discussions.mention_help' => 'Use @username to notify a current member of this project team.',
     'discussions.post' => 'Post comment',
     'discussions.reply' => 'Reply',
     'discussions.post_reply' => 'Post reply',

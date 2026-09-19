@@ -95,6 +95,74 @@ final class DiscussionRepository
         );
     }
 
+    /**
+     * @return array{
+     *   comment_id:int,
+     *   author_user_id:int,
+     *   author_username:string,
+     *   body_html:string,
+     *   parent_comment_id:?int,
+     *   parent_author_user_id:?int,
+     *   team_id:int,
+     *   effective_project_id:int,
+     *   project_id:?int,
+     *   task_id:?int,
+     *   context_label:string
+     * }|null
+     */
+    public function notificationContextForMember(int $userId, int $commentId): ?array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT c.id AS comment_id,
+                    c.author_user_id,
+                    author.username AS author_username,
+                    c.body_html,
+                    c.parent_comment_id,
+                    parent.author_user_id AS parent_author_user_id,
+                    p.owner_team_id AS team_id,
+                    p.id AS effective_project_id,
+                    c.project_id,
+                    c.task_id,
+                    CASE WHEN c.task_id IS NOT NULL THEN t.title ELSE p.name END AS context_label
+             FROM discussion_comments c
+             LEFT JOIN discussion_comments parent ON parent.id = c.parent_comment_id
+             LEFT JOIN users author ON author.id = c.author_user_id
+             LEFT JOIN tasks t ON t.id = c.task_id
+             INNER JOIN projects p
+               ON p.id = CASE WHEN c.project_id IS NOT NULL THEN c.project_id ELSE t.project_id END
+             INNER JOIN team_members tm
+               ON tm.team_id = p.owner_team_id
+              AND tm.user_id = :user_id
+             WHERE c.id = :comment_id
+               AND c.deleted_at IS NULL
+               AND p.owner_user_id IS NULL
+               AND p.owner_team_id IS NOT NULL
+             LIMIT 1'
+        );
+        $stmt->execute(['user_id' => $userId, 'comment_id' => $commentId]);
+        $row = $stmt->fetch();
+        if (!is_array($row)
+            || $row['author_user_id'] === null
+            || $row['author_username'] === null
+            || $row['team_id'] === null) {
+            return null;
+        }
+
+        return [
+            'comment_id' => (int) $row['comment_id'],
+            'author_user_id' => (int) $row['author_user_id'],
+            'author_username' => (string) $row['author_username'],
+            'body_html' => (string) $row['body_html'],
+            'parent_comment_id' => $row['parent_comment_id'] !== null ? (int) $row['parent_comment_id'] : null,
+            'parent_author_user_id' => $row['parent_author_user_id'] !== null ? (int) $row['parent_author_user_id'] : null,
+            'team_id' => (int) $row['team_id'],
+            'effective_project_id' => (int) $row['effective_project_id'],
+            'project_id' => $row['project_id'] !== null ? (int) $row['project_id'] : null,
+            'task_id' => $row['task_id'] !== null ? (int) $row['task_id'] : null,
+            'context_label' => (string) $row['context_label'],
+        ];
+    }
+
     public function updateForProject(
         int $userId,
         int $projectId,

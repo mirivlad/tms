@@ -80,7 +80,7 @@ test -n "$member_csrf"
 grep -q 'id="discussion"' /tmp/discussion-project-member.html
 
 # Member posts sanitized project comment.
-code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"   --data-urlencode "_csrf=$member_csrf"   --data-urlencode 'body=<p>Hello <script>alert(1)</script><strong>team</strong></p>'   "$BASE_URL/projects/$project_id/discussion")
+code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"   --data-urlencode "_csrf=$member_csrf"   --data-urlencode 'body=<p>Hello @ciadmin <script>alert(1)</script><strong>team</strong></p>'   "$BASE_URL/projects/$project_id/discussion")
 test "$code" = "302"
 root_id=$(db "SELECT id FROM discussion_comments
               WHERE project_id=$project_id AND task_id IS NULL AND author_user_id=$member_id
@@ -93,11 +93,37 @@ if printf '%s' "$root_body" | grep -qi '<script'; then
   exit 1
 fi
 
+# Mention creates one canonical unread inbox item for the current team member.
+mention_notification=$(db "SELECT id FROM internal_notifications
+                           WHERE user_id=$admin_id
+                             AND comment_id=$root_id
+                             AND notification_type='discussion_mention'
+                           LIMIT 1")
+test -n "$mention_notification"
+test "$(db "SELECT read_at IS NULL FROM internal_notifications WHERE id=$mention_notification")" = "1"
+
+curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/notifications" > /tmp/discussion-admin-inbox.html
+grep -q 'notification-inbox-item is-unread' /tmp/discussion-admin-inbox.html
+grep -q 'discussionmember' /tmp/discussion-admin-inbox.html
+
+code=$(curl --silent -D /tmp/discussion-open.headers -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   "$BASE_URL/notifications/$mention_notification/open")
+test "$code" = "302"
+grep -qi "location: /projects/$project_id#comment-$root_id" /tmp/discussion-open.headers
+test "$(db "SELECT read_at IS NOT NULL FROM internal_notifications WHERE id=$mention_notification")" = "1"
+
 # Lead replies; reply-to-reply is rejected.
-code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$project_csrf"   --data-urlencode 'body=<p>Lead reply</p>'   "$BASE_URL/projects/$project_id/discussion/$root_id/reply")
+code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$project_csrf"   --data-urlencode 'body=<p>@discussionmember Lead reply</p>'   "$BASE_URL/projects/$project_id/discussion/$root_id/reply")
 test "$code" = "302"
 reply_id=$(db "SELECT id FROM discussion_comments WHERE parent_comment_id=$root_id ORDER BY id DESC LIMIT 1")
 test -n "$reply_id"
+
+# Reply notification wins over duplicate mention to the same parent author.
+test "$(db "SELECT COUNT(*) FROM internal_notifications
+            WHERE user_id=$member_id AND comment_id=$reply_id")" = "1"
+test "$(db "SELECT notification_type FROM internal_notifications
+            WHERE user_id=$member_id AND comment_id=$reply_id LIMIT 1")" = "discussion_reply"
+curl --fail --silent --cookie "$MEMBER_COOKIES" "$BASE_URL/notifications" > /tmp/discussion-member-inbox.html
+grep -q 'ciadmin' /tmp/discussion-member-inbox.html
 
 before=$(db "SELECT COUNT(*) FROM discussion_comments WHERE project_id=$project_id")
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"   --data-urlencode "_csrf=$member_csrf"   --data-urlencode 'body=<p>Too deep</p>'   "$BASE_URL/projects/$project_id/discussion/$reply_id/reply")
@@ -105,9 +131,12 @@ test "$code" = "302"
 test "$(db "SELECT COUNT(*) FROM discussion_comments WHERE project_id=$project_id")" = "$before"
 
 # Member edits own root but cannot delete Lead reply.
-code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"   --data-urlencode "_csrf=$member_csrf"   --data-urlencode 'body=<p>Edited root</p>'   "$BASE_URL/projects/$project_id/discussion/$root_id")
+code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"   --data-urlencode "_csrf=$member_csrf"   --data-urlencode 'body=<p>Edited root @ciadmin</p>'   "$BASE_URL/projects/$project_id/discussion/$root_id")
 test "$code" = "302"
 grep -q 'Edited root' < <(db "SELECT body_html FROM discussion_comments WHERE id=$root_id")
+test "$(db "SELECT COUNT(*) FROM internal_notifications
+            WHERE user_id=$admin_id AND comment_id=$root_id
+              AND notification_type='discussion_mention'")" = "1"
 
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"   --data-urlencode "_csrf=$member_csrf"   "$BASE_URL/projects/$project_id/discussion/$reply_id/delete")
 test "$code" = "302"
@@ -129,12 +158,22 @@ task_csrf=$(csrf_from /tmp/discussion-task.html)
 test -n "$task_csrf"
 grep -q 'id="discussion"' /tmp/discussion-task.html
 
-code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"   --data-urlencode "_csrf=$task_csrf"   --data-urlencode 'body=<p>Task-specific context</p>'   "$BASE_URL/tasks/$task_id/discussion")
+code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"   --data-urlencode "_csrf=$task_csrf"   --data-urlencode 'body=<p>Task-specific context @ciadmin</p>'   "$BASE_URL/tasks/$task_id/discussion")
 test "$code" = "302"
 task_comment=$(db "SELECT id FROM discussion_comments
                    WHERE task_id=$task_id AND project_id IS NULL
                    ORDER BY id DESC LIMIT 1")
 test -n "$task_comment"
+test "$(db "SELECT COUNT(*) FROM internal_notifications
+            WHERE user_id=$admin_id AND comment_id=$task_comment
+              AND notification_type='discussion_mention'")" = "1"
+
+curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/notifications" > /tmp/discussion-admin-inbox-final.html
+admin_inbox_csrf=$(csrf_from /tmp/discussion-admin-inbox-final.html)
+test -n "$admin_inbox_csrf"
+code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$admin_inbox_csrf"   "$BASE_URL/notifications/read-all")
+test "$code" = "302"
+test "$(db "SELECT COUNT(*) FROM internal_notifications WHERE user_id=$admin_id AND read_at IS NULL")" = "0"
 
 # Removing membership revokes discussion access immediately.
 curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/teams/$team_id" > /tmp/discussion-team-admin.html

@@ -7,6 +7,7 @@ return [
     'discussions.help' => 'Храните контекст проекта и задачи здесь, чтобы он не терялся во внешних чатах.',
     'discussions.new' => 'Новый комментарий',
     'discussions.body_placeholder' => 'Напишите комментарий…',
+    'discussions.mention_help' => 'Используйте @username, чтобы уведомить текущего участника команды проекта.',
     'discussions.post' => 'Отправить комментарий',
     'discussions.reply' => 'Ответить',
     'discussions.post_reply' => 'Отправить ответ',
