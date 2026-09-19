@@ -7,6 +7,7 @@ namespace Tms\Http\Controller;
 use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Tms\Application\DiscussionNotificationService;
 use Tms\Domain\Discussion\DiscussionRepository;
 use Tms\I18n\Translator;
 use Tms\Security\SessionManager;
@@ -17,6 +18,7 @@ final class DiscussionController
     public function __construct(
         private readonly SessionManager $sessions,
         private readonly DiscussionRepository $discussions,
+        private readonly DiscussionNotificationService $notifications,
         private readonly TaskDescriptionSanitizer $sanitizer,
         private readonly Translator $translator,
     ) {
@@ -153,20 +155,25 @@ final class DiscussionController
         );
 
         try {
+            $userId = $this->userId();
+            $commentId = null;
             if ($projectId !== null) {
-                $this->discussions->createForProject(
-                    $this->userId(),
+                $commentId = $this->discussions->createForProject(
+                    $userId,
                     $projectId,
                     $bodyHtml,
                     $parentCommentId,
                 );
             } elseif ($taskId !== null) {
-                $this->discussions->createForTask(
-                    $this->userId(),
+                $commentId = $this->discussions->createForTask(
+                    $userId,
                     $taskId,
                     $bodyHtml,
                     $parentCommentId,
                 );
+            }
+            if ($commentId !== null) {
+                $this->processNotifications($userId, $commentId);
             }
             $this->notice('success', 'discussions.saved');
         } catch (DomainException $error) {
@@ -189,11 +196,15 @@ final class DiscussionController
         );
 
         try {
+            $userId = $this->userId();
             $updated = $projectId !== null
-                ? $this->discussions->updateForProject($this->userId(), $projectId, $commentId, $bodyHtml)
+                ? $this->discussions->updateForProject($userId, $projectId, $commentId, $bodyHtml)
                 : ($taskId !== null
-                    ? $this->discussions->updateForTask($this->userId(), $taskId, $commentId, $bodyHtml)
+                    ? $this->discussions->updateForTask($userId, $taskId, $commentId, $bodyHtml)
                     : false);
+            if ($updated) {
+                $this->processNotifications($userId, $commentId);
+            }
             $this->notice($updated ? 'success' : 'error', $updated ? 'discussions.saved' : 'discussions.unavailable');
         } catch (DomainException $error) {
             $this->notice('error', $this->errorKey($error));
@@ -216,6 +227,15 @@ final class DiscussionController
 
         $this->notice($deleted ? 'success' : 'error', $deleted ? 'discussions.deleted' : 'discussions.unavailable');
         return $this->redirect($response, $projectId, $taskId);
+    }
+
+    private function processNotifications(int $userId, int $commentId): void
+    {
+        try {
+            $this->notifications->processComment($userId, $commentId);
+        } catch (\Throwable $error) {
+            error_log('TMS discussion notification processing failed: ' . $error->getMessage());
+        }
     }
 
     private function errorKey(DomainException $error): string
