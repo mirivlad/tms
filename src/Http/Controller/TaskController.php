@@ -70,8 +70,15 @@ final class TaskController
     {
         $userId = $this->userId();
         $query = $request->getQueryParams();
+        [$projectId, $withoutProject, $projectFilter] = $this->projectFilter($query, $userId);
+        $filterStatuses = $this->statusesForFilterScope($userId, $projectId, $projectFilter);
+        $filterStatusIds = array_fill_keys(
+            array_map(static fn (StatusRecord $status): int => $status->id, $filterStatuses),
+            true,
+        );
+
         $statusId = $this->queryInt($query, 'status_id');
-        if ($statusId !== null && $this->statuses->findAccessibleForUser($userId, $statusId) === null) {
+        if ($statusId !== null && !isset($filterStatusIds[$statusId])) {
             $statusId = null;
         }
         $statusInvert = $statusId !== null && ($query['status_invert'] ?? null) === '1';
@@ -88,7 +95,6 @@ final class TaskController
         $deadlineTo = $this->queryDate($query, 'deadline_to');
         $createdFrom = $this->queryDate($query, 'created_from');
         $createdTo = $this->queryDate($query, 'created_to');
-        [$projectId, $withoutProject, $projectFilter] = $this->projectFilter($query, $userId);
 
         $fields = $this->fieldsForScope($userId, $projectId);
         $customFilters = $this->customFilters($query, $fields);
@@ -190,6 +196,7 @@ final class TaskController
         return $this->view->render($response, 'tasks/index.twig', $this->commonViewData($request) + [
             'tasks' => $tasks,
             'status_map' => $statusMap,
+            'filter_statuses' => $filterStatuses,
             'type_map' => $typeMap,
             'customer_map' => $customerMap,
             'project_map' => $projectMap,
@@ -408,12 +415,15 @@ final class TaskController
     {
         $userId = $this->userId();
         $query = $request->getQueryParams();
+        $scope = $this->queryString($query, 'scope');
         $projectId = $this->queryInt($query, 'project_id');
         if ($projectId !== null && $this->projects->findForUser($userId, $projectId) === null) {
             return $this->json($response, ['error' => $this->translator->trans('validation.selected_project_unavailable')], 404);
         }
 
-        $statuses = $this->statusesForScope($userId, $projectId);
+        $statuses = $scope === 'all'
+            ? $this->statuses->listAccessibleForUser($userId)
+            : $this->statusesForScope($userId, $projectId);
         return $this->json($response, [
             'statuses' => array_map(
                 static fn (StatusRecord $status): array => [
@@ -1157,6 +1167,18 @@ final class TaskController
         ];
     }
 
+    /** @return list<StatusRecord> */
+    private function statusesForFilterScope(int $userId, ?int $projectId, string $projectFilter): array
+    {
+        if ($projectFilter === 'all') {
+            return $this->statuses->listAccessibleForUser($userId);
+        }
+        if ($projectId !== null) {
+            return $this->projectStatuses->listForProject($userId, $projectId);
+        }
+        return $this->statuses->listForUser($userId);
+    }
+
     /** @return array<int, StatusRecord> */
     private function statusMap(int $userId): array
     {
@@ -1282,7 +1304,7 @@ final class TaskController
         if ($filters['type_id'] !== null) {
             $params['type_id'] = $filters['type_id'];
         }
-        if ($filters['project'] !== '') {
+        if ($filters['project'] !== 'none') {
             $params['project'] = $filters['project'];
         }
         foreach (['priority', 'q', 'customer', 'deadline_from', 'deadline_to', 'created_from', 'created_to'] as $key) {
@@ -1339,9 +1361,9 @@ final class TaskController
             $name = $typeMap[$filters['type_id']]->name ?? (string) $filters['type_id'];
             $add('type_id', $this->translator->trans('tasks.type'), $name);
         }
-        if ($filters['project'] !== '') {
-            $value = $filters['project'] === 'none'
-                ? $this->translator->trans('projects.no_project')
+        if ($filters['project'] !== 'none') {
+            $value = $filters['project'] === 'all'
+                ? $this->translator->trans('projects.all_projects')
                 : ($projectMap[(int) $filters['project']]->name ?? $filters['project']);
             $add('project', $this->translator->trans('projects.task_project'), $value);
         }
@@ -1533,7 +1555,10 @@ final class TaskController
     private function projectFilter(array $query, int $userId): array
     {
         $value = $this->queryString($query, 'project');
-        if ($value === 'none') {
+        if ($value === 'all') {
+            return [null, false, 'all'];
+        }
+        if ($value === 'none' || $value === '') {
             return [null, true, 'none'];
         }
         if (ctype_digit($value) && (int) $value > 0) {
@@ -1542,7 +1567,7 @@ final class TaskController
                 return [$projectId, false, (string) $projectId];
             }
         }
-        return [null, false, ''];
+        return [null, true, 'none'];
     }
 
     /** @param array<string, mixed> $query */
