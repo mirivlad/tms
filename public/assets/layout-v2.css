@@ -329,7 +329,9 @@ label { gap: 5px; }
 .form-card + .attachment-card { width: min(100%, 1080px); margin-inline: auto; }
 .entity-management-page { margin-bottom: 12px; }
 .entity-management-page:has(.entity-settings-form),
-.attachment-card {
+.entity-management-page:has(.entity-settings-form) + .danger-zone,
+.attachment-card,
+.admin-edit-grid {
     width: min(100%, 1180px);
     margin-inline: auto;
 }
