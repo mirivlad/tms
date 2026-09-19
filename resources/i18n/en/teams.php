@@ -41,7 +41,7 @@ return [
     'teams.leave_confirm' => 'Leave this team?',
     'teams.delete' => 'Delete team',
     'teams.delete_confirm' => 'Delete this team? This cannot be undone.',
-    'teams.delete_with_projects' => 'The team still owns projects. Remove or archive those projects before deleting the team.',
+    'teams.delete_with_projects' => 'The team still owns projects. Delete those projects before deleting the team.',
     'teams.projects' => 'Team projects',
     'teams.projects_help' => 'All current members can work with these projects. Leads manage project settings.',
     'teams.projects_empty' => 'No team projects yet.',
