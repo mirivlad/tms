@@ -27,7 +27,7 @@
                 {% if team.description %}<p class="muted entity-card-description">{{ team.description }}</p>{% endif %}
                 <div class="entity-card-actions">
                     <a class="button-link secondary-link compact" href="/teams/{{ team.id }}">{{ t('teams.action_overview') }}</a>
-                    {% if team.currentUserIsLead() %}<a class="button-link secondary-link compact" href="/teams/{{ team.id }}/settings">{{ t('teams.action_settings') }}</a>{% endif %}
+                    {% if team.currentUserRole == 'lead' %}<a class="button-link secondary-link compact" href="/teams/{{ team.id }}/settings">{{ t('teams.action_settings') }}</a>{% endif %}
                     <a class="button-link secondary-link compact" href="/teams/{{ team.id }}/members">{{ t('teams.action_members') }}</a>
                 </div>
             </article>
