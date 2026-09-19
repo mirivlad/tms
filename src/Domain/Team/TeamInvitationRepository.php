@@ -51,6 +51,14 @@ final class TeamInvitationRepository
         return (int) $this->db->lastInsertId();
     }
 
+    public function findById(int $invitationId): ?TeamInvitationRecord
+    {
+        $stmt = $this->db->prepare($this->selectSql() . ' WHERE i.id = :id LIMIT 1');
+        $stmt->execute(['id' => $invitationId]);
+        $row = $stmt->fetch();
+        return is_array($row) ? $this->hydrate($row) : null;
+    }
+
     /** @return list<TeamInvitationRecord> */
     public function listPendingForUser(
         int $userId,
