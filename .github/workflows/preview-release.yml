@@ -120,6 +120,7 @@ jobs:
           - collaboration ACL hardening and a tested v0.1.4-to-v0.2.0 database upgrade path;
           - per-user timezone, notification preferences and six interface theme modes;
           - desktop-first Projects and Teams management, with collaboration setup moved out of the primary work navigation into the user menu;
+          - selector-first Projects navigation, project settings on the project detail page, and Overview summaries for projects, teams and unassigned work;
           - calendar day quick-add, customer autocomplete and wheel-aware wide-board navigation;
           - optional self-registration with visual CAPTCHA, email verification and administrator approval;
           - administrator user management, direct account creation, quick user details and impersonation;
