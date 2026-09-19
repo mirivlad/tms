@@ -255,7 +255,7 @@ final class ProjectController
 
         $body = $this->body($request);
         try {
-            $targetTeamId = $this->targetTeamId($body);
+            $targetTeamId = $this->targetTeamId($body, $project);
             if ($targetTeamId !== null && $this->teams->findForLead($this->userId(), $targetTeamId) === null) {
                 throw new DomainException('Only a Team Lead can assign a project to that team.');
             }
@@ -398,9 +398,12 @@ final class ProjectController
     }
 
     /** @param array<string, mixed> $body */
-    private function targetTeamId(array $body): ?int
+    private function targetTeamId(array $body, ProjectRecord $project): ?int
     {
-        $ownerScope = is_string($body['owner_scope'] ?? null) ? (string) $body['owner_scope'] : 'personal';
+        if (!array_key_exists('owner_scope', $body)) {
+            return $project->ownerTeamId;
+        }
+        $ownerScope = is_string($body['owner_scope'] ?? null) ? (string) $body['owner_scope'] : '';
         if ($ownerScope === 'personal') {
             return null;
         }
