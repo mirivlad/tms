@@ -47,7 +47,11 @@
             {% if project_locked %}
                 <input type="hidden" name="project_id" value="{{ form.project_id|default('') }}">
             {% endif %}
-            <select {{ project_locked ? '' : 'name="project_id"' }} data-project-select {{ project_locked ? 'disabled' : '' }}>
+            {% if project_locked %}
+                <select data-project-select disabled>
+            {% else %}
+                <select name="project_id" data-project-select>
+            {% endif %}
                 <option value="">{{ t('projects.no_project') }}</option>
                 {% for project in projects %}
                     <option value="{{ project.id }}" {{ form.project_id == project.id ? 'selected' : '' }}>
@@ -72,7 +76,11 @@
             {% if not can_edit_personal_metadata %}
                 <input type="hidden" name="type_id" value="{{ form.type_id|default('') }}">
             {% endif %}
-            <select {{ can_edit_personal_metadata ? 'name="type_id"' : 'disabled' }}>
+            {% if can_edit_personal_metadata %}
+                <select name="type_id">
+            {% else %}
+                <select disabled>
+            {% endif %}
                 <option value="">{{ t('task_form.no_type') }}</option>
                 {% for type in types %}
                     <option value="{{ type.id }}" {{ form.type_id == type.id ? 'selected' : '' }}>{{ type.name }}</option>
