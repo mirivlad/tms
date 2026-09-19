@@ -109,8 +109,8 @@ final class TaskController
         $tasks = $this->filterByCustomFields($tasks, $fields, $valuesByTask, $customFilters);
 
         $statusMap = $this->statusMap($userId);
-        $typeMap = $this->typeMap($userId);
-        $customerMap = $this->customerMap($userId);
+        $typeMap = $this->typeMapForTasks($userId, $tasks);
+        $customerMap = $this->customerMapForTasks($userId, $tasks);
         $projectMap = $this->projectMap($userId);
         $statusNames = [];
         foreach ($statusMap as $id => $status) {
@@ -221,8 +221,8 @@ final class TaskController
         }
 
         $status = $task->statusId === null ? null : ($this->statusMap($userId)[$task->statusId] ?? null);
-        $type = $task->typeId === null ? null : ($this->typeMap($userId)[$task->typeId] ?? null);
-        $customer = $task->customerId === null ? null : ($this->customerMap($userId)[$task->customerId] ?? null);
+        $type = $task->typeId === null ? null : $this->taskTypes->findForUser($task->ownerId, $task->typeId);
+        $customer = $task->customerId === null ? null : $this->customers->findForUser($task->ownerId, $task->customerId);
         $project = $task->projectId === null ? null : ($this->projectMap($userId)[$task->projectId] ?? null);
         $fields = $this->fieldsForScope($userId, $task->projectId);
         $values = $this->customValues->listForTasks($userId, [$task->id])[$task->id] ?? [];
@@ -323,7 +323,7 @@ final class TaskController
         $userId = $this->userId();
         $query = $request->getQueryParams();
         $projectId = $this->queryInt($query, 'project_id');
-        if ($projectId !== null && $this->projects->findForUser($userId, $projectId) === null) {
+        if ($projectId !== null && $this->projects->findAccessibleForUser($userId, $projectId) === null) {
             $response->getBody()->write($this->translator->trans('validation.selected_project_unavailable'));
             return $response->withStatus(404)->withHeader('Content-Type', 'text/plain; charset=utf-8');
         }
@@ -351,7 +351,7 @@ final class TaskController
         $userId = $this->userId();
         $query = $request->getQueryParams();
         $projectId = $this->queryInt($query, 'project_id');
-        if ($projectId !== null && $this->projects->findForUser($userId, $projectId) === null) {
+        if ($projectId !== null && $this->projects->findAccessibleForUser($userId, $projectId) === null) {
             return $this->json($response, ['error' => $this->translator->trans('validation.selected_project_unavailable')], 404);
         }
 
@@ -392,7 +392,8 @@ final class TaskController
             $statusById[$status->id] = $status;
         }
 
-        foreach ($this->tasks->listFilteredForUser($userId, projectId: $projectId, withoutProject: $withoutProject) as $task) {
+        $boardTasks = $this->tasks->listFilteredForUser($userId, projectId: $projectId, withoutProject: $withoutProject);
+        foreach ($boardTasks as $task) {
             if ($task->statusId === null || !isset($statusById[$task->statusId])) {
                 continue;
             }
@@ -406,10 +407,10 @@ final class TaskController
         return $this->view->render($response, 'tasks/board.twig', $this->commonViewData($request) + [
             'statuses' => $statuses,
             'tasks_by_status' => $tasksByStatus,
-            'type_map' => $this->typeMap($userId),
-            'customer_map' => $this->customerMap($userId),
+            'type_map' => $this->typeMapForTasks($userId, $boardTasks),
+            'customer_map' => $this->customerMapForTasks($userId, $boardTasks),
             'project_map' => $this->projectMap($userId),
-            'projects' => $this->projects->listForUser($userId),
+            'projects' => $this->projects->listAccessibleForUser($userId),
             'project_filter' => $projectFilter,
             'priority_labels' => $this->priorityLabels(),
         ]);
@@ -419,7 +420,7 @@ final class TaskController
     {
         $userId = $this->userId();
         $projectId = $this->queryInt($request->getQueryParams(), 'project_id');
-        if ($projectId !== null && $this->projects->findForUser($userId, $projectId) === null) {
+        if ($projectId !== null && $this->projects->findAccessibleForUser($userId, $projectId) === null) {
             $projectId = null;
         }
         $statuses = $this->statusesForScope($userId, $projectId);
@@ -448,7 +449,7 @@ final class TaskController
 
         $customer = '';
         if ($task->customerId !== null) {
-            $customerRecord = $this->customers->findForUser($userId, $task->customerId);
+            $customerRecord = $this->customers->findForUser($task->ownerId, $task->customerId);
             if ($customerRecord !== null) {
                 $customer = $customerRecord->name;
             }
@@ -512,9 +513,16 @@ final class TaskController
             $input = $this->taskInput($body);
             $this->assertProjectForUser($userId, $input['project_id']);
             $this->assertStatusForScope($userId, $input['status_id'], $input['project_id']);
-            $this->assertMetadataForUser($userId, $input['type_id']);
             $customInput = $this->customInput($body, $this->fieldsForScope($userId, $input['project_id']));
-            $customerId = $this->resolveCustomer($userId, $input['customer']);
+
+            if ($task->ownerId === $userId) {
+                $this->assertMetadataForUser($userId, $input['type_id']);
+                $typeId = $input['type_id'];
+                $customerId = $this->resolveCustomer($userId, $input['customer']);
+            } else {
+                $typeId = $task->typeId;
+                $customerId = $task->customerId;
+            }
 
             $this->tasks->updateForUser(
                 $userId,
@@ -523,7 +531,7 @@ final class TaskController
                 $input['description'],
                 $input['deadline'],
                 $input['status_id'],
-                $input['type_id'],
+                $typeId,
                 $input['priority'],
                 $customerId,
                 $input['project_id'],
@@ -567,6 +575,14 @@ final class TaskController
         $projectId = $this->formProjectId($formData, $task);
         $fields = $this->fieldsForScope($userId, $projectId);
         $response = $response->withStatus($status);
+        $canEditPersonalMetadata = $task === null || $task->ownerId === $userId;
+        $types = $canEditPersonalMetadata
+            ? $this->taskTypes->listForUser($userId)
+            : $this->taskTypesForReadOnlyTask($task);
+        $currentProject = $projectId === null ? null : $this->projects->findAccessibleForUser($userId, $projectId);
+        $projectLocked = $task !== null
+            && $task->projectId !== null
+            && ($this->projects->findAccessibleForUser($userId, $task->projectId)?->isTeamOwned() ?? false);
 
         return $this->view->render($response, 'tasks/form.twig', $this->commonViewData($request) + [
             'task' => $task,
@@ -575,8 +591,11 @@ final class TaskController
             'statuses' => $this->statusesForScope($userId, $projectId),
             'status_options_url' => '/api/task-statuses',
             'custom_fields_url' => '/api/task-custom-fields',
-            'types' => $this->taskTypes->listForUser($userId),
-            'projects' => $this->projects->listForUser($userId),
+            'types' => $types,
+            'projects' => $this->projects->listAccessibleForUser($userId),
+            'can_edit_personal_metadata' => $canEditPersonalMetadata,
+            'project_locked' => $projectLocked,
+            'current_project' => $currentProject,
             'custom_fields' => $fields,
             'custom_form_values' => $this->customFormValues($formData, $task, $fields, $projectId),
         ]);
@@ -973,7 +992,7 @@ final class TaskController
 
     private function assertProjectForUser(int $userId, ?int $projectId): void
     {
-        if ($projectId !== null && $this->projects->findForUser($userId, $projectId) === null) {
+        if ($projectId !== null && $this->projects->findAccessibleForUser($userId, $projectId) === null) {
             throw new DomainException($this->translator->trans('validation.selected_project_unavailable'));
         }
     }
@@ -1064,11 +1083,59 @@ final class TaskController
         return $map;
     }
 
+    /**
+     * @param list<TaskRecord> $tasks
+     * @return array<int, TaskTypeRecord>
+     */
+    private function typeMapForTasks(int $userId, array $tasks): array
+    {
+        $map = $this->typeMap($userId);
+        foreach ($tasks as $task) {
+            if ($task->typeId === null || isset($map[$task->typeId])) {
+                continue;
+            }
+            $record = $this->taskTypes->findForUser($task->ownerId, $task->typeId);
+            if ($record !== null) {
+                $map[$record->id] = $record;
+            }
+        }
+        return $map;
+    }
+
+    /**
+     * @param list<TaskRecord> $tasks
+     * @return array<int, CustomerRecord>
+     */
+    private function customerMapForTasks(int $userId, array $tasks): array
+    {
+        $map = $this->customerMap($userId);
+        foreach ($tasks as $task) {
+            if ($task->customerId === null || isset($map[$task->customerId])) {
+                continue;
+            }
+            $record = $this->customers->findForUser($task->ownerId, $task->customerId);
+            if ($record !== null) {
+                $map[$record->id] = $record;
+            }
+        }
+        return $map;
+    }
+
+    /** @return list<TaskTypeRecord> */
+    private function taskTypesForReadOnlyTask(TaskRecord $task): array
+    {
+        if ($task->typeId === null) {
+            return [];
+        }
+        $record = $this->taskTypes->findForUser($task->ownerId, $task->typeId);
+        return $record === null ? [] : [$record];
+    }
+
     /** @return array<int, ProjectRecord> */
     private function projectMap(int $userId): array
     {
         $map = [];
-        foreach ($this->projects->listForUser($userId) as $project) {
+        foreach ($this->projects->listAccessibleForUser($userId) as $project) {
             $map[$project->id] = $project;
         }
         return $map;
@@ -1382,7 +1449,7 @@ final class TaskController
         }
         if (ctype_digit($value) && (int) $value > 0) {
             $projectId = (int) $value;
-            if ($this->projects->findForUser($userId, $projectId) !== null) {
+            if ($this->projects->findAccessibleForUser($userId, $projectId) !== null) {
                 return [$projectId, false, (string) $projectId];
             }
         }
