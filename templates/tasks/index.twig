@@ -28,20 +28,20 @@
                 </label>
                 <label>
                     {{ t('projects.task_project') }}
-                    <select name="project">
-                        <option value="">{{ t('projects.all_projects') }}</option>
+                    <select name="project" data-status-filter-project data-status-options-url="/api/task-statuses">
                         <option value="none" {{ filters.project == 'none' ? 'selected' : '' }}>{{ t('projects.no_project') }}</option>
                         {% for project in projects %}
                             <option value="{{ project.id }}" {{ filters.project == (project.id ~ '') ? 'selected' : '' }}>{{ project.name }}</option>
                         {% endfor %}
+                        <option value="all" {{ filters.project == 'all' ? 'selected' : '' }}>{{ t('projects.all_projects') }}</option>
                     </select>
                 </label>
                 <label>
                     {{ t('tasks.status') }}
-                    <select name="status_id">
+                    <select name="status_id" data-status-filter-select data-status-placeholder="{{ t('tasks.all_statuses') }}">
                         <option value="">{{ t('tasks.all_statuses') }}</option>
-                        {% for id, status in status_map %}
-                            <option value="{{ id }}" {{ filters.status_id == id ? 'selected' : '' }}>{{ status.name }}</option>
+                        {% for status in filter_statuses %}
+                            <option value="{{ status.id }}" {{ filters.status_id == status.id ? 'selected' : '' }}>{{ status.name }}</option>
                         {% endfor %}
                     </select>
                 </label>
@@ -332,5 +332,6 @@
 {% endblock %}
 
 {% block scripts %}
+<script src="/assets/status-filter.js" defer></script>
 <script src="/assets/bulk-actions.js" defer></script>
 {% endblock %}
