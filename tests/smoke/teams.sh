@@ -101,6 +101,21 @@ code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"
 test "$code" = "302"
 test "$(db "SELECT role FROM team_members WHERE team_id=$team_id AND user_id=$member_id")" = "lead"
 
+# Deployment administration must not bypass the team last-Lead invariant.
+curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/admin/users/$member_id/edit" > /tmp/team-admin-user-edit.html
+admin_user_csrf=$(csrf_from /tmp/team-admin-user-edit.html)
+test -n "$admin_user_csrf"
+
+code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$admin_user_csrf"   --data-urlencode 'username=teammember'   --data-urlencode 'email=teammember@example.invalid'   --data-urlencode 'role=user'   "$BASE_URL/admin/users/$member_id/edit")
+test "$code" = "302"
+test "$(db "SELECT is_active FROM users WHERE id=$member_id")" = "1"
+test "$(db "SELECT role FROM team_members WHERE team_id=$team_id AND user_id=$member_id")" = "lead"
+
+code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$admin_user_csrf"   "$BASE_URL/admin/users/$member_id/delete")
+test "$code" = "302"
+test "$(db "SELECT COUNT(*) FROM users WHERE id=$member_id")" = "1"
+test "$(db "SELECT role FROM team_members WHERE team_id=$team_id AND user_id=$member_id")" = "lead"
+
 # Restore admin as Lead, leave as the second Lead, then delete the team.
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"   --data-urlencode "_csrf=$member_team_csrf"   --data-urlencode 'role=lead'   "$BASE_URL/teams/$team_id/members/$admin_id/role")
 test "$code" = "302"
