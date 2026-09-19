@@ -45,15 +45,22 @@ final class StatusRepository
                     s.color, s.sort_order, s.is_default, s.is_completion, s.show_on_board
              FROM statuses s
              LEFT JOIN projects p ON p.id = s.project_id
+             LEFT JOIN team_members tm
+                ON tm.team_id = p.owner_team_id
+               AND tm.user_id = :member_user_id
              WHERE (s.user_id = :personal_user_id AND s.project_id IS NULL)
                 OR (s.user_id IS NULL
                     AND s.project_id IS NOT NULL
-                    AND p.owner_user_id = :project_user_id
-                    AND p.owner_team_id IS NULL)
+                    AND (
+                        (p.owner_user_id = :project_user_id AND p.owner_team_id IS NULL)
+                        OR
+                        (p.owner_user_id IS NULL AND p.owner_team_id IS NOT NULL AND tm.user_id IS NOT NULL)
+                    ))
              ORDER BY CASE WHEN s.project_id IS NULL THEN 0 ELSE 1 END,
                       s.project_id ASC, s.sort_order ASC, s.id ASC'
         );
         $stmt->execute([
+            'member_user_id' => $userId,
             'personal_user_id' => $userId,
             'project_user_id' => $userId,
         ]);
@@ -81,19 +88,26 @@ final class StatusRepository
                     s.color, s.sort_order, s.is_default, s.is_completion, s.show_on_board
              FROM statuses s
              LEFT JOIN projects p ON p.id = s.project_id
+             LEFT JOIN team_members tm
+                ON tm.team_id = p.owner_team_id
+               AND tm.user_id = :member_user_id
              WHERE s.id = :id
                AND (
                     (s.user_id = :personal_user_id AND s.project_id IS NULL)
                     OR
                     (s.user_id IS NULL
                      AND s.project_id IS NOT NULL
-                     AND p.owner_user_id = :project_user_id
-                     AND p.owner_team_id IS NULL)
+                     AND (
+                        (p.owner_user_id = :project_user_id AND p.owner_team_id IS NULL)
+                        OR
+                        (p.owner_user_id IS NULL AND p.owner_team_id IS NOT NULL AND tm.user_id IS NOT NULL)
+                     ))
                )
              LIMIT 1'
         );
         $stmt->execute([
             'id' => $statusId,
+            'member_user_id' => $userId,
             'personal_user_id' => $userId,
             'project_user_id' => $userId,
         ]);
