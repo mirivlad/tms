@@ -10,8 +10,8 @@
     <form class="metadata-create status-create" method="post" action="/projects/{{ project.id }}/statuses">
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <label><span>{{ t('projects.workflow_name') }}</span><input type="text" name="name" maxlength="96" required></label>
-        <label class="color-field"><span>{{ t('projects.workflow_color') }}</span><input type="color" name="color" value="#6b7280"></label>
         <label><span>{{ t('projects.workflow_description') }}</span><input type="text" name="description" maxlength="512"></label>
+        <label class="color-field"><span>{{ t('projects.workflow_color') }}</span><input type="color" name="color" value="#6b7280"></label>
         <label class="checkbox-inline compact-check"><input type="checkbox" name="show_on_board" value="1" checked> {{ t('projects.workflow_board') }}</label>
         <label class="checkbox-inline compact-check"><input type="checkbox" name="is_default" value="1"> {{ t('projects.workflow_default') }}</label>
         <label class="checkbox-inline compact-check"><input type="checkbox" name="is_completion" value="1"> {{ t('projects.workflow_completion') }}</label>
@@ -31,8 +31,8 @@
             <form class="metadata-edit status-edit" method="post" action="/projects/{{ project.id }}/statuses/{{ status.id }}">
                 <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                 <label><span>{{ t('projects.workflow_name') }}</span><input type="text" name="name" maxlength="96" required value="{{ status.name }}"></label>
-                <label class="color-field"><span>{{ t('projects.workflow_color') }}</span><input type="color" name="color" value="{{ status.color }}"></label>
                 <label><span>{{ t('projects.workflow_description') }}</span><input type="text" name="description" maxlength="512" value="{{ status.description }}"></label>
+                <label class="color-field"><span>{{ t('projects.workflow_color') }}</span><input type="color" name="color" value="{{ status.color }}"></label>
                 <label class="checkbox-inline compact-check"><input type="checkbox" name="show_on_board" value="1" {{ status.showOnBoard ? 'checked' : '' }}> {{ t('projects.workflow_board') }}</label>
                 <button class="secondary compact" type="submit">{{ t('common.save') }}</button>
             </form>

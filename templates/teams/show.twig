@@ -18,7 +18,7 @@
         </div>
     </section>
 
-    <section class="content-card overview-span-2">
+    <section class="content-card">
         <div class="section-heading">
             <div><h2>{{ t('teams.projects') }}</h2><p class="muted">{{ t('teams.overview_project_load') }}</p></div>
             {% if is_lead %}<a href="/projects?owner=team:{{ team.id }}">{{ t('teams.create_project') }}</a>{% endif %}
@@ -44,7 +44,7 @@
         {% endif %}
     </section>
 
-    <section class="content-card overview-span-2">
+    <section class="content-card">
         <div class="section-heading">
             <div><h2>{{ t('teams.members') }}</h2><p class="muted">{{ t('teams.overview_members_help') }}</p></div>
             <a href="/teams/{{ team.id }}/members">{{ t('teams.action_members') }}</a>

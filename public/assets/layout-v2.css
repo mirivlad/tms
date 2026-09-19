@@ -1,0 +1,645 @@
+/* TMS layout v2: dense, responsive workbench layer.
+   Loaded last so feature styles can stay focused on behavior while this file owns composition. */
+
+:root {
+    --workspace-max: 1480px;
+    --workspace-wide-max: 1800px;
+    --workspace-reading-max: 1180px;
+    --layout-gap: clamp(10px, 1vw, 16px);
+    --layout-pad: clamp(12px, 1.4vw, 20px);
+}
+
+html { min-width: 320px; }
+body { min-height: 100dvh; display: flex; flex-direction: column; }
+
+.page {
+    flex: 1 0 auto;
+    width: min(calc(100% - 32px), var(--workspace-max));
+    margin-inline: auto;
+    padding: 16px 0 28px;
+}
+
+.page:has(.board),
+.page:has(.calendar-workspace),
+.page:has(.task-table-card) {
+    width: min(calc(100% - 28px), var(--workspace-wide-max));
+}
+
+.page-footer { margin-top: auto; }
+
+.content-card,
+.auth-card,
+.panel {
+    border-radius: 11px;
+    box-shadow: 0 8px 28px color-mix(in srgb, var(--shadow) 58%, transparent);
+}
+
+.content-card { padding: 14px; }
+.page-header { gap: 14px; margin-bottom: 10px; }
+.page-header .muted { margin: 4px 0 0; }
+.page-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+.compact-page-header { min-height: 34px; }
+.section-heading { gap: 12px; margin-bottom: 8px; }
+.section-heading p { margin-top: 3px; }
+.empty-state { padding: 28px 14px; }
+
+button,
+.button-link { min-height: 36px; padding: 8px 12px; border-radius: 8px; }
+button.compact,
+.compact-action { min-height: 32px; padding: 6px 10px; }
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="search"],
+input[type="date"],
+input[type="datetime-local"],
+select,
+textarea { padding: 8px 10px; border-radius: 8px; }
+textarea { min-height: 92px; }
+label { gap: 5px; }
+
+/* Header/navigation: keep desktop dense; collapse secondary actions into the user menu on phones. */
+.topbar {
+    min-height: 52px;
+    gap: 20px;
+    padding-inline: clamp(14px, 1.6vw, 24px);
+}
+.main-nav { gap: 2px; min-width: 0; }
+.main-nav a,
+.nav-dropdown > summary { padding: 7px 9px; }
+.topbar-actions { gap: 8px; }
+.nav-invitations,
+.nav-create-task { min-height: 34px; padding-top: 6px; padding-bottom: 6px; }
+.nav-create-task-icon { display: none; font-size: 1.35rem; line-height: 1; }
+.mobile-menu-only { display: none !important; }
+
+/* Dashboard: metrics are a status strip, not five hero cards. */
+.dashboard-stats {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 8px;
+    margin-bottom: 10px;
+}
+.dashboard-stats .stat-card {
+    min-height: 66px;
+    grid-template-columns: auto 1fr;
+    grid-template-rows: auto;
+    align-items: baseline;
+    gap: 8px;
+    padding: 11px 13px 11px 15px;
+}
+.dashboard-stats .stat-value { font-size: 1.5rem; line-height: 1; }
+.dashboard-stats .stat-label { font-size: .8rem; }
+.dashboard-tip { margin-bottom: 10px; padding: 10px 13px; }
+.dashboard-grid {
+    grid-template-columns: minmax(220px, .72fr) minmax(320px, 1.25fr) minmax(320px, 1.25fr);
+    gap: 10px;
+}
+.dashboard-context-grid { gap: 10px; margin-top: 10px; }
+.dashboard-context-stats { margin-bottom: 8px; padding: 7px 9px; }
+.dashboard-context-list > a { padding: 8px 3px; }
+.status-chart-wrap { gap: 10px; }
+.status-donut { width: 126px; height: 126px; }
+.status-donut::after { inset: 26px; }
+.status-legend a { padding: 6px 2px; }
+
+/* Admin summary uses the same compact KPI language as the dashboard. */
+.admin-stats { gap: 8px; margin-bottom: 10px; }
+.admin-stats .stat-card {
+    min-height: 66px;
+    grid-template-columns: auto 1fr;
+    align-items: baseline;
+    gap: 8px;
+    padding: 11px 13px 11px 15px;
+}
+.admin-stats .stat-value { font-size: 1.5rem; line-height: 1; }
+.admin-stats .stat-label { font-size: .8rem; }
+
+/* Task list remains a desktop data surface, with explicit horizontal scrolling on small screens. */
+.filters-card { margin-bottom: 10px; padding: 10px 12px; }
+.filter-panel[open] > summary { margin-bottom: 12px; }
+.task-table-card { border-radius: 10px; }
+.table-wrap {
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-gutter: stable;
+}
+.task-table { min-width: 980px; }
+.task-table th,
+.task-table td { padding: 8px 10px; }
+.task-table-summary { padding: 8px 10px; }
+.pagination { padding: 9px; }
+
+/* Kanban: stable card width on desktop; swipeable columns on narrow screens. */
+.board {
+    grid-auto-columns: 300px;
+    gap: 10px;
+    height: calc(100dvh - 138px);
+    min-height: 500px;
+    scroll-snap-type: x proximity;
+}
+.board-column { border-radius: 10px; scroll-snap-align: start; }
+.board-column-header { padding: 10px 11px; }
+.board-cards { gap: 8px; padding: 8px; }
+.task-card { padding: 10px; border-radius: 8px; }
+.task-card-description { -webkit-line-clamp: 2; }
+
+/* Projects/Teams selectors become compact rows instead of big cards. */
+.collab-project-grid,
+.collab-team-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+}
+.collab-project-card,
+.collab-team-card {
+    min-height: 0;
+    grid-template-columns: minmax(210px, .7fr) minmax(260px, 1.35fr) auto;
+    align-items: center;
+    gap: 12px 16px;
+    padding: 11px 12px;
+    border: 0;
+    border-bottom: 1px solid var(--row-border);
+    border-radius: 0;
+    background: transparent;
+}
+.collab-project-card:last-child,
+.collab-team-card:last-child { border-bottom: 0; }
+.collab-project-card .metadata-item-heading,
+.collab-team-card .metadata-item-heading { margin: 0; min-width: 0; }
+.entity-card-description {
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+}
+.entity-card-actions {
+    flex-wrap: nowrap;
+    justify-content: flex-end;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+.entity-card-actions .button-link { min-height: 30px; padding: 5px 8px; font-size: .78rem; }
+
+/* Local navigation behaves as real tabs instead of floating pills/cards. */
+.metadata-tabs {
+    flex-wrap: nowrap;
+    gap: 2px;
+    margin: -2px 0 12px;
+    padding: 0 2px;
+    overflow-x: auto;
+    border-bottom: 1px solid var(--border);
+    scrollbar-width: thin;
+}
+.metadata-tabs a {
+    flex: 0 0 auto;
+    padding: 9px 10px 8px;
+    border: 0;
+    border-radius: 7px 7px 0 0;
+    background: transparent;
+    white-space: nowrap;
+}
+.metadata-tabs a:hover { background: var(--nav-hover-bg); }
+.metadata-tabs a.active {
+    border: 0;
+    background: transparent;
+    color: var(--text-strong);
+    box-shadow: inset 0 -2px 0 var(--focus);
+}
+
+.entity-subnav {
+    flex-wrap: nowrap;
+    gap: 2px;
+    margin: -2px 0 12px;
+    padding: 0 2px;
+    overflow-x: auto;
+    border: 0;
+    border-bottom: 1px solid var(--border);
+    border-radius: 0;
+    background: transparent;
+    scrollbar-width: thin;
+}
+.entity-subnav a {
+    flex: 0 0 auto;
+    padding: 9px 10px 8px;
+    border-radius: 7px 7px 0 0;
+    white-space: nowrap;
+}
+.entity-subnav a:hover { background: var(--nav-hover-bg); box-shadow: none; }
+.entity-subnav a.active {
+    background: transparent;
+    color: var(--text-strong);
+    box-shadow: inset 0 -2px 0 var(--focus);
+}
+
+/* Overview pages: metrics read as compact facts, not nested cards. */
+.entity-overview-grid { gap: 10px; }
+.overview-facts {
+    gap: 0;
+    margin-top: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+.overview-facts > div {
+    min-height: 58px;
+    padding: 9px 11px;
+    border: 0;
+    border-left: 1px solid var(--row-border);
+    border-radius: 0;
+    background: var(--surface-2);
+}
+.overview-facts > div:first-child { border-left: 0; }
+.overview-metrics {
+    gap: 0;
+    margin-bottom: 10px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+}
+.overview-metrics > div {
+    min-height: 54px;
+    padding: 8px 10px;
+    border: 0;
+    border-left: 1px solid var(--row-border);
+    border-radius: 0;
+    background: var(--surface-2);
+}
+.overview-metrics > div:first-child { border-left: 0; }
+.overview-metrics strong { font-size: 1.15rem; }
+.overview-status-list > div,
+.team-project-overview-list > a { padding: 7px 2px; }
+.member-preview-grid { gap: 6px; }
+.member-preview-grid article { padding: 8px 10px; }
+
+/* Management pages: dense rows and inline controls. */
+.metadata-section { margin-bottom: 12px; }
+.metadata-create,
+.metadata-edit { gap: 8px; }
+.metadata-list {
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+}
+.metadata-item {
+    padding: 9px 10px;
+    border: 0;
+    border-bottom: 1px solid var(--row-border);
+    border-radius: 0;
+    background: transparent;
+}
+.metadata-item:last-child { border-bottom: 0; }
+.metadata-item-heading { margin-bottom: 6px; }
+.metadata-actions {
+    gap: 5px;
+    margin-top: 6px;
+    padding-top: 6px;
+}
+.status-create {
+    grid-template-columns: minmax(160px, 1.1fr) minmax(220px, 1.5fr) 64px repeat(3, auto) auto;
+    margin-bottom: 12px;
+}
+.status-edit {
+    grid-template-columns: minmax(160px, 1fr) minmax(220px, 1.5fr) 64px auto auto;
+}
+.color-field input[type="color"] { width: 48px; height: 36px; padding: 3px; }
+.compact-check { min-height: 36px; }
+.custom-field-editor {
+    grid-template-columns: minmax(220px, 1fr) minmax(190px, 260px) auto;
+    gap: 8px 10px;
+}
+.custom-field-options textarea { min-height: 82px; }
+.type-create,
+.type-edit { grid-template-columns: minmax(180px, .8fr) minmax(260px, 1.8fr) auto; }
+.customer-create { max-width: 720px; margin-bottom: 12px; }
+.customer-edit { grid-template-columns: minmax(220px, 1fr) auto; }
+.team-member-list .metadata-item {
+    grid-template-columns: minmax(0, 1fr) auto;
+    padding: 10px 12px;
+}
+.team-member-list .metadata-actions form { gap: 6px; }
+
+/* Settings/forms should stop expanding to billboard proportions. */
+.form-card { width: min(100%, 1080px); max-width: 1080px; }
+.rich-source,
+.rich-surface { min-height: 160px; }
+.form-card + .attachment-card { width: min(100%, 1080px); margin-inline: auto; }
+.entity-management-page { margin-bottom: 12px; }
+.entity-management-page:has(.entity-settings-form),
+.entity-management-page:has(.entity-settings-form) + .danger-zone,
+.attachment-card,
+.admin-edit-grid {
+    width: min(100%, 1180px);
+    margin-inline: auto;
+}
+.entity-settings-form { grid-template-columns: minmax(240px, 1fr) minmax(200px, .42fr); gap: 10px 12px; }
+.entity-settings-form .field-wide textarea { min-height: 140px; }
+.danger-zone { padding-block: 12px; }
+
+/* Discussion workspaces use more of a desktop screen but remain readable. */
+.discussion-workspace { width: min(1360px, 100%); }
+.task-discussion-workspace { width: min(var(--workspace-reading-max), 100%); }
+.project-discussion-workspace {
+    grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
+    gap: 16px;
+}
+.discussion-panel { padding: 14px 16px; border-radius: 11px; }
+.discussion-source,
+.discussion-surface { min-height: 82px; }
+.project-task-discussion-rail { border-radius: 11px; top: 64px; }
+
+/* Files: compact upload row and predictable file list. */
+.attachment-card { display: grid; gap: 12px; }
+.attachment-heading h2 { margin: 0; }
+.attachment-heading p { margin: 4px 0 0; }
+.attachment-upload {
+    display: flex;
+    align-items: end;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: var(--surface-2);
+}
+.attachment-upload label { flex: 1 1 320px; min-width: 0; }
+.attachment-upload input[type="file"] { max-width: 100%; }
+.attachment-upload button { flex: 0 0 auto; width: auto; }
+.attachment-list {
+    display: grid;
+    gap: 0;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+}
+.attachment-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 11px;
+    border-bottom: 1px solid var(--row-border);
+}
+.attachment-row:last-child { border-bottom: 0; }
+.attachment-details { min-width: 0; display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.attachment-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attachment-row form { display: block; flex: 0 0 auto; }
+.attachment-empty { margin: 0; }
+
+/* Notifications are settings/data surfaces, not full-width dashboards. */
+.notification-card,
+.notification-inbox {
+    width: min(100%, 1180px);
+    margin-left: auto;
+    margin-right: auto;
+}
+.notification-form { gap: 12px; }
+.notification-rule { gap: 10px 14px; padding: 10px; }
+.notification-inbox-link { padding: 12px 14px; }
+
+/* Calendar is a wide surface; filters collapse below it on tablet. */
+.calendar-workspace { gap: 10px; }
+.calendar-sidebar { border-radius: 10px; }
+.calendar-shell { border-radius: 9px; }
+
+/* Breakpoints */
+@media (max-width: 1180px) {
+    .page { width: min(calc(100% - 24px), var(--workspace-max)); }
+    .dashboard-stats { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .dashboard-grid { grid-template-columns: 1fr 1fr; }
+    .dashboard-next-card { grid-column: 1 / -1; }
+
+    .collab-project-card,
+    .collab-team-card {
+        grid-template-columns: minmax(190px, .75fr) minmax(220px, 1fr);
+    }
+    .entity-card-actions { grid-column: 1 / -1; justify-content: flex-start; }
+
+    .status-create,
+    .status-edit { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+@media (max-width: 900px) {
+    .page,
+    .page:has(.board),
+    .page:has(.calendar-workspace),
+    .page:has(.task-table-card) { width: min(calc(100% - 20px), var(--workspace-max)); }
+
+    .topbar {
+        grid-template-columns: auto minmax(0, 1fr) auto;
+        grid-template-rows: auto auto;
+        padding-block: 7px;
+    }
+    .brand { grid-column: 1; grid-row: 1; }
+    .topbar-actions { grid-column: 3; grid-row: 1; }
+    .main-nav {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        justify-self: stretch;
+        overflow-x: auto;
+        overscroll-behavior-inline: contain;
+        scrollbar-width: thin;
+    }
+
+    .dashboard-context-grid,
+    .entity-overview-grid { grid-template-columns: 1fr; }
+    .overview-span-2 { grid-column: auto; }
+    .project-discussion-workspace { grid-template-columns: 1fr; }
+    .project-task-discussion-rail { position: static; }
+
+    .collab-project-card,
+    .collab-team-card { grid-template-columns: 1fr; }
+    .entity-card-actions { grid-column: auto; }
+
+    .entity-settings-form { grid-template-columns: 1fr; }
+    .entity-settings-form .field-wide { grid-column: auto; }
+
+    .board { grid-auto-columns: minmax(280px, 42vw); }
+}
+
+@media (max-width: 720px) {
+    :root { --layout-pad: 12px; }
+
+    .page,
+    .page:has(.board),
+    .page:has(.calendar-workspace),
+    .page:has(.task-table-card) {
+        width: min(calc(100% - 20px), var(--workspace-max));
+        padding-top: 12px;
+    }
+
+    .topbar { position: sticky; top: 0; min-height: 50px; gap: 8px; }
+    .topbar-actions { gap: 5px; }
+    .topbar-actions > .nav-invitations { display: none; }
+    .main-nav > .nav-mobile-secondary,\n    .main-nav > .nav-settings-menu { display: none; }
+    .mobile-menu-only { display: flex !important; }
+    .nav-create-task { min-width: 36px; padding-inline: 9px; }
+    .nav-create-task-icon { display: inline; }
+    .nav-create-task-label { display: none; }
+    .user-menu > summary { max-width: 120px; padding-inline: 7px; }
+    .user-menu .nav-dropdown-panel { top: 54px; }
+    .nav-settings-menu .nav-dropdown-panel { top: 98px; }
+
+    .page-header { align-items: stretch; flex-direction: column; gap: 7px; }
+    .page-header > .text-link { align-self: flex-start; }
+    .page-header-actions { justify-content: flex-start; }
+
+    .content-card { padding: 12px; }
+    .dashboard-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .dashboard-stats .stat-card { min-height: 58px; padding: 9px 10px 9px 13px; }
+    .dashboard-grid { grid-template-columns: 1fr; }
+    .dashboard-next-card { grid-column: auto; }
+
+    .overview-facts,
+    .overview-metrics { grid-template-columns: 1fr 1fr; }
+    .overview-facts > div:nth-child(odd),
+    .overview-metrics > div:nth-child(odd) { border-left: 0; }
+    .overview-facts > div,
+    .overview-metrics > div { border-bottom: 1px solid var(--row-border); }
+    .overview-facts > div:nth-last-child(-n + 2),
+    .overview-metrics > div:nth-last-child(-n + 2) { border-bottom: 0; }
+
+    .entity-card-actions { flex-wrap: wrap; }
+    .entity-card-actions .button-link { flex: 0 1 auto; }
+
+    .status-create,
+    .status-edit,
+    .custom-field-editor,
+    .team-member-list .metadata-item { grid-template-columns: 1fr; }
+
+    .discussion-panel { padding: 12px; }
+    .discussion-composer-footer { flex-direction: column; align-items: stretch; }
+    .discussion-compose-actions { justify-content: space-between; }
+
+    .board {
+        height: auto;
+        min-height: 0;
+        grid-auto-columns: minmax(82vw, 1fr);
+        padding-bottom: 8px;
+        scroll-snap-type: x mandatory;
+    }
+    .board-column { max-height: 72dvh; min-height: 360px; }
+    .board-cards { overflow-y: auto; }
+
+    .calendar-workspace { grid-template-columns: 1fr; }
+    .calendar-sidebar { order: 2; }
+
+    .task-table { min-width: 0; }
+    .table-wrap { margin-inline: -12px; padding-inline: 12px; overflow-x: visible; }
+    .task-table thead { display: none; }
+    .task-table tbody {
+        display: grid;
+        gap: 8px;
+        padding: 2px 0;
+    }
+    .task-table tbody tr {
+        position: relative;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 12px;
+        padding: 11px 12px 10px;
+        border: 1px solid var(--border);
+        border-radius: 9px;
+        background: var(--surface);
+    }
+    .task-table tbody tr:has(.task-select-cell) { padding-left: 38px; }
+    .task-table td {
+        display: grid;
+        grid-template-columns: minmax(88px, .72fr) minmax(0, 1fr);
+        align-items: baseline;
+        gap: 8px;
+        min-width: 0;
+        padding: 5px 0;
+        border: 0;
+    }
+    .task-table td[data-label]::before {
+        content: attr(data-label);
+        color: var(--muted);
+        font-size: .7rem;
+        font-weight: 700;
+    }
+    .task-table .task-title-cell {
+        order: -1;
+        grid-column: 1 / -1;
+        display: block;
+        padding: 0 0 8px;
+        border-bottom: 1px solid var(--row-border);
+    }
+    .task-table .task-title-cell::before { display: none; }
+    .task-table .task-title { font-size: .95rem; }
+    .task-table .task-preview { max-width: none; white-space: normal; }
+    .task-table .task-select-cell {
+        position: absolute;
+        top: 11px;
+        left: 11px;
+        display: block;
+        width: auto;
+        padding: 0;
+    }
+    .task-table .task-row-actions {
+        grid-column: 1 / -1;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding-top: 8px;
+        border-top: 1px solid var(--row-border);
+    }
+    .task-table .task-row-actions::before { display: none; }
+    .task-table .nowrap { white-space: normal; }
+    .task-table .custom-value-cell { max-width: none; }
+
+    .rich-source,
+    .rich-surface { min-height: 140px; }
+
+    .attachment-upload { align-items: stretch; }
+    .attachment-upload label { flex-basis: 100%; }
+    .attachment-upload button { align-self: flex-start; }
+    .attachment-row { align-items: flex-start; }
+}
+
+@media (max-width: 480px) {
+    .page,
+    .page:has(.board),
+    .page:has(.calendar-workspace),
+    .page:has(.task-table-card) { width: min(calc(100% - 16px), var(--workspace-max)); }
+
+    .brand { letter-spacing: .04em; }
+    .main-nav a,
+    .nav-dropdown > summary { padding-inline: 8px; }
+
+    .dashboard-stats { grid-template-columns: 1fr 1fr; }
+    .dashboard-stats .stat-card {
+        grid-template-columns: 1fr;
+        gap: 3px;
+        align-items: start;
+    }
+
+    .overview-facts,
+    .overview-metrics { grid-template-columns: 1fr; }
+    .overview-facts > div,
+    .overview-metrics > div {
+        border-left: 0;
+        border-bottom: 1px solid var(--row-border);
+    }
+    .overview-facts > div:last-child,
+    .overview-metrics > div:last-child { border-bottom: 0; }
+
+    .metadata-badges { margin-left: 0; }
+    .metadata-item-heading { align-items: flex-start; flex-direction: column; }
+
+    .team-member-list .metadata-actions form { width: 100%; flex-wrap: wrap; }
+    .team-member-list select { flex: 1 1 150px; }
+    .task-table tbody tr { grid-template-columns: 1fr; }
+    .task-table td { grid-template-columns: minmax(86px, .65fr) minmax(0, 1fr); }
+    .task-table .task-title-cell,
+    .task-table .task-row-actions { grid-column: auto; }
+    .attachment-row { flex-direction: column; }
+    .attachment-row form { width: 100%; }
+    .attachment-row form button { width: 100%; }
+
+    .discussion-comment { grid-template-columns: 27px minmax(0, 1fr); gap: 7px; }
+    .discussion-replies { padding-left: 6px; }
+}
