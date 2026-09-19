@@ -190,7 +190,7 @@ final class DiscussionNotificationServiceTest extends TestCase
         $member = $this->notifications->listForUser(2);
         self::assertCount(1, $member);
         self::assertSame('discussion_reply', $member[0]->notificationType);
-        self::assertStringContainsString('/tasks/100/edit#comment-', $member[0]->targetUrl);
+        self::assertStringContainsString('/tasks/100/discussion#comment-', $member[0]->targetUrl);
 
         $watcher = $this->notifications->listForUser(3);
         self::assertCount(1, $watcher);
