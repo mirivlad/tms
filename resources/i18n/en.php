@@ -288,6 +288,8 @@ return [
     'task_form.customer' => 'Customer',
     'task_form.customer_placeholder' => 'Existing or new customer',
     'task_form.customer_help' => 'Start typing to search your customers. If the name does not exist yet, TMS creates it automatically when the task is saved.',
+    'task_form.personal_metadata_author_only' => 'Task type and customer are personal metadata owned by the task author.',
+    'task_form.team_project_move_locked' => 'A shared team task stays in its team project.',
     'task_form.save_changes' => 'Save changes',
     'task_form.create_task' => 'Create task',
 
