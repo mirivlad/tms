@@ -17,13 +17,16 @@ final class AttachmentRepository
     /** @return list<AttachmentRecord> */
     public function listForTask(int $userId, int $taskId): array
     {
+        if (!$this->taskAccessible($userId, $taskId)) {
+            return [];
+        }
         $stmt = $this->db->prepare(
             'SELECT id, task_id, user_id, storage_name, original_name, mime_type, file_size, sha256, created_at
              FROM attachments
-             WHERE task_id = :task_id AND user_id = :user_id
+             WHERE task_id = :task_id
              ORDER BY created_at DESC, id DESC'
         );
-        $stmt->execute(['task_id' => $taskId, 'user_id' => $userId]);
+        $stmt->execute(['task_id' => $taskId]);
 
         $records = [];
         while (($row = $stmt->fetch()) !== false) {
@@ -53,16 +56,18 @@ final class AttachmentRepository
 
     public function findForTask(int $userId, int $taskId, int $attachmentId): ?AttachmentRecord
     {
+        if (!$this->taskAccessible($userId, $taskId)) {
+            return null;
+        }
         $stmt = $this->db->prepare(
             'SELECT id, task_id, user_id, storage_name, original_name, mime_type, file_size, sha256, created_at
              FROM attachments
-             WHERE id = :id AND task_id = :task_id AND user_id = :user_id
+             WHERE id = :id AND task_id = :task_id
              LIMIT 1'
         );
         $stmt->execute([
             'id' => $attachmentId,
             'task_id' => $taskId,
-            'user_id' => $userId,
         ]);
         $row = $stmt->fetch();
         return is_array($row) ? $this->hydrate($row) : null;
@@ -76,7 +81,7 @@ final class AttachmentRepository
         if ($files === []) {
             return;
         }
-        if (!$this->taskBelongsToUser($userId, $taskId)) {
+        if (!$this->taskAccessible($userId, $taskId)) {
             throw new DomainException('Task is unavailable.');
         }
 
@@ -113,24 +118,49 @@ final class AttachmentRepository
 
     public function deleteForTask(int $userId, int $taskId, int $attachmentId): bool
     {
+        if (!$this->taskAccessible($userId, $taskId)) {
+            return false;
+        }
         $stmt = $this->db->prepare(
-            'DELETE FROM attachments
-             WHERE id = :id AND task_id = :task_id AND user_id = :user_id'
+            'DELETE FROM attachments WHERE id = :id AND task_id = :task_id'
         );
         $stmt->execute([
             'id' => $attachmentId,
             'task_id' => $taskId,
-            'user_id' => $userId,
         ]);
         return $stmt->rowCount() === 1;
     }
 
-    private function taskBelongsToUser(int $userId, int $taskId): bool
+    private function taskAccessible(int $userId, int $taskId): bool
     {
         $stmt = $this->db->prepare(
-            'SELECT 1 FROM tasks WHERE id = :id AND created_by = :user_id LIMIT 1'
+            'SELECT 1
+             FROM tasks t
+             LEFT JOIN projects p ON p.id = t.project_id
+             LEFT JOIN team_members tm
+                ON tm.team_id = p.owner_team_id
+               AND tm.user_id = :member_user_id
+             WHERE t.id = :task_id
+               AND (
+                    (t.project_id IS NULL AND t.created_by = :personal_user_id)
+                    OR
+                    (t.project_id IS NOT NULL
+                     AND p.owner_user_id = :project_user_id
+                     AND p.owner_team_id IS NULL)
+                    OR
+                    (t.project_id IS NOT NULL
+                     AND p.owner_user_id IS NULL
+                     AND p.owner_team_id IS NOT NULL
+                     AND tm.user_id IS NOT NULL)
+               )
+             LIMIT 1'
         );
-        $stmt->execute(['id' => $taskId, 'user_id' => $userId]);
+        $stmt->execute([
+            'member_user_id' => $userId,
+            'task_id' => $taskId,
+            'personal_user_id' => $userId,
+            'project_user_id' => $userId,
+        ]);
         return $stmt->fetchColumn() !== false;
     }
 
@@ -160,7 +190,7 @@ final class AttachmentRepository
         return new AttachmentRecord(
             id: (int) $row['id'],
             taskId: (int) $row['task_id'],
-            userId: (int) $row['user_id'],
+            userId: $row['user_id'] !== null ? (int) $row['user_id'] : null,
             storageName: (string) $row['storage_name'],
             originalName: (string) $row['original_name'],
             mimeType: (string) $row['mime_type'],
