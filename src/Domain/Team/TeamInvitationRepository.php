@@ -108,7 +108,6 @@ final class TeamInvitationRepository
         );
         $stmt->execute([
             'team_id' => $teamId,
-            'lead_team_id' => $teamId,
             'actor_user_id' => $actorUserId,
         ]);
         return $this->fetchAll($stmt);
