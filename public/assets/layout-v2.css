@@ -526,11 +526,12 @@ label { gap: 5px; }
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 0 12px;
-        padding: 11px 12px 10px 38px;
+        padding: 11px 12px 10px;
         border: 1px solid var(--border);
         border-radius: 9px;
         background: var(--surface);
     }
+    .task-table tbody tr:has(.task-select-cell) { padding-left: 38px; }
     .task-table td {
         display: grid;
         grid-template-columns: minmax(88px, .72fr) minmax(0, 1fr);
