@@ -62,17 +62,33 @@ Status/custom-field migrations must preserve existing tasks and must not silentl
 
 ### Stage C — Teams
 
-Teams add collaboration without weakening personal ownership:
+Teams add collaboration without weakening personal ownership. The stage is split so membership and invitation state exist before project authorization depends on them.
+
+#### C1 — Team core and internal invitations
 
 - create a team; the creator becomes Team Lead;
-- roles start deliberately small: `lead` and `member`;
-- invite existing users to a team;
-- invitations are visible in TMS and may additionally be delivered through configured Telegram/email channels;
+- roles stay deliberately small: `lead` and `member`;
+- team membership and role changes are lead-controlled, with a last-lead guard;
+- invite existing users by username/email;
 - invitation state: `pending`, `accepted`, `declined`, `revoked`, `expired`;
-- team-owned projects;
+- invitations are visible inside TMS with accept/decline actions and a navbar indicator;
+- TMS invitation state is the source of truth.
+
+#### C2 — Team-owned projects and authorization
+
+- activate the already-reserved team ownership on projects;
 - team members can see and work with the team’s projects and tasks;
+- team Leads manage project settings and ownership-level operations;
+- Members work with project tasks and ordinary task data;
+- personal projects remain isolated from team membership.
+
+#### C3 — Assignment and invitation delivery
+
 - task assignee is separate from access: membership grants project access, assignee says who is responsible for the task;
-- tasks may remain unassigned.
+- tasks may remain unassigned;
+- assignees are limited to members of the team that owns the project;
+- configured Telegram/email channels may deliver team-invitation notifications that link back to TMS;
+- external channels are notification transports only and never become invitation state.
 
 No Workspace layer is required for 0.2. It can be introduced later only if a real use case appears.
 
