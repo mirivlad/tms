@@ -26,7 +26,7 @@ CREATE TABLE discussion_comments (
         ON UPDATE RESTRICT ON DELETE CASCADE,
     CONSTRAINT fk_discussion_parent
         FOREIGN KEY (parent_comment_id) REFERENCES discussion_comments (id)
-        ON UPDATE RESTRICT ON DELETE RESTRICT,
+        ON UPDATE RESTRICT ON DELETE CASCADE,
     CONSTRAINT fk_discussion_author
         FOREIGN KEY (author_user_id) REFERENCES users (id)
         ON UPDATE RESTRICT ON DELETE RESTRICT
