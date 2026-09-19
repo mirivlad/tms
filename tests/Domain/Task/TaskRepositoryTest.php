@@ -22,8 +22,18 @@ final class TaskRepositoryTest extends TestCase
         $this->db->exec(
             'CREATE TABLE statuses (
                 id INTEGER PRIMARY KEY,
-                user_id INTEGER NOT NULL,
+                user_id INTEGER NULL,
+                project_id INTEGER NULL,
+                source_status_id INTEGER NULL,
                 name TEXT NOT NULL
+            )'
+        );
+
+        $this->db->exec(
+            'CREATE TABLE projects (
+                id INTEGER PRIMARY KEY,
+                owner_user_id INTEGER NULL,
+                owner_team_id INTEGER NULL
             )'
         );
 
@@ -77,8 +87,12 @@ final class TaskRepositoryTest extends TestCase
 
     public function testTaskCannotBeMovedToAnotherUsersStatus(): void
     {
-        self::assertFalse($this->repository->updateStatusForUser(1, 100, 20));
-        self::assertSame(10, $this->statusOf(100));
+        try {
+            $this->repository->updateStatusForUser(1, 100, 20);
+            self::fail('Foreign status should be rejected.');
+        } catch (\DomainException) {
+            self::assertSame(10, $this->statusOf(100));
+        }
     }
 
     public function testOwnerCanChangeTaskStatus(): void
