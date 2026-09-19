@@ -1,0 +1,23 @@
+<header class="page-header compact-page-header">
+    <div>
+        <h1>{{ project.name }}</h1>
+        <p class="muted">
+            {{ t('projects.status.' ~ project.lifecycleStatus) }}
+            · {{ project_team ? project_team.name : t('projects.personal') }}
+        </p>
+    </div>
+    <a class="text-link" href="/projects">{{ t('projects.back') }}</a>
+</header>
+
+<nav class="entity-subnav" aria-label="{{ t('projects.project_navigation') }}">
+    <a href="/projects/{{ project.id }}" {{ project_section == 'overview' ? 'class="active"' : '' }}>{{ t('projects.action_overview') }}</a>
+    {% if can_manage %}
+        <a href="/projects/{{ project.id }}/settings" {{ project_section == 'settings' ? 'class="active"' : '' }}>{{ t('projects.action_settings') }}</a>
+        <a href="/projects/{{ project.id }}/statuses" {{ project_section == 'statuses' ? 'class="active"' : '' }}>{{ t('projects.action_statuses') }}</a>
+        <a href="/projects/{{ project.id }}/fields" {{ project_section == 'fields' ? 'class="active"' : '' }}>{{ t('projects.action_fields') }}</a>
+    {% endif %}
+    <a href="/projects/{{ project.id }}/files" {{ project_section == 'files' ? 'class="active"' : '' }}>{{ t('projects.action_files') }}</a>
+    {% if discussion_enabled %}
+        <a href="/projects/{{ project.id }}/discussion" {{ project_section == 'discussion' ? 'class="active"' : '' }}>{{ t('projects.action_discussion') }}</a>
+    {% endif %}
+</nav>
