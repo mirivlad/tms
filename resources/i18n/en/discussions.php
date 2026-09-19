@@ -16,6 +16,7 @@ return [
     'discussions.delete_confirm' => 'Delete this comment?',
     'discussions.deleted_placeholder' => 'Comment deleted.',
     'discussions.edited' => 'edited',
+    'discussions.deleted_user' => 'Deleted user',
     'discussions.empty' => 'No comments yet.',
     'discussions.empty_help' => 'Start the discussion in the work context where it belongs.',
     'discussions.saved' => 'Comment saved.',
