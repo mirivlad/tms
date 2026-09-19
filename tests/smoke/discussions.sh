@@ -164,6 +164,16 @@ task_comment=$(db "SELECT id FROM discussion_comments
                    WHERE task_id=$task_id AND project_id IS NULL
                    ORDER BY id DESC LIMIT 1")
 test -n "$task_comment"
+test "$(db "SELECT COUNT(*) FROM internal_notifications
+            WHERE user_id=$admin_id AND comment_id=$task_comment
+              AND notification_type='discussion_mention'")" = "1"
+
+curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/notifications" > /tmp/discussion-admin-inbox-final.html
+admin_inbox_csrf=$(csrf_from /tmp/discussion-admin-inbox-final.html)
+test -n "$admin_inbox_csrf"
+code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$admin_inbox_csrf"   "$BASE_URL/notifications/read-all")
+test "$code" = "302"
+test "$(db "SELECT COUNT(*) FROM internal_notifications WHERE user_id=$admin_id AND read_at IS NULL")" = "0"
 
 # Removing membership revokes discussion access immediately.
 curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/teams/$team_id" > /tmp/discussion-team-admin.html
