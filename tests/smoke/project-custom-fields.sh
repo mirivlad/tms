@@ -100,3 +100,13 @@ test "$code" = "302"
 test "$(db "SELECT project_id IS NULL FROM tasks WHERE id=$task_id")" = "1"
 test "$(db "SELECT value FROM task_custom_field_values WHERE task_id=$task_id AND field_id=$personal_field")" = "LINEAGE-VALUE"
 test "$(db "SELECT COUNT(*) FROM task_custom_field_values WHERE task_id=$task_id AND field_id=$project_only_field")" = "0"
+
+# Keep this smoke self-contained so the general custom-field workflow starts
+# from its expected clean personal field set.
+code=$(curl --silent -o /dev/null -w '%{http_code}' --cookie "$COOKIE_JAR" \
+  --data-urlencode "_csrf=$csrf" "$BASE_URL/tasks/$task_id/delete")
+test "$code" = "302"
+code=$(curl --silent -o /dev/null -w '%{http_code}' --cookie "$COOKIE_JAR" \
+  --data-urlencode "_csrf=$csrf" "$BASE_URL/custom-fields/$personal_field/delete")
+test "$code" = "302"
+test "$(db "SELECT COUNT(*) FROM custom_fields WHERE id=$personal_field")" = "0"
