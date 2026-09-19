@@ -108,6 +108,20 @@ final class ProjectRepository
             );
             $clone->execute(['project_id' => $projectId, 'user_id' => $userId]);
 
+            $cloneFields = $this->db->prepare(
+                'INSERT INTO custom_fields (
+                    user_id, project_id, source_field_id, name, field_type, options_json,
+                    is_required, sort_order, created_at, updated_at
+                 )
+                 SELECT
+                    NULL, :project_id, id, name, field_type, options_json,
+                    is_required, sort_order, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                 FROM custom_fields
+                 WHERE user_id = :user_id AND project_id IS NULL
+                 ORDER BY sort_order ASC, id ASC'
+            );
+            $cloneFields->execute(['project_id' => $projectId, 'user_id' => $userId]);
+
             $this->db->commit();
             return $projectId;
         } catch (Throwable $error) {
@@ -159,6 +173,73 @@ final class ProjectRepository
             $fallback = $this->personalDefaultStatusId($userId);
             if ($fallback === null) {
                 throw new DomainException('A personal default status is required before deleting a project.');
+            }
+
+            $projectFields = $this->db->prepare(
+                'SELECT id, source_field_id, field_type
+                 FROM custom_fields
+                 WHERE user_id IS NULL AND project_id = :project_id
+                 ORDER BY id ASC'
+            );
+            $projectFields->execute(['project_id' => $projectId]);
+
+            $sourceField = $this->db->prepare(
+                'SELECT field_type
+                 FROM custom_fields
+                 WHERE id = :field_id AND user_id = :user_id AND project_id IS NULL
+                 LIMIT 1'
+            );
+            $projectValues = $this->db->prepare(
+                'SELECT v.task_id, v.user_id, v.value
+                 FROM task_custom_field_values v
+                 INNER JOIN tasks t
+                    ON t.id = v.task_id
+                   AND t.created_by = v.user_id
+                 WHERE v.field_id = :field_id
+                   AND t.project_id = :project_id
+                   AND t.created_by = :user_id'
+            );
+            $deletePersonalValue = $this->db->prepare(
+                'DELETE FROM task_custom_field_values
+                 WHERE task_id = :task_id AND field_id = :field_id AND user_id = :user_id'
+            );
+            $insertPersonalValue = $this->db->prepare(
+                'INSERT INTO task_custom_field_values (
+                    task_id, field_id, user_id, value, created_at, updated_at
+                 ) VALUES (
+                    :task_id, :field_id, :user_id, :value, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                 )'
+            );
+
+            while (($field = $projectFields->fetch()) !== false) {
+                if (!is_array($field) || $field['source_field_id'] === null) {
+                    continue;
+                }
+
+                $sourceId = (int) $field['source_field_id'];
+                $sourceField->execute(['field_id' => $sourceId, 'user_id' => $userId]);
+                $sourceType = $sourceField->fetchColumn();
+                if (!is_string($sourceType) || $sourceType !== (string) $field['field_type']) {
+                    continue;
+                }
+
+                $projectValues->execute([
+                    'field_id' => (int) $field['id'],
+                    'project_id' => $projectId,
+                    'user_id' => $userId,
+                ]);
+                while (($value = $projectValues->fetch()) !== false) {
+                    if (!is_array($value)) {
+                        continue;
+                    }
+                    $params = [
+                        'task_id' => (int) $value['task_id'],
+                        'field_id' => $sourceId,
+                        'user_id' => (int) $value['user_id'],
+                    ];
+                    $deletePersonalValue->execute($params);
+                    $insertPersonalValue->execute($params + ['value' => (string) $value['value']]);
+                }
             }
 
             $statusRows = $this->db->prepare(
