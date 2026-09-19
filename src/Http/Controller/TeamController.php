@@ -11,7 +11,6 @@ use Slim\Views\Twig;
 use Tms\Application\TeamInvitationDeliveryService;
 use Tms\Domain\Project\ProjectRepository;
 use Tms\Domain\Project\ProjectStatusRepository;
-use Tms\Domain\Status\StatusRecord;
 use Tms\Domain\Task\TaskRepository;
 use Tms\Domain\Team\TeamInvitationRepository;
 use Tms\Domain\Team\TeamRecord;
@@ -84,9 +83,7 @@ final class TeamController
             $statuses = $this->projectStatuses->listForProject($this->userId(), $project->id);
             $completion = [];
             foreach ($statuses as $status) {
-                if ($status instanceof StatusRecord) {
-                    $completion[$status->id] = $status->isCompletion;
-                }
+                $completion[$status->id] = $status->isCompletion;
             }
 
             $projectOpen = 0;
