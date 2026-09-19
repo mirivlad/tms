@@ -9,6 +9,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
 use Tms\Domain\CustomField\CustomFieldRepository;
+use Tms\Domain\Discussion\DiscussionRepository;
 use Tms\Domain\Project\ProjectAttachmentRepository;
 use Tms\Domain\Project\ProjectCustomFieldRepository;
 use Tms\Domain\Project\ProjectRepository;
@@ -31,6 +32,7 @@ final class ProjectController
         private readonly ProjectStatusRepository $statuses,
         private readonly ProjectCustomFieldRepository $fields,
         private readonly TeamRepository $teams,
+        private readonly DiscussionRepository $discussions,
         private readonly Translator $translator,
     ) {
     }
@@ -72,6 +74,8 @@ final class ProjectController
         $team = $project->ownerTeamId === null
             ? null
             : $this->teams->findForMember($userId, $project->ownerTeamId);
+        $discussionNotice = $this->consumeDiscussionNotice();
+        $discussionEnabled = $project->ownerTeamId !== null && $team !== null;
         $assigneeMap = [];
         if ($project->ownerTeamId !== null) {
             foreach ($this->teams->listMembers($userId, $project->ownerTeamId) as $member) {
@@ -85,6 +89,13 @@ final class ProjectController
             'project' => $project,
             'can_manage' => $this->projects->canManageForUser($userId, $project->id),
             'project_team' => $team,
+            'discussion_enabled' => $discussionEnabled,
+            'discussion_comments' => $discussionEnabled ? $this->discussions->listForProject($userId, $project->id) : [],
+            'discussion_notice' => $discussionNotice,
+            'discussion_base_url' => '/projects/' . $project->id . '/discussion',
+            'discussion_current_user_id' => $userId,
+            'discussion_can_moderate' => $project->ownerTeamId !== null
+                && $this->teams->roleForUser($userId, $project->ownerTeamId) === 'lead',
             'tasks' => $this->tasks->listForProjectForUser($userId, $project->id),
             'attachments' => $this->attachments->listForProject($userId, $project->id),
             'statuses' => array_values($statusMap),
@@ -295,6 +306,19 @@ final class ProjectController
     {
         $value = $args['id'] ?? '';
         return ctype_digit($value) ? (int) $value : 0;
+    }
+
+    /** @return array{kind:string,message:string}|null */
+    private function consumeDiscussionNotice(): ?array
+    {
+        $notice = $_SESSION['_discussion_notice'] ?? null;
+        unset($_SESSION['_discussion_notice']);
+        if (!is_array($notice)
+            || !is_string($notice['kind'] ?? null)
+            || !is_string($notice['message'] ?? null)) {
+            return null;
+        }
+        return ['kind' => $notice['kind'], 'message' => $notice['message']];
     }
 
     private function userId(): int
