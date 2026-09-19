@@ -338,7 +338,6 @@ final class DiscussionRepository
              WHERE p.id = :project_id
                AND p.owner_user_id IS NULL
                AND p.owner_team_id IS NOT NULL
-               AND c.team_id = p.owner_team_id
              LIMIT 1'
         );
         $stmt->execute(['user_id' => $userId, 'project_id' => $projectId]);
@@ -391,6 +390,7 @@ final class DiscussionRepository
              WHERE c.id = :comment_id
                AND p.owner_user_id IS NULL
                AND p.owner_team_id IS NOT NULL
+               AND c.team_id = p.owner_team_id
              LIMIT 1'
         );
         $stmt->execute(['user_id' => $userId, 'comment_id' => $commentId]);
