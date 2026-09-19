@@ -11,7 +11,8 @@
 
         const refreshStatuses = async () => {
             controller?.abort();
-            controller = new AbortController();
+            const requestController = new AbortController();
+            controller = requestController;
 
             const url = new URL(endpoint, window.location.origin);
             const project = projectSelect.value;
@@ -29,7 +30,7 @@
                 const response = await fetch(url, {
                     credentials: 'same-origin',
                     headers: {Accept: 'application/json'},
-                    signal: controller.signal,
+                    signal: requestController.signal,
                 });
                 if (!response.ok) {
                     throw new Error(`Unable to load statuses: ${response.status}`);
@@ -63,7 +64,7 @@
                     console.error(error);
                 }
             } finally {
-                if (!controller.signal.aborted) {
+                if (!requestController.signal.aborted) {
                     statusSelect.disabled = wasDisabled;
                     statusSelect.removeAttribute('aria-busy');
                 }
