@@ -22,9 +22,9 @@ final class CustomFieldRepository
     public function listForUser(int $userId): array
     {
         $stmt = $this->db->prepare(
-            'SELECT id, user_id, name, field_type, options_json, is_required, sort_order
+            'SELECT id, user_id, project_id, source_field_id, name, field_type, options_json, is_required, sort_order
              FROM custom_fields
-             WHERE user_id = :user_id
+             WHERE user_id = :user_id AND project_id IS NULL
              ORDER BY sort_order ASC, id ASC'
         );
         $stmt->execute(['user_id' => $userId]);
@@ -41,9 +41,9 @@ final class CustomFieldRepository
     public function findForUser(int $userId, int $fieldId): ?CustomFieldRecord
     {
         $stmt = $this->db->prepare(
-            'SELECT id, user_id, name, field_type, options_json, is_required, sort_order
+            'SELECT id, user_id, project_id, source_field_id, name, field_type, options_json, is_required, sort_order
              FROM custom_fields
-             WHERE id = :id AND user_id = :user_id LIMIT 1'
+             WHERE id = :id AND user_id = :user_id AND project_id IS NULL LIMIT 1'
         );
         $stmt->execute(['id' => $fieldId, 'user_id' => $userId]);
         $row = $stmt->fetch();
@@ -64,9 +64,9 @@ final class CustomFieldRepository
 
         $stmt = $this->db->prepare(
             'INSERT INTO custom_fields (
-                user_id, name, field_type, options_json, is_required, sort_order, created_at, updated_at
+                user_id, project_id, source_field_id, name, field_type, options_json, is_required, sort_order, created_at, updated_at
              ) VALUES (
-                :user_id, :name, :field_type, :options_json, :is_required, :sort_order,
+                :user_id, NULL, NULL, :name, :field_type, :options_json, :is_required, :sort_order,
                 CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
              )'
         );
@@ -110,7 +110,7 @@ final class CustomFieldRepository
                      options_json = :options_json,
                      is_required = :is_required,
                      updated_at = CURRENT_TIMESTAMP
-                 WHERE id = :id AND user_id = :user_id'
+                 WHERE id = :id AND user_id = :user_id AND project_id IS NULL'
             );
             $stmt->execute([
                 'name' => $name,
@@ -142,7 +142,7 @@ final class CustomFieldRepository
     public function deleteForUser(int $userId, int $fieldId): bool
     {
         $stmt = $this->db->prepare(
-            'DELETE FROM custom_fields WHERE id = :id AND user_id = :user_id'
+            'DELETE FROM custom_fields WHERE id = :id AND user_id = :user_id AND project_id IS NULL'
         );
         $stmt->execute(['id' => $fieldId, 'user_id' => $userId]);
         return $stmt->rowCount() === 1;
@@ -169,7 +169,7 @@ final class CustomFieldRepository
             $stmt = $this->db->prepare(
                 'UPDATE custom_fields
                  SET sort_order = :sort_order, updated_at = CURRENT_TIMESTAMP
-                 WHERE id = :id AND user_id = :user_id'
+                 WHERE id = :id AND user_id = :user_id AND project_id IS NULL'
             );
             foreach ($fieldIds as $index => $fieldId) {
                 $stmt->execute([
@@ -327,7 +327,7 @@ final class CustomFieldRepository
     private function nextSortOrder(int $userId): int
     {
         $stmt = $this->db->prepare(
-            'SELECT COALESCE(MAX(sort_order), 0) FROM custom_fields WHERE user_id = :user_id'
+            'SELECT COALESCE(MAX(sort_order), 0) FROM custom_fields WHERE user_id = :user_id AND project_id IS NULL'
         );
         $stmt->execute(['user_id' => $userId]);
         return (int) $stmt->fetchColumn() + 1;
@@ -355,12 +355,14 @@ final class CustomFieldRepository
 
         return new CustomFieldRecord(
             id: (int) $row['id'],
-            userId: (int) $row['user_id'],
+            userId: $row['user_id'] !== null ? (int) $row['user_id'] : null,
             name: (string) $row['name'],
             type: (string) $row['field_type'],
             options: $options,
             isRequired: (bool) $row['is_required'],
             sortOrder: (int) $row['sort_order'],
+            projectId: $row['project_id'] !== null ? (int) $row['project_id'] : null,
+            sourceFieldId: $row['source_field_id'] !== null ? (int) $row['source_field_id'] : null,
         );
     }
 }
