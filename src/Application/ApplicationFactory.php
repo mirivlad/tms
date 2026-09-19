@@ -23,6 +23,7 @@ use Tms\Domain\CustomField\CustomFieldRepository;
 use Tms\Domain\CustomField\CustomFieldValueCodec;
 use Tms\Domain\CustomField\TaskCustomFieldValueRepository;
 use Tms\Domain\Discussion\DiscussionRepository;
+use Tms\Domain\Notification\InternalNotificationRepository;
 use Tms\Domain\Notification\NotificationSettingsRepository;
 use Tms\Domain\Notification\SmtpSettingsRepository;
 use Tms\Domain\Notification\TelegramLinkTokenRepository;
@@ -47,6 +48,7 @@ use Tms\Http\Controller\CustomerSearchController;
 use Tms\Http\Controller\CustomFieldController;
 use Tms\Http\Controller\DashboardController;
 use Tms\Http\Controller\DiscussionController;
+use Tms\Http\Controller\InternalNotificationController;
 use Tms\Http\Controller\LocaleController;
 use Tms\Http\Controller\MetadataController;
 use Tms\Http\Controller\NotificationAdminController;
@@ -171,6 +173,7 @@ final class ApplicationFactory
         $teams = new TeamRepository($db);
         $teamInvitations = new TeamInvitationRepository($db);
         $attachments = new AttachmentRepository($db);
+        $internalNotifications = new InternalNotificationRepository($db);
         $notificationSettings = new NotificationSettingsRepository($db);
         $smtpSettings = new SmtpSettingsRepository($db);
         $telegramLinkTokens = new TelegramLinkTokenRepository($db);
@@ -185,6 +188,10 @@ final class ApplicationFactory
         $twig->getEnvironment()->addFunction(new TwigFunction('current_projects', static function () use ($sessions, $projects): array {
             $userId = $sessions->currentUserId();
             return $userId === null ? [] : $projects->listForUser($userId);
+        }));
+        $twig->getEnvironment()->addFunction(new TwigFunction('current_notification_count', static function () use ($sessions, $internalNotifications): int {
+            $userId = $sessions->currentUserId();
+            return $userId === null ? 0 : $internalNotifications->countUnreadForUser($userId);
         }));
         $twig->getEnvironment()->addFunction(new TwigFunction('current_team_invitation_count', static function () use ($sessions, $teamInvitations): int {
             $userId = $sessions->currentUserId();
@@ -280,6 +287,12 @@ final class ApplicationFactory
         $metadataController = new MetadataController($twig, $sessions, $statuses, $taskTypes, $customers, $translator);
         $customFieldController = new CustomFieldController($twig, $sessions, $customFields, $translator);
         $statusDefaultsController = new StatusDefaultsController($sessions, $userBootstrap);
+        $internalNotificationController = new InternalNotificationController(
+            $twig,
+            $sessions,
+            $internalNotifications,
+            $translator,
+        );
         $notificationController = new NotificationSettingsController(
             $twig,
             $sessions,
@@ -440,6 +453,9 @@ final class ApplicationFactory
         $app->post('/custom-fields/{id:[0-9]+}/move', [$customFieldController, 'move'])->add($requireAuth);
         $app->post('/custom-fields/{id:[0-9]+}/delete', [$customFieldController, 'delete'])->add($requireAuth);
 
+        $app->get('/notifications', [$internalNotificationController, 'index'])->add($requireAuth);
+        $app->get('/notifications/{id:[0-9]+}/open', [$internalNotificationController, 'open'])->add($requireAuth);
+        $app->post('/notifications/read-all', [$internalNotificationController, 'markAllRead'])->add($requireAuth);
         $app->get('/settings/profile', [$profileController, 'show'])->add($requireAuth);
         $app->post('/settings/profile', [$profileController, 'save'])->add($requireAuth);
         $app->get('/settings/notifications', [$notificationController, 'show'])->add($requireAuth);
