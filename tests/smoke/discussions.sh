@@ -93,6 +93,24 @@ if printf '%s' "$root_body" | grep -qi '<script'; then
   exit 1
 fi
 
+# Mention creates one canonical unread inbox item for the current team member.
+mention_notification=$(db "SELECT id FROM internal_notifications
+                           WHERE user_id=$admin_id
+                             AND comment_id=$root_id
+                             AND notification_type='discussion_mention'
+                           LIMIT 1")
+test -n "$mention_notification"
+test "$(db "SELECT read_at IS NULL FROM internal_notifications WHERE id=$mention_notification")" = "1"
+
+curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/notifications" > /tmp/discussion-admin-inbox.html
+grep -q 'notification-inbox-item is-unread' /tmp/discussion-admin-inbox.html
+grep -q 'discussionmember' /tmp/discussion-admin-inbox.html
+
+code=$(curl --silent -D /tmp/discussion-open.headers -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   "$BASE_URL/notifications/$mention_notification/open")
+test "$code" = "302"
+grep -qi "location: /projects/$project_id#comment-$root_id" /tmp/discussion-open.headers
+test "$(db "SELECT read_at IS NOT NULL FROM internal_notifications WHERE id=$mention_notification")" = "1"
+
 # Lead replies; reply-to-reply is rejected.
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$project_csrf"   --data-urlencode 'body=<p>@discussionmember Lead reply</p>'   "$BASE_URL/projects/$project_id/discussion/$root_id/reply")
 test "$code" = "302"
