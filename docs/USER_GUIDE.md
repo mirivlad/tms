@@ -23,13 +23,21 @@ Each project has its own task statuses and custom fields. Team Leads manage team
 
 Project files use the same private upload policy as task attachments: they are stored outside the public web root and downloaded only through authorized application routes. Deleting a personal project keeps its tasks by returning them to **No project**. A team project cannot be deleted while it still has tasks.
 
+Project lifecycle values (**active**, **paused**, **done**, **archived**) describe organization/state; they do not silently change authorization or make tasks read-only. A Team Lead or personal owner can change the lifecycle again when work is resumed.
+
 ## Teams
 
 Create a team from **Teams**. The creator becomes the first **Lead**. Leads can invite existing TMS users, change member roles and manage team-owned projects. The initial role model is intentionally small: **Lead** and **Member**.
 
 Invitations are accepted or declined inside TMS. Pending invitations are shown in the navigation badge and expire automatically. If the invited user has email and/or Telegram enabled, TMS may also send a link to the invitation page through those channels; the external message does not itself accept the invitation.
 
-Removing a member immediately removes access to team-owned projects. Tasks remain intact, and any tasks assigned to that member become unassigned.
+Removing a member immediately removes access to team-owned projects. Tasks remain intact, and any tasks assigned to that member become unassigned. A team must always keep at least one Lead; the last Lead cannot leave, be removed, be disabled by an administrator or be deleted until another Lead exists.
+
+## Discussions
+
+Team-owned projects and their tasks have contextual discussions. Use project discussion for project-wide decisions and task discussion for conversation about one task. Replies are intentionally limited to one level so discussions stay attached to work instead of becoming a general-purpose chat.
+
+Use `@username` to notify a current member of the owning team. Direct replies notify the parent comment author. Authors can edit or delete their own comments; Team Leads can delete any comment but cannot rewrite another person's message. Deleted comments leave a placeholder when replies still depend on them.
 
 ## Filters and bulk work
 
@@ -49,7 +57,9 @@ Language can be switched between English and Russian. The chosen UI language doe
 
 ## Notifications
 
-Open **Settings → Notifications** to choose email/Telegram channels and rules for tomorrow, upcoming deadlines, overdue tasks and digest delivery.
+The **Notifications** item in the top bar is the canonical in-app inbox for team mentions and direct replies. Its badge counts unread items. Opening an item marks it read and jumps to the relevant project/task comment when that context is still accessible. Historical notifications remain visible after access is removed, but TMS will not reopen a project/task you can no longer access.
+
+Open **Settings → Notification settings** to choose email/Telegram channels and rules for tomorrow, upcoming deadlines, overdue tasks and digest delivery. The in-app inbox is always available; enabled email and Telegram channels also carry team invitations, mentions and direct replies as links back to TMS.
 
 To link Telegram:
 
