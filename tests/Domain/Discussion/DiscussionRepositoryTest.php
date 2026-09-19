@@ -47,6 +47,7 @@ final class DiscussionRepositoryTest extends TestCase
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             project_id INTEGER NULL,
             task_id INTEGER NULL,
+            team_id INTEGER NULL,
             parent_comment_id INTEGER NULL,
             author_user_id INTEGER NULL,
             body_html TEXT NOT NULL,
@@ -55,6 +56,7 @@ final class DiscussionRepositoryTest extends TestCase
             deleted_at TEXT NULL,
             FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE,
             FOREIGN KEY (task_id) REFERENCES tasks (id) ON DELETE CASCADE,
+            FOREIGN KEY (team_id) REFERENCES teams (id) ON DELETE CASCADE,
             FOREIGN KEY (parent_comment_id) REFERENCES discussion_comments (id) ON DELETE CASCADE,
             FOREIGN KEY (author_user_id) REFERENCES users (id) ON DELETE SET NULL
         )');
@@ -82,6 +84,9 @@ final class DiscussionRepositoryTest extends TestCase
         self::assertNull($project[0]->parentCommentId);
         self::assertSame($root, $project[1]->parentCommentId);
         self::assertSame('member', $project[0]->authorUsername);
+        self::assertSame('7', (string) $this->db->query(
+            'SELECT team_id FROM discussion_comments WHERE id = ' . $root
+        )->fetchColumn());
         self::assertSame([$taskComment], array_map(
             static fn ($comment): int => $comment->id,
             $this->discussions->listForTask(2, 100),
@@ -142,16 +147,27 @@ final class DiscussionRepositoryTest extends TestCase
         self::assertFalse($comments[1]->isDeleted());
     }
 
-    public function testTaskDiscussionFollowsCurrentProjectMembershipAfterMove(): void
+    public function testTaskDiscussionKeepsOriginalTeamContextAfterMove(): void
     {
-        $comment = $this->discussions->createForTask(2, 100, '<p>Before move</p>');
+        $oldComment = $this->discussions->createForTask(2, 100, '<p>Before move</p>');
         self::assertCount(1, $this->discussions->listForTask(1, 100));
+        self::assertSame('7', (string) $this->db->query(
+            'SELECT team_id FROM discussion_comments WHERE id = ' . $oldComment
+        )->fetchColumn());
 
         $this->db->exec('UPDATE tasks SET project_id = 30 WHERE id = 100');
 
+        // The original Team 7 thread is no longer reachable through a task
+        // that now belongs to Team 8, and it must not leak to Team 8 either.
         self::assertSame([], $this->discussions->listForTask(1, 100));
         self::assertSame([], $this->discussions->listForTask(2, 100));
-        self::assertSame([$comment], array_map(
+        self::assertSame([], $this->discussions->listForTask(3, 100));
+
+        $newComment = $this->discussions->createForTask(3, 100, '<p>After move</p>');
+        self::assertSame('8', (string) $this->db->query(
+            'SELECT team_id FROM discussion_comments WHERE id = ' . $newComment
+        )->fetchColumn());
+        self::assertSame([$newComment], array_map(
             static fn ($item): int => $item->id,
             $this->discussions->listForTask(3, 100),
         ));
