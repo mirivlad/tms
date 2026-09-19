@@ -168,6 +168,60 @@ final class TaskCrudRepositoryTest extends TestCase
         );
     }
 
+    public function testAssigneeMustBelongToTeamThatOwnsProject(): void
+    {
+        $taskId = $this->tasks->createForUser(
+            1,
+            'Assigned team task',
+            '',
+            null,
+            22,
+            null,
+            1,
+            null,
+            90,
+            2,
+        );
+        self::assertSame(2, $this->tasks->findForUser(1, $taskId)?->assigneeUserId);
+
+        self::assertTrue($this->tasks->updateForUser(
+            2,
+            $taskId,
+            'Reassigned team task',
+            '',
+            null,
+            22,
+            null,
+            1,
+            null,
+            90,
+            1,
+        ));
+        self::assertSame(1, $this->tasks->findForUser(1, $taskId)?->assigneeUserId);
+
+        try {
+            $this->tasks->updateForUser(
+                1,
+                $taskId,
+                'Invalid assignee',
+                '',
+                null,
+                22,
+                null,
+                1,
+                null,
+                90,
+                3,
+            );
+            self::fail('Non-member assignee must be rejected.');
+        } catch (DomainException) {
+            self::assertSame(1, $this->tasks->findForUser(1, $taskId)?->assigneeUserId);
+        }
+
+        $this->expectException(DomainException::class);
+        $this->tasks->createForUser(1, 'Personal assigned', '', null, 10, null, 1, null, null, 1);
+    }
+
     public function testQuickUpdateChangesOnlyPreviewFieldsAndKeepsOwnerScope(): void
     {
         $id = $this->tasks->createForUser(1, 'Quick edit', '<p>Old</p>', null, 10, 30, 2, 50);
