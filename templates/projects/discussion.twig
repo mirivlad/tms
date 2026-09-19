@@ -6,58 +6,64 @@
 {% block content %}
 {% include 'projects/_nav.twig' %}
 
-<div class="discussion-context-summary">
-    <span>{{ t('discussions.project_total', {'count': discussion_project_stat.count}) }}</span>
-    {% if discussion_project_stat.unread > 0 %}
-        <span class="discussion-unread-badge">{{ t('discussions.unread_count', {'count': discussion_project_stat.unread}) }}</span>
-    {% endif %}
+<div class="discussion-workspace project-discussion-workspace">
+    <main class="project-discussion-main">
+        <header class="discussion-page-heading">
+            <div>
+                <h2>{{ t('discussions.project_thread_title') }}</h2>
+                <p class="muted">{{ t('discussions.project_thread_help') }}</p>
+            </div>
+            <div class="discussion-context-summary">
+                <span>{{ t('discussions.message_count', {'count': discussion_comments|length}) }}</span>
+                {% if discussion_project_stat.unread > 0 %}
+                    <span class="discussion-unread-badge">{{ t('discussions.unread_count', {'count': discussion_project_stat.unread}) }}</span>
+                {% endif %}
+            </div>
+        </header>
+
+        {% include 'discussions/thread.twig' %}
+    </main>
+
+    <aside class="project-task-discussion-rail">
+        <header class="discussion-rail-heading">
+            <div>
+                <h2>{{ t('discussions.task_threads_title') }}</h2>
+                <p class="muted">{{ t('discussions.task_threads_help') }}</p>
+            </div>
+            <span class="count-badge">{{ discussion_task_threads|length }}</span>
+        </header>
+
+        {% if discussion_task_threads is empty %}
+            <div class="discussion-rail-empty">
+                <strong>{{ t('discussions.task_threads_empty') }}</strong>
+                <span class="muted">{{ t('discussions.task_threads_empty_help') }}</span>
+            </div>
+        {% else %}
+            <div class="project-task-thread-list">
+            {% for thread in discussion_task_threads %}
+                <details class="project-task-thread {{ thread.stat.unread > 0 ? 'has-unread' : '' }}" {{ thread.stat.unread > 0 ? 'open' : '' }}>
+                    <summary class="project-task-thread-header">
+                        <div class="project-task-thread-title">
+                            <span class="task-title">{{ thread.task.title }}</span>
+                            <span class="muted">{{ t('discussions.message_count', {'count': thread.stat.count}) }}</span>
+                        </div>
+                        <div class="project-task-thread-meta">
+                            {% if thread.stat.unread > 0 %}
+                                <span class="discussion-unread-badge">{{ thread.stat.unread }}</span>
+                            {% endif %}
+                            <span class="task-thread-chevron" aria-hidden="true">⌄</span>
+                        </div>
+                    </summary>
+                    <div class="project-task-thread-preview">
+                        {% include 'discussions/_read_only_thread.twig' with {'comments': thread.comments} %}
+                        <a class="button-link secondary-link compact task-thread-open" href="/tasks/{{ thread.task.id }}/discussion">{{ t('discussions.open') }}</a>
+                    </div>
+                </details>
+            {% endfor %}
+            </div>
+        {% endif %}
+    </aside>
 </div>
-
-<section class="project-discussion-section">
-    <div class="section-heading">
-        <div>
-            <h2>{{ t('discussions.project_thread_title') }}</h2>
-            <p class="muted">{{ t('discussions.project_thread_help') }}</p>
-        </div>
-    </div>
-    {% include 'discussions/thread.twig' %}
-</section>
-
-<section class="content-card project-task-discussions">
-    <div class="section-heading">
-        <div>
-            <h2>{{ t('discussions.task_threads_title') }}</h2>
-            <p class="muted">{{ t('discussions.task_threads_help') }}</p>
-        </div>
-    </div>
-
-    {% if discussion_task_threads is empty %}
-        <div class="empty-state">
-            <strong>{{ t('discussions.task_threads_empty') }}</strong>
-            <span>{{ t('discussions.task_threads_empty_help') }}</span>
-        </div>
-    {% else %}
-        <div class="project-task-thread-list">
-        {% for thread in discussion_task_threads %}
-            <article class="project-task-thread">
-                <header class="project-task-thread-header">
-                    <div>
-                        <a class="task-title" href="/tasks/{{ thread.task.id }}/discussion">{{ thread.task.title }}</a>
-                        <div class="muted">{{ t('discussions.message_count', {'count': thread.stat.count}) }}</div>
-                    </div>
-                    <div class="project-task-thread-actions">
-                        {% if thread.stat.unread > 0 %}
-                            <span class="discussion-unread-badge">{{ t('discussions.unread_count', {'count': thread.stat.unread}) }}</span>
-                        {% endif %}
-                        <a class="button-link secondary-link compact" href="/tasks/{{ thread.task.id }}/discussion">{{ t('discussions.open') }}</a>
-                    </div>
-                </header>
-                {% include 'discussions/_read_only_thread.twig' with {'comments': thread.comments} %}
-            </article>
-        {% endfor %}
-        </div>
-    {% endif %}
-</section>
 {% endblock %}
 
 {% block scripts %}<script src="/assets/discussions.js" defer></script>{% endblock %}
