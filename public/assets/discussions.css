@@ -55,3 +55,92 @@
 @media (max-width: 700px) {
     .discussion-replies { margin-left: 10px; }
 }
+
+.discussion-context-summary {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin: -4px 0 14px;
+    color: var(--muted);
+    font-size: .84rem;
+}
+.discussion-unread-badge {
+    display: inline-flex;
+    align-items: center;
+    min-height: 22px;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: var(--nav-active-bg);
+    color: var(--nav-active-fg);
+    font-size: .72rem;
+    font-weight: 800;
+}
+.discussion-link {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.discussion-link .count-badge {
+    min-width: 22px;
+}
+.project-discussion-section {
+    display: grid;
+    gap: 14px;
+    margin-bottom: 18px;
+}
+.project-task-discussions {
+    margin-top: 18px;
+}
+.project-task-thread-list {
+    display: grid;
+    gap: 14px;
+}
+.project-task-thread {
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface-subtle);
+    overflow: hidden;
+}
+.project-task-thread-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--row-border);
+}
+.project-task-thread-header > div:first-child {
+    display: grid;
+    gap: 3px;
+    min-width: 0;
+}
+.project-task-thread-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+.project-task-thread .discussion-thread-readonly {
+    padding: 12px;
+}
+.project-task-thread .discussion-thread-readonly .discussion-comment {
+    background: var(--surface);
+}
+.discussion-thread-readonly .discussion-actions {
+    display: none;
+}
+.discussion-empty-inline {
+    margin: 0;
+    padding: 12px 14px;
+}
+@media (max-width: 700px) {
+    .project-task-thread-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+    .project-task-thread-actions {
+        width: 100%;
+        justify-content: space-between;
+    }
+}

@@ -6,7 +6,18 @@
 {% block content %}
 <div class="page-header compact-page-header">
     <h1>{{ task ? task.title : t('task_form.create_heading') }}</h1>
-    <a class="text-link" href="/tasks">{{ t('task_form.back') }}</a>
+    <div class="page-header-actions">
+        {% if task and discussion_enabled %}
+            <a class="button-link secondary-link compact discussion-link" href="/tasks/{{ task.id }}/discussion">
+                {{ t('discussions.open') }}
+                <span class="count-badge">{{ discussion_stat.count }}</span>
+                {% if discussion_stat.unread > 0 %}
+                    <span class="discussion-unread-badge">{{ discussion_stat.unread }}</span>
+                {% endif %}
+            </a>
+        {% endif %}
+        <a class="text-link" href="/tasks">{{ t('task_form.back') }}</a>
+    </div>
 </div>
 
 <section class="content-card form-card">
@@ -180,9 +191,6 @@
         {% endif %}
     </section>
 {% endif %}
-{% if discussion_enabled %}
-    {% include 'discussions/thread.twig' %}
-{% endif %}
 {% endblock %}
 
-{% block scripts %}<script src="/assets/task-form.js" defer></script><script src="/assets/discussions.js" defer></script>{% endblock %}
+{% block scripts %}<script src="/assets/task-form.js" defer></script>{% endblock %}

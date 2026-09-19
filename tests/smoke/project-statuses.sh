@@ -77,6 +77,9 @@ test "$code" = "200"
 curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/projects/$project_id/statuses" > /tmp/ps-detail.html
 grep -q 'Project workflow' /tmp/ps-detail.html
 grep -q 'Review' /tmp/ps-detail.html
+grep -q 'class="metadata-create status-create"' /tmp/ps-detail.html
+grep -q 'class="metadata-edit status-edit"' /tmp/ps-detail.html
+grep -q 'class="color-field"' /tmp/ps-detail.html
 
 code=$(curl --silent -o /dev/null -w '%{http_code}' --cookie "$COOKIE_JAR" \
   --data-urlencode "_csrf=$csrf" "$BASE_URL/projects/$project_id/delete")

@@ -9,6 +9,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
 use Tms\Domain\CustomField\CustomFieldRepository;
+use Tms\Domain\Discussion\DiscussionReadRepository;
 use Tms\Domain\Discussion\DiscussionRepository;
 use Tms\Domain\Project\ProjectAttachmentRepository;
 use Tms\Domain\Project\ProjectCustomFieldRepository;
@@ -35,6 +36,7 @@ final class ProjectController
         private readonly ProjectCustomFieldRepository $fields,
         private readonly TeamRepository $teams,
         private readonly DiscussionRepository $discussions,
+        private readonly DiscussionReadRepository $discussionReads,
         private readonly Translator $translator,
     ) {
     }
@@ -114,11 +116,39 @@ final class ProjectController
         $discussionComments = $project->ownerTeamId !== null
             ? $this->discussions->listForProject($userId, $project->id)
             : [];
-        $recentDiscussion = array_values(array_filter(
-            $discussionComments,
-            static fn ($comment): bool => $comment->deletedAt === null,
-        ));
-        $recentDiscussion = array_reverse(array_slice($recentDiscussion, -5));
+        $taskDiscussionComments = $project->ownerTeamId !== null
+            ? $this->discussions->listTaskCommentsForProject($userId, $project->id)
+            : [];
+        $taskTitles = [];
+        foreach ($tasks as $task) {
+            $taskTitles[$task->id] = $task->title;
+        }
+        $recentDiscussion = [];
+        foreach ($discussionComments as $comment) {
+            if ($comment->deletedAt === null) {
+                $recentDiscussion[] = ['comment' => $comment, 'task_title' => null];
+            }
+        }
+        foreach ($taskDiscussionComments as $taskId => $comments) {
+            foreach ($comments as $comment) {
+                if ($comment->deletedAt === null) {
+                    $recentDiscussion[] = [
+                        'comment' => $comment,
+                        'task_title' => $taskTitles[$taskId] ?? null,
+                    ];
+                }
+            }
+        }
+        usort(
+            $recentDiscussion,
+            static fn (array $left, array $right): int =>
+                strcmp($right['comment']->updatedAt, $left['comment']->updatedAt)
+                ?: ($right['comment']->id <=> $left['comment']->id),
+        );
+        $recentDiscussion = array_slice($recentDiscussion, 0, 5);
+        $discussionStat = $project->ownerTeamId !== null
+            ? ($this->discussionReads->statsForProjects($userId, [$project->id])[$project->id] ?? ['count' => 0, 'unread' => 0])
+            : ['count' => 0, 'unread' => 0];
 
         $statusSummary = [];
         foreach ($statuses as $status) {
@@ -139,7 +169,8 @@ final class ProjectController
                 'open_task_count' => count($tasks) - $completedTasks,
                 'completed_task_count' => $completedTasks,
                 'attachment_count' => count($this->attachments->listForProject($userId, $project->id)),
-                'discussion_count' => count($discussionComments),
+                'discussion_count' => $discussionStat['count'],
+                'discussion_unread' => $discussionStat['unread'],
                 'recent_discussion' => $recentDiscussion,
             ],
         ));
@@ -228,18 +259,47 @@ final class ProjectController
             return $response->withStatus(404)->withHeader('Content-Type', 'text/plain; charset=utf-8');
         }
 
+        $userId = $this->userId();
+        $projectComments = $this->discussions->listForProject($userId, $project->id);
+        $taskComments = $this->discussions->listTaskCommentsForProject($userId, $project->id);
+        $tasks = $this->tasks->listForProjectForUser($userId, $project->id);
+        $taskStats = $this->discussionReads->statsForTasks(
+            $userId,
+            array_map(static fn ($task): int => $task->id, $tasks),
+        );
+        $projectStat = $this->discussionReads->statsForProjects($userId, [$project->id])[$project->id]
+            ?? ['count' => 0, 'unread' => 0];
+
+        $taskThreads = [];
+        foreach ($tasks as $task) {
+            $comments = $taskComments[$task->id] ?? [];
+            $stat = $taskStats[$task->id] ?? ['count' => 0, 'unread' => 0];
+            if ($stat['count'] === 0) {
+                continue;
+            }
+            $taskThreads[] = [
+                'task' => $task,
+                'comments' => $comments,
+                'stat' => $stat,
+            ];
+        }
+
+        $this->discussionReads->markProjectRead($userId, $project->id);
+
         return $this->view->render($response, 'projects/discussion.twig', $this->baseProjectView(
             $request,
             $project,
             [
-                'discussion_comments' => $this->discussions->listForProject($this->userId(), $project->id),
+                'discussion_comments' => $projectComments,
                 'discussion_notice' => $this->consumeDiscussionNotice(),
                 'discussion_base_url' => '/projects/' . $project->id . '/discussion',
-                'discussion_current_user_id' => $this->userId(),
+                'discussion_current_user_id' => $userId,
                 'discussion_can_moderate' => $this->teams->roleForUser(
-                    $this->userId(),
+                    $userId,
                     (int) $project->ownerTeamId,
                 ) === 'lead',
+                'discussion_project_stat' => $projectStat,
+                'discussion_task_threads' => $taskThreads,
             ],
         ));
     }
@@ -327,6 +387,10 @@ final class ProjectController
         }
 
         $projects = $this->projects->listForUser($userId);
+        $discussionStats = $this->discussionReads->statsForProjects(
+            $userId,
+            array_map(static fn (ProjectRecord $project): int => $project->id, $projects),
+        );
         $manageable = [];
         foreach ($projects as $project) {
             $manageable[$project->id] = $this->projects->canManageForUser($userId, $project->id);
@@ -347,6 +411,7 @@ final class ProjectController
             'lead_teams' => $leadTeams,
             'team_map' => $teamMap,
             'manageable_projects' => $manageable,
+            'discussion_stats' => $discussionStats,
             'lifecycle_statuses' => ProjectRepository::LIFECYCLE_STATUSES,
             'error' => $error,
             'create_form' => $createForm,

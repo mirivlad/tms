@@ -18,7 +18,7 @@ use Tms\Domain\CustomField\CustomFieldRecord;
 use Tms\Domain\CustomField\CustomFieldRepository;
 use Tms\Domain\CustomField\CustomFieldValueCodec;
 use Tms\Domain\CustomField\TaskCustomFieldValueRepository;
-use Tms\Domain\Discussion\DiscussionRepository;
+use Tms\Domain\Discussion\DiscussionReadRepository;
 use Tms\Domain\Project\ProjectCustomFieldRepository;
 use Tms\Domain\Project\ProjectRecord;
 use Tms\Domain\Project\ProjectStatusRepository;
@@ -56,7 +56,7 @@ final class TaskController
         private readonly ProjectStatusRepository $projectStatuses,
         private readonly ProjectCustomFieldRepository $projectCustomFields,
         private readonly TeamRepository $teams,
-        private readonly DiscussionRepository $discussions,
+        private readonly DiscussionReadRepository $discussionReads,
         private readonly CustomFieldRepository $customFields,
         private readonly TaskCustomFieldValueRepository $customValues,
         private readonly CustomFieldValueCodec $customValueCodec,
@@ -155,6 +155,10 @@ final class TaskController
         $totalPages = max(1, (int) ceil($totalTasks / $perPage));
         $page = min($this->page($query), $totalPages);
         $tasks = array_slice($tasks, ($page - 1) * $perPage, $perPage);
+        $discussionStats = $this->discussionReads->statsForTasks(
+            $userId,
+            array_map(static fn (TaskRecord $task): int => $task->id, $tasks),
+        );
 
         $filters = [
             'status_id' => $statusId,
@@ -215,6 +219,7 @@ final class TaskController
             'pagination' => $this->pagination($viewParams, $page, $totalPages),
             'per_page_links' => $this->perPageLinks($viewParams, $perPage),
             'bulk_notice' => $bulkNotice,
+            'discussion_stats' => $discussionStats,
         ]);
     }
 
@@ -252,6 +257,11 @@ final class TaskController
                 'value' => $this->customValueCodec->display($field, $values[$field->id]),
             ];
         }
+
+        $discussionEnabled = $project !== null && $project->isTeamOwned();
+        $discussionStat = $discussionEnabled
+            ? ($this->discussionReads->statsForTasks($userId, [$task->id])[$task->id] ?? ['count' => 0, 'unread' => 0])
+            : ['count' => 0, 'unread' => 0];
 
         $attachments = array_map(
             static fn (AttachmentRecord $attachment): array => [
@@ -294,6 +304,10 @@ final class TaskController
             'updated_at' => $task->updatedAt,
             'custom_fields' => $custom,
             'attachments' => $attachments,
+            'discussion_enabled' => $discussionEnabled,
+            'discussion_count' => $discussionStat['count'],
+            'discussion_unread' => $discussionStat['unread'],
+            'discussion_url' => $discussionEnabled ? '/tasks/' . $task->id . '/discussion' : null,
             'edit_url' => '/tasks/' . $task->id . '/edit',
             'quick_update_url' => '/api/tasks/' . $task->id . '/quick-edit',
             'delete_url' => '/tasks/' . $task->id . '/delete',
@@ -448,6 +462,14 @@ final class TaskController
         }
 
         $projects = $this->projects->listForUser($userId);
+        $boardTaskIds = [];
+        foreach ($tasksByStatus as $statusTasks) {
+            foreach ($statusTasks as $task) {
+                $boardTaskIds[] = $task->id;
+            }
+        }
+        $discussionStats = $this->discussionReads->statsForTasks($userId, $boardTaskIds);
+
         return $this->view->render($response, 'tasks/board.twig', $this->commonViewData($request) + [
             'statuses' => $statuses,
             'tasks_by_status' => $tasksByStatus,
@@ -458,6 +480,7 @@ final class TaskController
             'assignee_map' => $this->assigneeMapForProjects($userId, $projects),
             'project_filter' => $projectFilter,
             'priority_labels' => $this->priorityLabels(),
+            'discussion_stats' => $discussionStats,
         ]);
     }
 
@@ -634,25 +657,13 @@ final class TaskController
         $project = $projectId === null ? null : $this->projects->findForUser($userId, $projectId);
         $teamProject = $project?->isTeamOwned() ?? false;
         $scopeLocked = $task !== null && $task->ownerId !== $userId;
-        $discussionEnabled = false;
-        $discussionComments = [];
-        $discussionBaseUrl = '';
-        $discussionCanModerate = false;
-        $discussionProject = $task?->projectId === null
-            ? null
-            : $this->projects->findForUser($userId, $task->projectId);
-        if ($task !== null
-            && $discussionProject !== null
-            && $discussionProject->ownerTeamId !== null
-            && $discussionProject->isTeamOwned()) {
-            $discussionEnabled = true;
-            $discussionComments = $this->discussions->listForTask($userId, $task->id);
-            $discussionBaseUrl = '/tasks/' . $task->id . '/discussion';
-            $discussionCanModerate = $this->teams->roleForUser(
-                $userId,
-                $discussionProject->ownerTeamId,
-            ) === 'lead';
-        }
+        $discussionEnabled = $task !== null
+            && $project !== null
+            && $project->isTeamOwned()
+            && $project->ownerTeamId !== null;
+        $discussionStat = $discussionEnabled
+            ? ($this->discussionReads->statsForTasks($userId, [$task->id])[$task->id] ?? ['count' => 0, 'unread' => 0])
+            : ['count' => 0, 'unread' => 0];
         $fields = $this->fieldsForScope($userId, $projectId);
         $response = $response->withStatus($status);
 
@@ -669,11 +680,7 @@ final class TaskController
             'team_project' => $teamProject,
             'assignees' => $this->assigneesForProject($userId, $projectId),
             'discussion_enabled' => $discussionEnabled,
-            'discussion_comments' => $discussionComments,
-            'discussion_notice' => $this->consumeDiscussionNotice(),
-            'discussion_base_url' => $discussionBaseUrl,
-            'discussion_current_user_id' => $userId,
-            'discussion_can_moderate' => $discussionCanModerate,
+            'discussion_stat' => $discussionStat,
             'scope_locked' => $scopeLocked,
             'custom_fields' => $fields,
             'custom_form_values' => $this->customFormValues($formData, $task, $fields, $projectId),
@@ -1139,19 +1146,6 @@ final class TaskController
         $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
         $response->getBody()->write($json === false ? '{}': $json);
         return $response->withHeader('Content-Type', 'application/json; charset=utf-8')->withStatus($status);
-    }
-
-    /** @return array{kind:string,message:string}|null */
-    private function consumeDiscussionNotice(): ?array
-    {
-        $notice = $_SESSION['_discussion_notice'] ?? null;
-        unset($_SESSION['_discussion_notice']);
-        if (!is_array($notice)
-            || !is_string($notice['kind'] ?? null)
-            || !is_string($notice['message'] ?? null)) {
-            return null;
-        }
-        return ['kind' => $notice['kind'], 'message' => $notice['message']];
     }
 
     /** @return array<string, mixed> */

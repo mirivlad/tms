@@ -12,6 +12,9 @@
     const attachmentList = dialog.querySelector('[data-task-preview-attachment-list]');
     const error = dialog.querySelector('[data-task-preview-error]');
     const edit = dialog.querySelector('[data-task-preview-edit]');
+    const discussion = dialog.querySelector('[data-task-preview-discussion]');
+    const discussionCount = dialog.querySelector('[data-task-preview-discussion-count]');
+    const discussionUnread = dialog.querySelector('[data-task-preview-discussion-unread]');
     const deleteForm = dialog.querySelector('[data-task-preview-delete-form]');
     const quickEditForm = dialog.querySelector('[data-task-preview-quick-edit]');
     const statusSelect = dialog.querySelector('[data-task-preview-status]');
@@ -109,6 +112,15 @@
         statusSelect.replaceChildren();
         deadlineInput.value = '';
         description.replaceChildren();
+        if (discussion instanceof HTMLAnchorElement) {
+            discussion.hidden = true;
+            discussion.href = '/tasks';
+        }
+        if (discussionCount) discussionCount.textContent = '0';
+        if (discussionUnread) {
+            discussionUnread.hidden = true;
+            discussionUnread.textContent = '';
+        }
         clearSaveResult();
         title.textContent = labels.loading || '…';
         meta.textContent = '';
@@ -176,6 +188,15 @@
                 attachments.hidden = false;
             }
             edit.href = data.edit_url;
+            if (data.discussion_enabled && discussion instanceof HTMLAnchorElement) {
+                discussion.href = data.discussion_url;
+                discussion.hidden = false;
+                if (discussionCount) discussionCount.textContent = String(data.discussion_count || 0);
+                if (discussionUnread && Number(data.discussion_unread) > 0) {
+                    discussionUnread.textContent = String(data.discussion_unread);
+                    discussionUnread.hidden = false;
+                }
+            }
             deleteForm.action = data.delete_url;
             deleteForm.hidden = false;
         } catch (problem) {

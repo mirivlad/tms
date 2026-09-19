@@ -1,7 +1,7 @@
 {% extends "app_layout.twig" %}
 
 {% block title %}{{ t('board.page_title') }} · TMS{% endblock %}
-{% block styles %}<link rel="stylesheet" href="/assets/board-dnd.css">{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/assets/board-dnd.css"><link rel="stylesheet" href="/assets/discussions.css">{% endblock %}
 
 {% block content %}
 <div class="page-header compact-page-header">
@@ -50,6 +50,14 @@
                             {% if type_map[task.typeId] is defined %}<span>{{ type_map[task.typeId].name }}</span>{% endif %}
                             {% if customer_map[task.customerId] is defined %}<span>{{ customer_map[task.customerId].name }}</span>{% endif %}
                         </div>
+                        {% if project_map[task.projectId].ownerTeamId|default(null) %}
+                            {% set discussion_stat = discussion_stats[task.id]|default({'count': 0, 'unread': 0}) %}
+                            <a class="discussion-link task-card-discussion" href="/tasks/{{ task.id }}/discussion">
+                                {{ t('discussions.open') }}
+                                <span class="count-badge">{{ discussion_stat.count }}</span>
+                                {% if discussion_stat.unread > 0 %}<span class="discussion-unread-badge">{{ discussion_stat.unread }}</span>{% endif %}
+                            </a>
+                        {% endif %}
                         <details class="move-menu">
                             <summary>{{ t('board.move_to') }}</summary>
                             <form class="move-form" method="post" action="/tasks/{{ task.id }}/status">

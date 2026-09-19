@@ -63,6 +63,11 @@
                 <button class="danger-button" type="submit">{{ t('task_preview.delete') }}</button>
             </form>
             <div class="task-preview-actions-main">
+                <a class="button-link secondary-link task-preview-discussion" href="/tasks" data-task-preview-discussion hidden>
+                    {{ t('discussions.open') }}
+                    <span class="count-badge" data-task-preview-discussion-count>0</span>
+                    <span class="task-preview-unread" data-task-preview-discussion-unread hidden></span>
+                </a>
                 <a class="button-link" href="/tasks" data-task-preview-edit>{{ t('common.edit') }}</a>
                 <button class="secondary" type="button" data-task-preview-close>{{ t('common.close') }}</button>
             </div>

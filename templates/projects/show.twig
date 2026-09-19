@@ -1,6 +1,6 @@
 {% extends 'app_layout.twig' %}
 {% block title %}{{ project.name }} · TMS{% endblock %}
-{% block styles %}<link rel="stylesheet" href="/assets/metadata.css"><link rel="stylesheet" href="/assets/collaboration.css">{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/assets/metadata.css"><link rel="stylesheet" href="/assets/collaboration.css"><link rel="stylesheet" href="/assets/discussions.css">{% endblock %}
 {% set project_section = 'overview' %}
 
 {% block content %}
@@ -78,17 +78,22 @@
                 <h2>{{ t('projects.discussion_title') }}</h2>
                 <p class="muted">{{ t('projects.overview_discussion_help', {'count': discussion_count}) }}</p>
             </div>
-            <a href="/projects/{{ project.id }}/discussion">{{ t('projects.action_discussion') }}</a>
+            <a class="discussion-link" href="/projects/{{ project.id }}/discussion">
+                {{ t('projects.action_discussion') }}
+                <span class="count-badge">{{ discussion_count }}</span>
+                {% if discussion_unread > 0 %}<span class="discussion-unread-badge">{{ discussion_unread }}</span>{% endif %}
+            </a>
         </div>
         {% if recent_discussion is empty %}
             <p class="muted">{{ t('projects.overview_no_discussion') }}</p>
         {% else %}
             <div class="overview-activity-list">
-                {% for comment in recent_discussion %}
+                {% for activity in recent_discussion %}
                     <article>
-                        <strong>{{ comment.authorUsername|default(t('discussions.deleted_author')) }}</strong>
-                        <span class="muted">{{ comment.updatedAt }}</span>
-                        <div>{{ sanitize_task_html(comment.bodyHtml)|raw }}</div>
+                        <strong>{{ activity.comment.authorUsername|default(t('discussions.deleted_user')) }}</strong>
+                        <span class="muted">{{ activity.comment.updatedAt }}</span>
+                        {% if activity.task_title %}<span class="metadata-badge">{{ activity.task_title }}</span>{% endif %}
+                        <div>{{ sanitize_task_html(activity.comment.bodyHtml)|raw }}</div>
                     </article>
                 {% endfor %}
             </div>

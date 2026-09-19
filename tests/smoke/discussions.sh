@@ -51,6 +51,9 @@ curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/projects/$project_id/d
 project_csrf=$(csrf_from /tmp/discussion-project-admin.html)
 test -n "$project_csrf"
 grep -q 'id="discussion"' /tmp/discussion-project-admin.html
+grep -q 'src="/assets/discussions.js"' /tmp/discussion-project-admin.html
+grep -q 'data-discussion-command="bold"' /tmp/discussion-project-admin.html
+grep -q 'data-discussion-command="insertOrderedList"' /tmp/discussion-project-admin.html
 
 response=$(curl --fail --silent -H 'Accept: application/json'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$project_csrf"   --data-urlencode 'title=Discussion task'   --data-urlencode "project_id=$project_id"   "$BASE_URL/tasks/quick-add")
 printf '%s' "$response" | grep -q '"success":true'
@@ -152,11 +155,21 @@ curl --fail --silent --cookie "$MEMBER_COOKIES" "$BASE_URL/projects/$project_id/
 grep -q 'Comment deleted' /tmp/discussion-thread.html
 grep -q 'Lead reply' /tmp/discussion-thread.html
 
-# Task discussion has the same team ACL.
-curl --fail --silent --cookie "$MEMBER_COOKIES" "$BASE_URL/tasks/$task_id/edit" > /tmp/discussion-task.html
+# Task discussion is a standalone workspace, not part of task editing.
+curl --fail --silent --cookie "$MEMBER_COOKIES" "$BASE_URL/tasks/$task_id/edit" > /tmp/discussion-task-edit.html
+grep -q "href=\"/tasks/$task_id/discussion\"" /tmp/discussion-task-edit.html
+if grep -q 'id="discussion"' /tmp/discussion-task-edit.html; then
+  echo 'Task edit unexpectedly embeds the discussion thread.' >&2
+  exit 1
+fi
+
+curl --fail --silent --cookie "$MEMBER_COOKIES" "$BASE_URL/tasks/$task_id/discussion" > /tmp/discussion-task.html
 task_csrf=$(csrf_from /tmp/discussion-task.html)
 test -n "$task_csrf"
 grep -q 'id="discussion"' /tmp/discussion-task.html
+grep -q 'src="/assets/discussions.js"' /tmp/discussion-task.html
+grep -q 'data-discussion-command="bold"' /tmp/discussion-task.html
+grep -q 'data-discussion-command="insertOrderedList"' /tmp/discussion-task.html
 
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"   --data-urlencode "_csrf=$task_csrf"   --data-urlencode 'body=<p>Task-specific context @ciadmin</p>'   "$BASE_URL/tasks/$task_id/discussion")
 test "$code" = "302"
@@ -167,6 +180,25 @@ test -n "$task_comment"
 test "$(db "SELECT COUNT(*) FROM internal_notifications
             WHERE user_id=$admin_id AND comment_id=$task_comment
               AND notification_type='discussion_mention'")" = "1"
+
+# A new comment from another team member is unread until the discussion is opened.
+curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/tasks" > /tmp/discussion-task-list-unread.html
+grep -q "href=\"/tasks/$task_id/discussion\"" /tmp/discussion-task-list-unread.html
+grep -q 'discussion-unread-badge' /tmp/discussion-task-list-unread.html
+
+curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/tasks/$task_id/discussion" > /tmp/discussion-task-admin-thread.html
+grep -q 'Task-specific context' /tmp/discussion-task-admin-thread.html
+grep -q 'data-discussion-command="bold"' /tmp/discussion-task-admin-thread.html
+test "$(db "SELECT COUNT(*) FROM discussion_read_markers
+            WHERE user_id=$admin_id AND team_id=$team_id
+              AND context_type='task' AND context_id=$task_id
+              AND last_read_comment_id >= $task_comment")" = "1"
+
+# Project discussion aggregates task threads by task.
+curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/projects/$project_id/discussion" > /tmp/discussion-project-aggregate.html
+grep -q 'Discussion task' /tmp/discussion-project-aggregate.html
+grep -q 'Task-specific context' /tmp/discussion-project-aggregate.html
+grep -q "href=\"/tasks/$task_id/discussion\"" /tmp/discussion-project-aggregate.html
 
 curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/notifications" > /tmp/discussion-admin-inbox-final.html
 admin_inbox_csrf=$(csrf_from /tmp/discussion-admin-inbox-final.html)
