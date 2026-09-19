@@ -114,6 +114,10 @@ jobs:
           - global quick add, task quick view with inline status/description/deadline editing and bulk task operations;
           - rich-text descriptions, customers and owner-scoped custom fields;
           - type-aware custom-field editing, money formatting and typed task filters;
+          - personal and team-owned projects with project files, project-specific task statuses and custom fields;
+          - teams with lead/member roles, invitations and task assignees;
+          - project/task discussions with shallow replies, @mentions and canonical in-app unread notifications;
+          - collaboration ACL hardening and a tested v0.1.4-to-v0.2.0 database upgrade path;
           - per-user timezone, notification preferences and six interface theme modes;
           - compact global navigation with settings/user menus and an always-available new-task action;
           - calendar day quick-add, customer autocomplete and wheel-aware wide-board navigation;
