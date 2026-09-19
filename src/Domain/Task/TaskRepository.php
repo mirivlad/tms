@@ -16,15 +16,14 @@ final class TaskRepository
     public function findForUser(int $userId, int $taskId): ?TaskRecord
     {
         $stmt = $this->db->prepare(
-            'SELECT id, created_by, title, description, deadline, status_id, type_id, priority, customer_id, project_id, created_at, updated_at
-             FROM tasks
-             WHERE id = :task_id AND created_by = :user_id
+            'SELECT t.id, t.created_by, t.title, t.description, t.deadline, t.status_id, t.type_id,
+                    t.priority, t.customer_id, t.project_id, t.created_at, t.updated_at
+             FROM tasks t
+             WHERE t.id = :task_id
+               AND ' . $this->taskAccessCondition('t', 'find_') . '
              LIMIT 1'
         );
-        $stmt->execute([
-            'task_id' => $taskId,
-            'user_id' => $userId,
-        ]);
+        $stmt->execute(['task_id' => $taskId] + $this->taskAccessParams($userId, 'find_'));
 
         $row = $stmt->fetch();
         return is_array($row) ? $this->hydrate($row) : null;
@@ -64,8 +63,8 @@ final class TaskRepository
         if ($customerQuery !== '') {
             $sql .= ' LEFT JOIN customers c ON c.id = t.customer_id AND c.user_id = t.created_by';
         }
-        $sql .= ' WHERE t.created_by = :user_id';
-        $params = ['user_id' => $userId];
+        $sql .= ' WHERE ' . $this->taskAccessCondition('t', 'list_');
+        $params = $this->taskAccessParams($userId, 'list_');
 
         if ($statusId !== null) {
             $sql .= $statusInvert
@@ -172,8 +171,8 @@ final class TaskRepository
         if ($customerQuery !== '') {
             $sql .= ' LEFT JOIN customers c ON c.id = t.customer_id AND c.user_id = t.created_by';
         }
-        $sql .= ' WHERE t.created_by = :user_id AND ';
-        $params = ['user_id' => $userId];
+        $sql .= ' WHERE ' . $this->taskAccessCondition('t', 'calendar_') . ' AND ';
+        $params = $this->taskAccessParams($userId, 'calendar_');
 
         if ($mode === 'deadlines_only') {
             $sql .= '(t.deadline >= :deadline_range_start AND t.deadline < :deadline_range_end)';
@@ -268,9 +267,9 @@ final class TaskRepository
     ): int {
         $title = $this->validateTitle($title);
         $this->assertPriority($priority);
-        $this->assertOwnedProject($userId, $projectId);
+        $this->assertAccessibleProject($userId, $projectId);
         $this->assertStatusForScope($userId, $statusId, $projectId);
-        $this->assertOwnedMetadata($userId, $typeId, $customerId);
+        $this->assertMetadataForProjectScope($userId, $projectId, $typeId, $customerId);
 
         $stmt = $this->db->prepare(
             'INSERT INTO tasks (
@@ -308,13 +307,17 @@ final class TaskRepository
         ?int $customerId,
         ?int $projectId = null,
     ): bool {
-        if ($this->findForUser($userId, $taskId) === null) {
+        $existing = $this->findForUser($userId, $taskId);
+        if ($existing === null) {
             return false;
+        }
+        if ($existing->ownerId !== $userId && $existing->projectId !== $projectId) {
+            throw new DomainException('Only the task author can move a collaborative task between projects.');
         }
 
         $title = $this->validateTitle($title);
         $this->assertPriority($priority);
-        $this->assertOwnedProject($userId, $projectId);
+        $this->assertAccessibleProject($userId, $projectId);
         $this->assertStatusForScope($userId, $statusId, $projectId);
         $this->assertOwnedMetadata($userId, $typeId, $customerId);
 
@@ -329,7 +332,7 @@ final class TaskRepository
                  customer_id = :customer_id,
                  project_id = :project_id,
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = :task_id AND created_by = :user_id'
+             WHERE id = :task_id'
         );
         $stmt->execute([
             'title' => $title,
@@ -341,7 +344,6 @@ final class TaskRepository
             'customer_id' => $customerId,
             'project_id' => $projectId,
             'task_id' => $taskId,
-            'user_id' => $userId,
         ]);
         return true;
     }
@@ -349,7 +351,7 @@ final class TaskRepository
     /** @return list<TaskRecord> */
     public function listForProjectForUser(int $userId, int $projectId): array
     {
-        if (!$this->projectOwned($userId, $projectId)) {
+        if (!$this->projectAccessible($userId, $projectId)) {
             return [];
         }
 
@@ -375,14 +377,13 @@ final class TaskRepository
                  deadline = :deadline,
                  status_id = :status_id,
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = :task_id AND created_by = :user_id'
+             WHERE id = :task_id'
         );
         $stmt->execute([
             'description' => trim($description),
             'deadline' => $deadline,
             'status_id' => $statusId,
             'task_id' => $taskId,
-            'user_id' => $userId,
         ]);
         return true;
     }
@@ -398,12 +399,11 @@ final class TaskRepository
         $stmt = $this->db->prepare(
             'UPDATE tasks
              SET status_id = :status_id, updated_at = CURRENT_TIMESTAMP
-             WHERE id = :task_id AND created_by = :user_id'
+             WHERE id = :task_id'
         );
         $stmt->execute([
             'status_id' => $statusId,
             'task_id' => $taskId,
-            'user_id' => $userId,
         ]);
 
         return true;
@@ -411,8 +411,11 @@ final class TaskRepository
 
     public function deleteForUser(int $userId, int $taskId): bool
     {
-        $stmt = $this->db->prepare('DELETE FROM tasks WHERE id = :task_id AND created_by = :user_id');
-        $stmt->execute(['task_id' => $taskId, 'user_id' => $userId]);
+        if ($this->findForUser($userId, $taskId) === null) {
+            return false;
+        }
+        $stmt = $this->db->prepare('DELETE FROM tasks WHERE id = :task_id');
+        $stmt->execute(['task_id' => $taskId]);
         return $stmt->rowCount() === 1;
     }
 
