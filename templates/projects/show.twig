@@ -8,7 +8,14 @@
 <header class="page-header compact-page-header">
     <div>
         <h1>{{ project.name }}</h1>
-        <p class="muted">{{ t('projects.status.' ~ project.lifecycleStatus) }} · {{ t('projects.personal') }}</p>
+        <p class="muted">
+            {{ t('projects.status.' ~ project.lifecycleStatus) }} ·
+            {% if project.ownerTeamId %}
+                {{ t('projects.owner_team', {'team': project_team.name|default('—')}) }}
+            {% else %}
+                {{ t('projects.personal') }}
+            {% endif %}
+        </p>
     </div>
     <div class="page-header-actions">
         <a class="button-link" href="/tasks/new?project_id={{ project.id }}">{{ t('projects.add_task') }}</a>
@@ -66,6 +73,7 @@
     {% endif %}
 </section>
 
+{% if can_manage %}
 <section class="content-card metadata-section" id="project-statuses">
     <div class="section-heading">
         <div>
@@ -263,6 +271,12 @@
         </div>
     {% endif %}
 </section>
+{% elseif project.ownerTeamId %}
+<section class="content-card">
+    <p class="muted">{{ t('projects.team_member_readonly') }}</p>
+</section>
+{% endif %}
+
 
 <section class="content-card task-table-card">
     <div class="section-heading">
