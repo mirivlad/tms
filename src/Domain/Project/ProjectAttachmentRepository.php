@@ -17,17 +17,17 @@ final class ProjectAttachmentRepository
     /** @return list<ProjectAttachmentRecord> */
     public function listForProject(int $userId, int $projectId): array
     {
+        if (!$this->projectAccessible($userId, $projectId)) {
+            return [];
+        }
         $stmt = $this->db->prepare(
-            'SELECT a.id, a.project_id, a.uploaded_by, a.storage_name, a.original_name,
-                    a.mime_type, a.file_size, a.sha256, a.created_at
-             FROM project_attachments a
-             INNER JOIN projects p ON p.id = a.project_id
-             WHERE a.project_id = :project_id
-               AND p.owner_user_id = :user_id
-               AND p.owner_team_id IS NULL
-             ORDER BY a.created_at DESC, a.id DESC'
+            'SELECT id, project_id, uploaded_by, storage_name, original_name,
+                    mime_type, file_size, sha256, created_at
+             FROM project_attachments
+             WHERE project_id = :project_id
+             ORDER BY created_at DESC, id DESC'
         );
-        $stmt->execute(['project_id' => $projectId, 'user_id' => $userId]);
+        $stmt->execute(['project_id' => $projectId]);
         return $this->fetchAll($stmt);
     }
 
@@ -48,21 +48,19 @@ final class ProjectAttachmentRepository
 
     public function findForProject(int $userId, int $projectId, int $attachmentId): ?ProjectAttachmentRecord
     {
+        if (!$this->projectAccessible($userId, $projectId)) {
+            return null;
+        }
         $stmt = $this->db->prepare(
-            'SELECT a.id, a.project_id, a.uploaded_by, a.storage_name, a.original_name,
-                    a.mime_type, a.file_size, a.sha256, a.created_at
-             FROM project_attachments a
-             INNER JOIN projects p ON p.id = a.project_id
-             WHERE a.id = :id
-               AND a.project_id = :project_id
-               AND p.owner_user_id = :user_id
-               AND p.owner_team_id IS NULL
+            'SELECT id, project_id, uploaded_by, storage_name, original_name,
+                    mime_type, file_size, sha256, created_at
+             FROM project_attachments
+             WHERE id = :id AND project_id = :project_id
              LIMIT 1'
         );
         $stmt->execute([
             'id' => $attachmentId,
             'project_id' => $projectId,
-            'user_id' => $userId,
         ]);
         $row = $stmt->fetch();
         return is_array($row) ? $this->hydrate($row) : null;
@@ -76,7 +74,7 @@ final class ProjectAttachmentRepository
         if ($files === []) {
             return;
         }
-        if (!$this->projectBelongsToUser($userId, $projectId)) {
+        if (!$this->projectAccessible($userId, $projectId)) {
             throw new DomainException('Project is unavailable.');
         }
 
@@ -113,7 +111,7 @@ final class ProjectAttachmentRepository
 
     public function deleteForProject(int $userId, int $projectId, int $attachmentId): bool
     {
-        if (!$this->projectBelongsToUser($userId, $projectId)) {
+        if (!$this->projectAccessible($userId, $projectId)) {
             return false;
         }
         $stmt = $this->db->prepare(
@@ -123,14 +121,27 @@ final class ProjectAttachmentRepository
         return $stmt->rowCount() === 1;
     }
 
-    private function projectBelongsToUser(int $userId, int $projectId): bool
+    private function projectAccessible(int $userId, int $projectId): bool
     {
         $stmt = $this->db->prepare(
-            'SELECT 1 FROM projects
-             WHERE id = :id AND owner_user_id = :user_id AND owner_team_id IS NULL
+            'SELECT 1
+             FROM projects p
+             LEFT JOIN team_members tm
+               ON tm.team_id = p.owner_team_id
+              AND tm.user_id = :team_user_id
+             WHERE p.id = :id
+               AND (
+                    (p.owner_user_id = :personal_user_id AND p.owner_team_id IS NULL)
+                    OR
+                    (p.owner_user_id IS NULL AND p.owner_team_id IS NOT NULL AND tm.user_id IS NOT NULL)
+               )
              LIMIT 1'
         );
-        $stmt->execute(['id' => $projectId, 'user_id' => $userId]);
+        $stmt->execute([
+            'id' => $projectId,
+            'team_user_id' => $userId,
+            'personal_user_id' => $userId,
+        ]);
         return $stmt->fetchColumn() !== false;
     }
 
