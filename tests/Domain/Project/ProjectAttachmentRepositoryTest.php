@@ -25,6 +25,12 @@ final class ProjectAttachmentRepositoryTest extends TestCase
             owner_user_id INTEGER NULL,
             owner_team_id INTEGER NULL
         )');
+        $this->db->exec('CREATE TABLE team_members (
+            team_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL,
+            PRIMARY KEY (team_id, user_id)
+        )');
         $this->db->exec('CREATE TABLE project_attachments (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             project_id INTEGER NOT NULL,
