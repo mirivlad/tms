@@ -638,11 +638,20 @@ final class TaskController
         $discussionComments = [];
         $discussionBaseUrl = '';
         $discussionCanModerate = false;
-        if ($task !== null && $project !== null && $project->ownerTeamId !== null && $project->isTeamOwned()) {
+        $discussionProject = $task?->projectId === null
+            ? null
+            : $this->projects->findForUser($userId, $task->projectId);
+        if ($task !== null
+            && $discussionProject !== null
+            && $discussionProject->ownerTeamId !== null
+            && $discussionProject->isTeamOwned()) {
             $discussionEnabled = true;
             $discussionComments = $this->discussions->listForTask($userId, $task->id);
             $discussionBaseUrl = '/tasks/' . $task->id . '/discussion';
-            $discussionCanModerate = $this->teams->roleForUser($userId, $project->ownerTeamId) === 'lead';
+            $discussionCanModerate = $this->teams->roleForUser(
+                $userId,
+                $discussionProject->ownerTeamId,
+            ) === 'lead';
         }
         $fields = $this->fieldsForScope($userId, $projectId);
         $response = $response->withStatus($status);
