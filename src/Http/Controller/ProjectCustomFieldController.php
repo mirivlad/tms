@@ -132,7 +132,10 @@ final class ProjectCustomFieldController
         return $this->redirect($response, $projectId);
     }
 
-    /** @param array<string, mixed> $body */
+    /**
+     * @param array<string, mixed> $body
+     * @return list<string>
+     */
     private function options(array $body): array
     {
         $raw = is_string($body['options'] ?? null) ? (string) $body['options'] : '';
