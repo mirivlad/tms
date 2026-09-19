@@ -98,7 +98,7 @@ final class DiscussionReadRepository
                     COUNT(*) AS comment_count,
                     SUM(
                         CASE
-                            WHEN c.author_user_id <> :actor_user_id
+                            WHEN COALESCE(c.author_user_id, 0) <> :actor_user_id
                              AND c.id > COALESCE(r.last_read_comment_id, 0)
                             THEN 1 ELSE 0
                         END
@@ -187,7 +187,7 @@ final class DiscussionReadRepository
                   AND c.task_id IS NULL
                   AND c.team_id = p.owner_team_id
                  WHERE p.id = :project_id
-                 GROUP BY p.id
+                 GROUP BY p.id, p.owner_team_id
                  ON DUPLICATE KEY UPDATE
                     last_read_comment_id = GREATEST(last_read_comment_id, VALUES(last_read_comment_id)),
                     updated_at = CURRENT_TIMESTAMP"
