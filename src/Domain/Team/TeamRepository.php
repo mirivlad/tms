@@ -266,6 +266,15 @@ final class TeamRepository
         if ($this->findForLead($userId, $teamId) === null) {
             return false;
         }
+
+        $projects = $this->db->prepare(
+            'SELECT 1 FROM projects WHERE owner_team_id = :team_id LIMIT 1'
+        );
+        $projects->execute(['team_id' => $teamId]);
+        if ($projects->fetchColumn() !== false) {
+            throw new DomainException('A team with projects cannot be deleted.');
+        }
+
         $stmt = $this->db->prepare('DELETE FROM teams WHERE id = :team_id');
         $stmt->execute(['team_id' => $teamId]);
         return $stmt->rowCount() === 1;
