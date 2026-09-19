@@ -319,7 +319,7 @@ final class TaskRepository
         $this->assertPriority($priority);
         $this->assertAccessibleProject($userId, $projectId);
         $this->assertStatusForScope($userId, $statusId, $projectId);
-        $this->assertOwnedMetadata($userId, $typeId, $customerId);
+        $this->assertMetadataForProjectScope($userId, $projectId, $typeId, $customerId);
 
         $stmt = $this->db->prepare(
             'UPDATE tasks
@@ -422,8 +422,8 @@ final class TaskRepository
     /** @param list<int> $taskIds */
     public function bulkUpdateStatusForUser(int $userId, array $taskIds, int $statusId): int
     {
-        $taskIds = array_values(array_unique(array_filter($taskIds, static fn (int $id): bool => $id > 0)));
-        if ($taskIds === []) {
+        $accessible = $this->accessibleTaskIds($userId, $taskIds);
+        if ($accessible === []) {
             return 0;
         }
 
@@ -432,9 +432,9 @@ final class TaskRepository
             throw new DomainException('Selected status is unavailable.');
         }
 
-        $params = ['user_id' => $userId];
+        $params = ['status_id' => $statusId];
         $placeholders = [];
-        foreach ($taskIds as $index => $taskId) {
+        foreach ($accessible as $index => $taskId) {
             $key = 'task_' . $index;
             $placeholders[] = ':' . $key;
             $params[$key] = $taskId;
@@ -447,33 +447,19 @@ final class TaskRepository
             $params['project_id'] = $statusScope;
         }
 
-        $ownedParams = $params;
-        unset($ownedParams['project_id']);
-        $owned = $this->db->prepare(
-            'SELECT COUNT(*)
-             FROM tasks
-             WHERE created_by = :user_id
-               AND id IN (' . implode(', ', $placeholders) . ')'
-        );
-        $owned->execute($ownedParams);
-        $ownedCount = (int) $owned->fetchColumn();
-        if ($ownedCount === 0) {
-            return 0;
-        }
-
         $check = $this->db->prepare(
-            'SELECT COUNT(*)
-             FROM tasks
-             WHERE created_by = :user_id
-               AND id IN (' . implode(', ', $placeholders) . ')
+            'SELECT COUNT(*) FROM tasks
+             WHERE id IN (' . implode(', ', $placeholders) . ')
                AND ' . $scopeSql
         );
-        $check->execute($params);
-        if ((int) $check->fetchColumn() !== $ownedCount) {
+        $checkParams = $params;
+        unset($checkParams['status_id']);
+        $check->execute($checkParams);
+        if ((int) $check->fetchColumn() !== count($accessible)) {
             throw new DomainException('Selected status is unavailable for one or more tasks.');
         }
 
-        return $this->bulkUpdateForUser($userId, $taskIds, 'status_id', $statusId);
+        return $this->bulkUpdateIds($accessible, 'status_id', $statusId);
     }
 
     /** @param list<int> $taskIds */
@@ -482,34 +468,40 @@ final class TaskRepository
         if ($typeId !== null && !$this->metadataOwned('task_types', $userId, $typeId)) {
             throw new DomainException('Selected task type is unavailable.');
         }
-        return $this->bulkUpdateForUser($userId, $taskIds, 'type_id', $typeId);
+        $accessible = $this->accessibleTaskIds($userId, $taskIds);
+        if ($accessible === []) {
+            return 0;
+        }
+        if ($typeId !== null && $this->containsTeamProjectTask($accessible)) {
+            throw new DomainException('Team project tasks cannot use personal task types.');
+        }
+        return $this->bulkUpdateIds($accessible, 'type_id', $typeId);
     }
 
     /** @param list<int> $taskIds */
     public function bulkUpdatePriorityForUser(int $userId, array $taskIds, int $priority): int
     {
         $this->assertPriority($priority);
-        return $this->bulkUpdateForUser($userId, $taskIds, 'priority', $priority);
+        return $this->bulkUpdateIds($this->accessibleTaskIds($userId, $taskIds), 'priority', $priority);
     }
 
     /** @param list<int> $taskIds */
     public function bulkUpdateDeadlineForUser(int $userId, array $taskIds, ?string $deadline): int
     {
-        return $this->bulkUpdateForUser($userId, $taskIds, 'deadline', $deadline);
+        return $this->bulkUpdateIds($this->accessibleTaskIds($userId, $taskIds), 'deadline', $deadline);
     }
 
     /** @param list<int> $taskIds */
-    private function bulkUpdateForUser(int $userId, array $taskIds, string $column, int|string|null $value): int
+    private function bulkUpdateIds(array $taskIds, string $column, int|string|null $value): int
     {
         if (!in_array($column, ['status_id', 'type_id', 'priority', 'deadline'], true)) {
             throw new DomainException('Unsupported bulk task field.');
         }
-        $taskIds = array_values(array_unique(array_filter($taskIds, static fn (int $id): bool => $id > 0)));
         if ($taskIds === []) {
             return 0;
         }
 
-        $params = ['user_id' => $userId, 'value' => $value];
+        $params = ['value' => $value];
         $placeholders = [];
         foreach ($taskIds as $index => $taskId) {
             $key = 'task_' . $index;
@@ -517,38 +509,115 @@ final class TaskRepository
             $params[$key] = $taskId;
         }
 
-        $count = $this->db->prepare(
-            'SELECT COUNT(*) FROM tasks WHERE created_by = :user_id AND id IN (' . implode(', ', $placeholders) . ')'
+        $stmt = $this->db->prepare(
+            'UPDATE tasks SET ' . $column . ' = :value, updated_at = CURRENT_TIMESTAMP
+             WHERE id IN (' . implode(', ', $placeholders) . ')'
         );
-        $countParams = $params;
-        unset($countParams['value']);
-        $count->execute($countParams);
-        $matched = (int) $count->fetchColumn();
-        if ($matched === 0) {
-            return 0;
+        $stmt->execute($params);
+        return count($taskIds);
+    }
+
+    /**
+     * @param list<int> $taskIds
+     * @return list<int>
+     */
+    private function accessibleTaskIds(int $userId, array $taskIds): array
+    {
+        $taskIds = array_values(array_unique(array_filter($taskIds, static fn (int $id): bool => $id > 0)));
+        if ($taskIds === []) {
+            return [];
+        }
+
+        $params = $this->taskAccessParams($userId, 'bulk_');
+        $placeholders = [];
+        foreach ($taskIds as $index => $taskId) {
+            $key = 'candidate_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $taskId;
         }
 
         $stmt = $this->db->prepare(
-            'UPDATE tasks SET ' . $column . ' = :value, updated_at = CURRENT_TIMESTAMP
-             WHERE created_by = :user_id AND id IN (' . implode(', ', $placeholders) . ')'
+            'SELECT t.id FROM tasks t
+             WHERE t.id IN (' . implode(', ', $placeholders) . ')
+               AND ' . $this->taskAccessCondition('t', 'bulk_') . '
+             ORDER BY t.id ASC'
         );
         $stmt->execute($params);
-        return $matched;
+        $ids = [];
+        while (($value = $stmt->fetchColumn()) !== false) {
+            $ids[] = (int) $value;
+        }
+        return $ids;
     }
 
-    private function assertOwnedProject(int $userId, ?int $projectId): void
+    /** @param list<int> $taskIds */
+    private function containsTeamProjectTask(array $taskIds): bool
     {
-        if ($projectId !== null && !$this->projectOwned($userId, $projectId)) {
-            throw new DomainException('Selected project does not belong to the current user.');
+        if ($taskIds === []) {
+            return false;
+        }
+        $params = [];
+        $placeholders = [];
+        foreach ($taskIds as $index => $taskId) {
+            $key = 'team_task_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $taskId;
+        }
+        $stmt = $this->db->prepare(
+            'SELECT 1
+             FROM tasks t
+             INNER JOIN projects p ON p.id = t.project_id
+             WHERE t.id IN (' . implode(', ', $placeholders) . ')
+               AND p.owner_user_id IS NULL
+               AND p.owner_team_id IS NOT NULL
+             LIMIT 1'
+        );
+        $stmt->execute($params);
+        return $stmt->fetchColumn() !== false;
+    }
+
+    private function assertAccessibleProject(int $userId, ?int $projectId): void
+    {
+        if ($projectId !== null && !$this->projectAccessible($userId, $projectId)) {
+            throw new DomainException('Selected project is unavailable.');
         }
     }
 
-    private function projectOwned(int $userId, int $projectId): bool
+    private function projectAccessible(int $userId, int $projectId): bool
     {
         $stmt = $this->db->prepare(
             'SELECT 1
-             FROM projects
-             WHERE id = :id AND owner_user_id = :user_id AND owner_team_id IS NULL
+             FROM projects p
+             LEFT JOIN team_members tm
+               ON tm.team_id = p.owner_team_id
+              AND tm.user_id = :team_user_id
+             WHERE p.id = :id
+               AND (
+                    (p.owner_user_id = :personal_user_id AND p.owner_team_id IS NULL)
+                    OR
+                    (p.owner_user_id IS NULL AND p.owner_team_id IS NOT NULL AND tm.user_id IS NOT NULL)
+               )
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'id' => $projectId,
+            'team_user_id' => $userId,
+            'personal_user_id' => $userId,
+        ]);
+        return $stmt->fetchColumn() !== false;
+    }
+
+    private function projectIsTeamOwned(int $userId, int $projectId): bool
+    {
+        $stmt = $this->db->prepare(
+            'SELECT 1
+             FROM projects p
+             INNER JOIN team_members tm
+               ON tm.team_id = p.owner_team_id
+              AND tm.user_id = :user_id
+             WHERE p.id = :id
+               AND p.owner_user_id IS NULL
+               AND p.owner_team_id IS NOT NULL
              LIMIT 1'
         );
         $stmt->execute(['id' => $projectId, 'user_id' => $userId]);
@@ -565,8 +634,19 @@ final class TaskRepository
         return $stmt->fetchColumn() !== false;
     }
 
-    private function assertOwnedMetadata(int $userId, ?int $typeId, ?int $customerId): void
-    {
+    private function assertMetadataForProjectScope(
+        int $userId,
+        ?int $projectId,
+        ?int $typeId,
+        ?int $customerId,
+    ): void {
+        if ($projectId !== null && $this->projectIsTeamOwned($userId, $projectId)) {
+            if ($typeId !== null || $customerId !== null) {
+                throw new DomainException('Team project tasks cannot use personal task type/customer.');
+            }
+            return;
+        }
+
         if ($typeId !== null && !$this->ownedReferenceExists('task_types', $userId, $typeId)) {
             throw new DomainException('Selected task type does not belong to the current user.');
         }
@@ -594,19 +674,26 @@ final class TaskRepository
             'SELECT s.user_id, s.project_id
              FROM statuses s
              LEFT JOIN projects p ON p.id = s.project_id
+             LEFT JOIN team_members tm
+               ON tm.team_id = p.owner_team_id
+              AND tm.user_id = :team_user_id
              WHERE s.id = :status_id
                AND (
                     (s.user_id = :personal_user_id AND s.project_id IS NULL)
                     OR
                     (s.user_id IS NULL
                      AND s.project_id IS NOT NULL
-                     AND p.owner_user_id = :project_user_id
-                     AND p.owner_team_id IS NULL)
+                     AND (
+                          (p.owner_user_id = :project_user_id AND p.owner_team_id IS NULL)
+                          OR
+                          (p.owner_user_id IS NULL AND p.owner_team_id IS NOT NULL AND tm.user_id IS NOT NULL)
+                     ))
                )
              LIMIT 1'
         );
         $stmt->execute([
             'status_id' => $statusId,
+            'team_user_id' => $userId,
             'personal_user_id' => $userId,
             'project_user_id' => $userId,
         ]);
@@ -626,6 +713,41 @@ final class TaskRepository
         $stmt = $this->db->prepare("SELECT 1 FROM {$table} WHERE id = :id AND user_id = :user_id LIMIT 1");
         $stmt->execute(['id' => $id, 'user_id' => $userId]);
         return $stmt->fetchColumn() !== false;
+    }
+
+    private function taskAccessCondition(string $alias, string $prefix): string
+    {
+        return sprintf(
+            '((%1$s.project_id IS NULL AND %1$s.created_by = :%2$spersonal_task_user)
+              OR EXISTS (
+                  SELECT 1
+                  FROM projects access_project
+                  LEFT JOIN team_members access_member
+                    ON access_member.team_id = access_project.owner_team_id
+                   AND access_member.user_id = :%2$steam_user
+                  WHERE access_project.id = %1$s.project_id
+                    AND (
+                        (access_project.owner_user_id = :%2$spersonal_project_user
+                         AND access_project.owner_team_id IS NULL)
+                        OR
+                        (access_project.owner_user_id IS NULL
+                         AND access_project.owner_team_id IS NOT NULL
+                         AND access_member.user_id IS NOT NULL)
+                    )
+              ))',
+            $alias,
+            $prefix,
+        );
+    }
+
+    /** @return array<string, int> */
+    private function taskAccessParams(int $userId, string $prefix): array
+    {
+        return [
+            $prefix . 'personal_task_user' => $userId,
+            $prefix . 'team_user' => $userId,
+            $prefix . 'personal_project_user' => $userId,
+        ];
     }
 
     private function validateTitle(string $title): string
