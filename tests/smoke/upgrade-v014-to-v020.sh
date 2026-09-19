@@ -89,6 +89,7 @@ test "$baseline_migrations" = "11"
 upgrade_output=$(docker run --rm   --network "container:$container"   --entrypoint php   -e DB_HOST=127.0.0.1   -e DB_PORT=3306   -e DB_NAME="$upgrade_db"   -e DB_USER=tms   -e DB_PASS="$upgrade_pass"   "$app_image" /var/www/html/bin/migrate.php)
 printf '%s\n' "$upgrade_output" | grep -q 'Applied 20260918_001_projects_core.sql'
 printf '%s\n' "$upgrade_output" | grep -q 'Applied 20260919_006_internal_notifications.sql'
+printf '%s\n' "$upgrade_output" | grep -q 'Applied 20260919_007_discussion_team_context.sql'
 
 # Stable data remains personal/unassigned and keeps its semantic identity.
 test "$(sql "SELECT title FROM tasks WHERE id=501")" = "Legacy task"
@@ -110,6 +111,8 @@ test "$(sql "SELECT COUNT(*) FROM information_schema.tables
               WHERE table_schema='$upgrade_db' AND table_name='discussion_comments'")" = "1"
 test "$(sql "SELECT COUNT(*) FROM information_schema.tables
               WHERE table_schema='$upgrade_db' AND table_name='internal_notifications'")" = "1"
+test "$(sql "SELECT COUNT(*) FROM information_schema.columns
+              WHERE table_schema='$upgrade_db' AND table_name='discussion_comments' AND column_name='team_id'")" = "1"
 
 expected_migrations=$(find database/migrations -maxdepth 1 -type f -name '*.sql' | wc -l | tr -d ' ')
 test "$(sql "SELECT COUNT(*) FROM schema_migrations")" = "$expected_migrations"
