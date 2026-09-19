@@ -44,12 +44,18 @@
 
         <label>
             {{ t('projects.task_project') }}
-            <select name="project_id" data-project-select>
+            {% if project_locked %}
+                <input type="hidden" name="project_id" value="{{ form.project_id|default('') }}">
+            {% endif %}
+            <select {{ project_locked ? '' : 'name="project_id"' }} data-project-select {{ project_locked ? 'disabled' : '' }}>
                 <option value="">{{ t('projects.no_project') }}</option>
                 {% for project in projects %}
-                    <option value="{{ project.id }}" {{ form.project_id == project.id ? 'selected' : '' }}>{{ project.name }}</option>
+                    <option value="{{ project.id }}" {{ form.project_id == project.id ? 'selected' : '' }}>
+                        {% if project.isTeamOwned and project.ownerTeamName %}{{ project.ownerTeamName }} · {% endif %}{{ project.name }}
+                    </option>
                 {% endfor %}
             </select>
+            {% if project_locked %}<span class="field-help">{{ t('task_form.team_project_move_locked') }}</span>{% endif %}
         </label>
 
         <label>
@@ -63,12 +69,16 @@
 
         <label>
             {{ t('task_form.type') }}
-            <select name="type_id">
+            {% if not can_edit_personal_metadata %}
+                <input type="hidden" name="type_id" value="{{ form.type_id|default('') }}">
+            {% endif %}
+            <select {{ can_edit_personal_metadata ? 'name="type_id"' : 'disabled' }}>
                 <option value="">{{ t('task_form.no_type') }}</option>
                 {% for type in types %}
                     <option value="{{ type.id }}" {{ form.type_id == type.id ? 'selected' : '' }}>{{ type.name }}</option>
                 {% endfor %}
             </select>
+            {% if not can_edit_personal_metadata %}<span class="field-help">{{ t('task_form.personal_metadata_author_only') }}</span>{% endif %}
         </label>
 
         <label>
@@ -91,11 +101,11 @@
             <div class="customer-autocomplete-control">
                 <input id="task-customer" type="text" name="customer" maxlength="255" autocomplete="off"
                        value="{{ form.customer|default('') }}" placeholder="{{ t('task_form.customer_placeholder') }}"
-                       data-customer-autocomplete data-search-url="/api/customers/search"
-                       aria-autocomplete="list" aria-controls="customer-suggestions" aria-expanded="false">
+                       {% if can_edit_personal_metadata %}data-customer-autocomplete data-search-url="/api/customers/search"
+                       aria-autocomplete="list" aria-controls="customer-suggestions" aria-expanded="false"{% else %}readonly{% endif %}>
                 <div id="customer-suggestions" class="autocomplete-results" role="listbox" hidden></div>
             </div>
-            <span class="field-help">{{ t('task_form.customer_help') }}</span>
+            <span class="field-help">{{ can_edit_personal_metadata ? t('task_form.customer_help') : t('task_form.personal_metadata_author_only') }}</span>
         </div>
 
         <div class="field-wide task-custom-fields-container" data-custom-fields-container>
