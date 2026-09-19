@@ -13,19 +13,29 @@
 
 Use **New task** or the global quick-add action. The quick-add dialog is also available with `Alt+N` or `Cmd+N` where supported by the browser/OS.
 
-A task can contain title, description, priority, status, type, customer, deadline and custom fields. Open the quick-view dialog from a task card or row to change status, description and deadline without opening the full edit page. Rich descriptions are sanitized server-side. Attachments are stored separately from the public web root and are available only through authorized application routes.
+A task can contain title, description, priority, status, type, customer, deadline and custom fields. In a team-owned project it can also have an optional assignee; assignment expresses responsibility and does not change who can access the project. Open the quick-view dialog from a task card or row to change status, description and deadline without opening the full edit page. Rich descriptions are sanitized server-side. Attachments are stored separately from the public web root and are available only through authorized application routes.
 
 ## Projects
 
-Create a project when several tasks need shared context. Tasks may stay unassigned (**No project**) or belong to one of your projects. Project filters are available in the task list, board and calendar, and a project page shows the tasks that belong to it.
+Create a project when several tasks need shared context. Tasks may stay unassigned (**No project**) or belong to a personal or team-owned project. Project filters are available in the task list, board and calendar, and a project page shows the tasks that belong to it.
 
-Project files use the same private upload policy as task attachments: they are stored outside the public web root and downloaded only through authorized application routes. Deleting a project keeps its tasks by returning them to **No project**, while the project's own files are deleted.
+Each project has its own task statuses and custom fields. Team Leads manage team-project settings; all current team members can work with the project's tasks and files. Personal projects remain private to their owner.
+
+Project files use the same private upload policy as task attachments: they are stored outside the public web root and downloaded only through authorized application routes. Deleting a personal project keeps its tasks by returning them to **No project**. A team project cannot be deleted while it still has tasks.
+
+## Teams
+
+Create a team from **Teams**. The creator becomes the first **Lead**. Leads can invite existing TMS users, change member roles and manage team-owned projects. The initial role model is intentionally small: **Lead** and **Member**.
+
+Invitations are accepted or declined inside TMS. Pending invitations are shown in the navigation badge and expire automatically. If the invited user has email and/or Telegram enabled, TMS may also send a link to the invitation page through those channels; the external message does not itself accept the invitation.
+
+Removing a member immediately removes access to team-owned projects. Tasks remain intact, and any tasks assigned to that member become unassigned.
 
 ## Filters and bulk work
 
 The task table supports filters by status, type, priority, customer, overdue state, date ranges and custom-field values. Multiple status/type/priority values and status inversion are available where shown by the UI.
 
-Select several tasks to apply supported bulk changes or delete them. All operations remain limited to the signed-in user's tasks.
+Select several tasks to apply supported bulk changes or delete them. Operations remain limited to tasks the signed-in user is authorized to access: personal tasks/projects plus projects owned by teams they currently belong to.
 
 ## Personal metadata
 
