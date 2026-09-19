@@ -5,7 +5,7 @@ CREATE TABLE discussion_comments (
     project_id BIGINT UNSIGNED NULL,
     task_id BIGINT UNSIGNED NULL,
     parent_comment_id BIGINT UNSIGNED NULL,
-    author_user_id BIGINT UNSIGNED NOT NULL,
+    author_user_id BIGINT UNSIGNED NULL,
     body_html MEDIUMTEXT NOT NULL,
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -29,5 +29,5 @@ CREATE TABLE discussion_comments (
         ON UPDATE RESTRICT ON DELETE CASCADE,
     CONSTRAINT fk_discussion_author
         FOREIGN KEY (author_user_id) REFERENCES users (id)
-        ON UPDATE RESTRICT ON DELETE RESTRICT
+        ON UPDATE RESTRICT ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
