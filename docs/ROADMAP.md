@@ -19,7 +19,7 @@ No schema migration is required.
 
 The 0.2 line is the transition from isolated personal task management to optional project-based collaboration. The stages are intentionally ordered so each layer has a clear authorization model before the next one depends on it.
 
-**Current implementation status:** Stages A, B and C are implemented on `main`. Stage D is split into D1 discussion core and D2 mentions/notifications; after D1 lands, D2 is the next feature slice, followed by hardening for the 0.2.0 stable release.
+**Current implementation status:** Stages A-D are implemented on `main`. Stage E hardening is in progress for the `v0.2.0` stable release, covering collaboration authorization, membership/lead edge cases, upgrade-path verification, notification edge cases, documentation and full Docker smoke coverage.
 
 ### Stage A — Projects Core
 
