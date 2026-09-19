@@ -122,6 +122,10 @@ test "$(db "SELECT COUNT(*) FROM internal_notifications
             WHERE user_id=$member_id AND comment_id=$reply_id")" = "1"
 test "$(db "SELECT notification_type FROM internal_notifications
             WHERE user_id=$member_id AND comment_id=$reply_id LIMIT 1")" = "discussion_reply"
+reply_notification=$(db "SELECT id FROM internal_notifications
+                         WHERE user_id=$member_id AND comment_id=$reply_id
+                         LIMIT 1")
+test -n "$reply_notification"
 curl --fail --silent --cookie "$MEMBER_COOKIES" "$BASE_URL/notifications" > /tmp/discussion-member-inbox.html
 grep -q 'ciadmin' /tmp/discussion-member-inbox.html
 
@@ -187,6 +191,15 @@ test "$code" = "302"
 test "$(db "SELECT COUNT(*) FROM discussion_comments WHERE task_id=$task_id")" = "$before"
 code=$(curl --silent -o /dev/null -w '%{http_code}' --cookie "$MEMBER_COOKIES" "$BASE_URL/tasks/$task_id/edit")
 test "$code" = "404"
+
+# Historical inbox entry survives membership loss, but opening it no longer
+# bounces the user into a forbidden/404 work context.
+code=$(curl --silent -D /tmp/discussion-stale-open.headers -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"   "$BASE_URL/notifications/$reply_notification/open")
+test "$code" = "302"
+grep -qi 'location: /notifications' /tmp/discussion-stale-open.headers
+test "$(db "SELECT read_at IS NOT NULL FROM internal_notifications WHERE id=$reply_notification")" = "1"
+curl --fail --silent --cookie "$MEMBER_COOKIES" "$BASE_URL/notifications" > /tmp/discussion-stale-inbox.html
+grep -q 'That work context is no longer available to you.' /tmp/discussion-stale-inbox.html
 
 # Context deletion cascades hard cleanup of discussion rows.
 curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/tasks/$task_id/edit" > /tmp/discussion-task-admin.html

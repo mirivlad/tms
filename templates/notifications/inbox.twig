@@ -20,6 +20,10 @@
     </div>
 </header>
 
+{% if notification_notice %}
+    <p class="alert" role="status">{{ notification_notice }}</p>
+{% endif %}
+
 <section class="content-card notification-inbox">
     {% if notifications is empty %}
         <div class="empty-state">

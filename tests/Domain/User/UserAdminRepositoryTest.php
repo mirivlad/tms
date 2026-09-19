@@ -22,7 +22,16 @@ final class UserAdminRepositoryTest extends TestCase
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
         $this->db->exec('CREATE TABLE users (id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, email TEXT UNIQUE, password_hash TEXT, role TEXT, is_active INTEGER, email_verified_at TEXT NULL, approved_at TEXT NULL, last_activity_at TEXT NULL, created_at TEXT DEFAULT CURRENT_TIMESTAMP, updated_at TEXT DEFAULT CURRENT_TIMESTAMP)');
-        $this->db->exec("INSERT INTO users (id,username,email,password_hash,role,is_active,email_verified_at,approved_at) VALUES (1,'admin','admin@example.test','hash','admin',1,'2026-01-01','2026-01-01'),(2,'user','user@example.test','hash','user',1,'2026-01-01','2026-01-01')");
+        $this->db->exec("INSERT INTO users (id,username,email,password_hash,role,is_active,email_verified_at,approved_at) VALUES
+            (1,'admin','admin@example.test','hash','admin',1,'2026-01-01','2026-01-01'),
+            (2,'user','user@example.test','hash','user',1,'2026-01-01','2026-01-01'),
+            (3,'secondlead','secondlead@example.test','hash','user',1,'2026-01-01','2026-01-01')");
+        $this->db->exec('CREATE TABLE team_members (
+            team_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL,
+            PRIMARY KEY (team_id, user_id)
+        )');
         $this->users = new UserRepository($this->db);
     }
 
@@ -37,6 +46,52 @@ final class UserAdminRepositoryTest extends TestCase
 
         $this->expectException(DomainException::class);
         $this->users->deleteByAdmin(1);
+    }
+
+    public function testSoleTeamLeadCannotBeDisabledOrDeletedByAdmin(): void
+    {
+        $this->db->exec("INSERT INTO team_members (team_id,user_id,role) VALUES (7,2,'lead')");
+
+        try {
+            $this->users->updateByAdmin(2, 'user', 'user@example.test', 'user', false);
+            self::fail('Sole team lead disable should fail.');
+        } catch (DomainException $error) {
+            self::assertSame('A user who is the sole lead of a team cannot be disabled.', $error->getMessage());
+            self::assertTrue($this->users->findById(2)?->isActive ?? false);
+        }
+
+        try {
+            $this->users->deleteByAdmin(2);
+            self::fail('Sole team lead deletion should fail.');
+        } catch (DomainException $error) {
+            self::assertSame('A user who is the sole lead of a team cannot be deleted.', $error->getMessage());
+            self::assertNotNull($this->users->findById(2));
+        }
+
+        $this->db->exec("INSERT INTO team_members (team_id,user_id,role) VALUES (7,3,'lead')");
+        self::assertTrue($this->users->updateByAdmin(2, 'user', 'user@example.test', 'user', false));
+        self::assertFalse($this->users->findById(2)?->isActive ?? true);
+        self::assertTrue($this->users->deleteByAdmin(2));
+        self::assertNull($this->users->findById(2));
+    }
+
+    public function testInactiveOrUnapprovedAlternateLeadDoesNotAllowDisablingTheLastUsableLead(): void
+    {
+        $this->db->exec("INSERT INTO team_members (team_id,user_id,role) VALUES
+            (8,2,'lead'),
+            (8,3,'lead')");
+
+        $this->db->exec('UPDATE users SET is_active = 0 WHERE id = 3');
+        try {
+            $this->users->updateByAdmin(2, 'user', 'user@example.test', 'user', false);
+            self::fail('Inactive alternate lead must not allow the last usable lead to be disabled.');
+        } catch (DomainException) {
+            self::assertTrue($this->users->findById(2)?->isActive ?? false);
+        }
+
+        $this->db->exec("UPDATE users SET is_active = 1, approved_at = NULL WHERE id = 3");
+        $this->expectException(DomainException::class);
+        $this->users->deleteByAdmin(2);
     }
 
     public function testChangingEmailRequiresVerificationAgain(): void

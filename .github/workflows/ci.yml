@@ -241,6 +241,9 @@ jobs:
       - name: Exercise team project collaboration
         run: bash tests/smoke/team-projects.sh
 
+      - name: Exercise cross-team authorization matrix
+        run: bash tests/smoke/collaboration-acl.sh
+
       - name: Exercise project and task discussions
         run: bash tests/smoke/discussions.sh
 
@@ -282,6 +285,9 @@ jobs:
 
       - name: Exercise extended feature workflow
         run: bash tests/smoke/feature-workflows.sh
+
+      - name: Exercise v0.1.4 to v0.2 database upgrade
+        run: bash tests/smoke/upgrade-v014-to-v020.sh
 
       - name: Show stack state on failure
         if: failure()
