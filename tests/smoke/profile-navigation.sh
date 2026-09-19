@@ -18,6 +18,7 @@ for path in tasks board calendar; do
   grep -q 'data-quick-add-trigger' "/tmp/tms-nav-$path.html"
   grep -q 'class="nav-dropdown nav-settings-menu"' "/tmp/tms-nav-$path.html"
   grep -q 'class="nav-dropdown user-menu"' "/tmp/tms-nav-$path.html"
+  grep -q 'href="/projects"' "/tmp/tms-nav-$path.html"
   grep -q 'href="/teams"' "/tmp/tms-nav-$path.html"
   grep -q 'href="/invitations"' "/tmp/tms-nav-$path.html"
   grep -q 'class="nav-invitations' "/tmp/tms-nav-$path.html"
