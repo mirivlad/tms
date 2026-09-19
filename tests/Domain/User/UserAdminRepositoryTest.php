@@ -75,6 +75,25 @@ final class UserAdminRepositoryTest extends TestCase
         self::assertNull($this->users->findById(2));
     }
 
+    public function testInactiveOrUnapprovedAlternateLeadDoesNotAllowDisablingTheLastUsableLead(): void
+    {
+        $this->db->exec("INSERT INTO team_members (team_id,user_id,role) VALUES
+            (8,2,'lead'),
+            (8,3,'lead')");
+
+        $this->db->exec('UPDATE users SET is_active = 0 WHERE id = 3');
+        try {
+            $this->users->updateByAdmin(2, 'user', 'user@example.test', 'user', false);
+            self::fail('Inactive alternate lead must not allow the last usable lead to be disabled.');
+        } catch (DomainException) {
+            self::assertTrue($this->users->findById(2)?->isActive ?? false);
+        }
+
+        $this->db->exec("UPDATE users SET is_active = 1, approved_at = NULL WHERE id = 3");
+        $this->expectException(DomainException::class);
+        $this->users->deleteByAdmin(2);
+    }
+
     public function testChangingEmailRequiresVerificationAgain(): void
     {
         self::assertTrue($this->users->updateByAdmin(2, 'user', 'new@example.test', 'user', true));
