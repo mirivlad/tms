@@ -311,6 +311,73 @@ final class ProjectRepository
         return true;
     }
 
+    public function changeOwnershipForUser(int $userId, int $projectId, ?int $teamId): bool
+    {
+        $project = $this->findManageableForUser($userId, $projectId);
+        if ($project === null) {
+            return false;
+        }
+
+        if ($teamId !== null) {
+            $lead = $this->db->prepare(
+                "SELECT 1 FROM team_members
+                 WHERE team_id = :team_id AND user_id = :user_id AND role = 'lead'
+                 LIMIT 1"
+            );
+            $lead->execute(['team_id' => $teamId, 'user_id' => $userId]);
+            if ($lead->fetchColumn() === false) {
+                throw new DomainException('Only a Team Lead can assign a project to that team.');
+            }
+        }
+
+        if ($project->ownerTeamId === $teamId
+            && (($teamId === null && $project->ownerUserId === $userId)
+                || $teamId !== null)) {
+            return true;
+        }
+
+        $this->db->beginTransaction();
+        try {
+            if ($teamId === null) {
+                $stmt = $this->db->prepare(
+                    'UPDATE projects
+                     SET owner_user_id = :user_id,
+                         owner_team_id = NULL,
+                         updated_at = CURRENT_TIMESTAMP
+                     WHERE id = :project_id'
+                );
+                $stmt->execute(['user_id' => $userId, 'project_id' => $projectId]);
+            } else {
+                $stmt = $this->db->prepare(
+                    'UPDATE projects
+                     SET owner_user_id = NULL,
+                         owner_team_id = :team_id,
+                         updated_at = CURRENT_TIMESTAMP
+                     WHERE id = :project_id'
+                );
+                $stmt->execute(['team_id' => $teamId, 'project_id' => $projectId]);
+            }
+
+            // Assignees belong to the old team context and cannot be carried safely.
+            $clearAssignees = $this->db->prepare(
+                'UPDATE tasks
+                 SET assignee_user_id = NULL,
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE project_id = :project_id
+                   AND assignee_user_id IS NOT NULL'
+            );
+            $clearAssignees->execute(['project_id' => $projectId]);
+
+            $this->db->commit();
+            return true;
+        } catch (Throwable $error) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $error;
+        }
+    }
+
     public function deleteForUser(int $userId, int $projectId): bool
     {
         $project = $this->findManageableForUser($userId, $projectId);
