@@ -9,6 +9,7 @@ use PHPUnit\Framework\TestCase;
 use Tms\Application\TeamInvitationDeliveryService;
 use Tms\Domain\Notification\NotificationSettingsRepository;
 use Tms\Domain\Team\TeamInvitationRecord;
+use Tms\I18n\Translator;
 use Tms\Infrastructure\EmailSender;
 use Tms\Infrastructure\TelegramSender;
 
@@ -63,6 +64,7 @@ final class TeamInvitationDeliveryServiceTest extends TestCase
             $email,
             $telegram,
             'https://tms.example.test/',
+            new Translator(dirname(__DIR__, 2) . '/resources/i18n', 'en'),
         );
 
         $stats = $service->deliver(new TeamInvitationRecord(
