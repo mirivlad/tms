@@ -37,6 +37,7 @@ body { min-height: 100dvh; display: flex; flex-direction: column; }
 .content-card { padding: 14px; }
 .page-header { gap: 14px; margin-bottom: 10px; }
 .page-header .muted { margin: 4px 0 0; }
+.page-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
 .compact-page-header { min-height: 34px; }
 .section-heading { gap: 12px; margin-bottom: 8px; }
 .section-heading p { margin-top: 3px; }
@@ -310,6 +311,10 @@ label { gap: 5px; }
 .team-member-list .metadata-actions form { gap: 6px; }
 
 /* Settings/forms should stop expanding to billboard proportions. */
+.form-card { width: min(100%, 1080px); }
+.rich-source,
+.rich-surface { min-height: 160px; }
+.form-card + .attachment-card { width: min(100%, 1080px); margin-inline: auto; }
 .entity-management-page { margin-bottom: 12px; }
 .entity-management-page:has(.entity-settings-form),
 .attachment-card {
@@ -369,6 +374,17 @@ label { gap: 5px; }
 .attachment-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .attachment-row form { display: block; flex: 0 0 auto; }
 .attachment-empty { margin: 0; }
+
+/* Notifications are settings/data surfaces, not full-width dashboards. */
+.notification-card,
+.notification-inbox {
+    width: min(100%, 1180px);
+    margin-left: auto;
+    margin-right: auto;
+}
+.notification-form { gap: 12px; }
+.notification-rule { gap: 10px 14px; padding: 10px; }
+.notification-inbox-link { padding: 12px 14px; }
 
 /* Calendar is a wide surface; filters collapse below it on tablet. */
 .calendar-workspace { gap: 10px; }
@@ -455,6 +471,7 @@ label { gap: 5px; }
 
     .page-header { align-items: stretch; flex-direction: column; gap: 7px; }
     .page-header > .text-link { align-self: flex-start; }
+    .page-header-actions { justify-content: flex-start; }
 
     .content-card { padding: 12px; }
     .dashboard-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -557,6 +574,9 @@ label { gap: 5px; }
     .task-table .task-row-actions::before { display: none; }
     .task-table .nowrap { white-space: normal; }
     .task-table .custom-value-cell { max-width: none; }
+
+    .rich-source,
+    .rich-surface { min-height: 140px; }
 
     .attachment-upload { align-items: stretch; }
     .attachment-upload label { flex-basis: 100%; }
