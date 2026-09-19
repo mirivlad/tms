@@ -205,7 +205,7 @@ final class ProjectStatusController
     private function redirect(ResponseInterface $response, int $projectId): ResponseInterface
     {
         return $response
-            ->withHeader('Location', '/projects/' . $projectId . '#project-statuses')
+            ->withHeader('Location', '/projects/' . $projectId . '/statuses')
             ->withStatus(302);
     }
 
