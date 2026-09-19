@@ -89,14 +89,16 @@ final class DiscussionReadRepository
         }
 
         [$in, $params] = $this->inParams('project', $projectIds);
-        $params['user_id'] = $userId;
+        $params['member_user_id'] = $userId;
+        $params['read_user_id'] = $userId;
+        $params['actor_user_id'] = $userId;
 
         $stmt = $this->db->prepare(
             "SELECT p.id AS project_id,
                     COUNT(*) AS comment_count,
                     SUM(
                         CASE
-                            WHEN c.author_user_id <> :user_id
+                            WHEN c.author_user_id <> :actor_user_id
                              AND c.id > COALESCE(r.last_read_comment_id, 0)
                             THEN 1 ELSE 0
                         END
@@ -107,7 +109,7 @@ final class DiscussionReadRepository
                ON p.id = CASE WHEN c.project_id IS NOT NULL THEN c.project_id ELSE t.project_id END
              INNER JOIN team_members tm
                ON tm.team_id = p.owner_team_id
-              AND tm.user_id = :user_id
+              AND tm.user_id = :member_user_id
              LEFT JOIN discussion_read_markers r
                ON r.user_id = :read_user_id
               AND r.team_id = p.owner_team_id
@@ -205,7 +207,7 @@ final class DiscussionReadRepository
                  INNER JOIN projects p ON p.id = t.project_id
                  INNER JOIN team_members tm
                    ON tm.team_id = p.owner_team_id
-                  AND tm.user_id = :user_id
+                  AND tm.user_id = :member_user_id
                  LEFT JOIN discussion_comments c
                    ON c.task_id = t.id
                   AND c.project_id IS NULL
