@@ -38,6 +38,15 @@ final class TaskRepositoryTest extends TestCase
         );
 
         $this->db->exec(
+            'CREATE TABLE team_members (
+                team_id INTEGER NOT NULL,
+                user_id INTEGER NOT NULL,
+                role TEXT NOT NULL,
+                PRIMARY KEY (team_id, user_id)
+            )'
+        );
+
+        $this->db->exec(
             'CREATE TABLE tasks (
                 id INTEGER PRIMARY KEY,
                 created_by INTEGER NOT NULL,
