@@ -67,11 +67,14 @@ final class TaskCrudRepositoryTest extends TestCase
             (12,NULL,70,10,'Inbox',0),
             (13,NULL,70,11,'Done',1),
             (20,2,NULL,NULL,'Foreign',0),
-            (21,NULL,80,20,'Foreign project',0)");
+            (21,NULL,80,20,'Foreign project',0),
+            (22,NULL,90,NULL,'Shared',0)");
         $this->db->exec("INSERT INTO task_types (id,user_id,name) VALUES (30,1,'General'),(40,2,'Foreign')");
         $this->db->exec("INSERT INTO customers (id,user_id,name) VALUES (50,1,'Acme 100%'),(60,2,'Foreign')");
         $this->db->exec("INSERT INTO projects (id,owner_user_id,owner_team_id,name) VALUES
-            (70,1,NULL,'Owned project'),(80,2,NULL,'Foreign project')");
+            (70,1,NULL,'Owned project'),(80,2,NULL,'Foreign project'),(90,NULL,7,'Shared project')");
+        $this->db->exec("INSERT INTO team_members (team_id,user_id,role) VALUES
+            (7,1,'member'),(7,2,'member')");
         $this->db->exec("INSERT INTO tasks (id,created_by,title,description,status_id,type_id,priority,customer_id) VALUES
             (200,2,'Other user task','',20,40,1,60)");
 
@@ -127,6 +130,41 @@ final class TaskCrudRepositoryTest extends TestCase
 
         $this->expectException(DomainException::class);
         $this->tasks->updateStatusForUser(1, $task, 21);
+    }
+
+    public function testTeamProjectTaskIsSharedWhilePersonalForeignTaskStaysPrivate(): void
+    {
+        $shared = $this->tasks->createForUser(2, 'Shared by user two', '', null, 22, null, 1, null, 90);
+
+        self::assertSame('Shared by user two', $this->tasks->findForUser(1, $shared)?->title);
+        self::assertTrue($this->tasks->updateForUser(
+            1,
+            $shared,
+            'Edited by teammate',
+            '',
+            null,
+            22,
+            null,
+            2,
+            null,
+            90,
+        ));
+        self::assertSame('Edited by teammate', $this->tasks->findForUser(2, $shared)?->title);
+        self::assertNull($this->tasks->findForUser(1, 200));
+
+        $this->expectException(DomainException::class);
+        $this->tasks->updateForUser(
+            1,
+            $shared,
+            'Cannot move',
+            '',
+            null,
+            10,
+            null,
+            1,
+            null,
+            null,
+        );
     }
 
     public function testQuickUpdateChangesOnlyPreviewFieldsAndKeepsOwnerScope(): void
