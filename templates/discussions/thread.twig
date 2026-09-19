@@ -21,7 +21,7 @@
                 <button type="button" class="secondary compact" data-discussion-command="createLink">↗</button>
                 <button type="button" class="secondary compact" data-discussion-command="removeFormat">×</button>
             </div>
-            <textarea class="discussion-source" name="body" rows="4" maxlength="20000" placeholder="{{ t('discussions.body_placeholder') }}" required></textarea>
+            <textarea class="discussion-source" name="body" rows="4" maxlength="20000" placeholder="{{ t('discussions.body_placeholder') }}"></textarea>
             <div class="discussion-surface" contenteditable="true" role="textbox" aria-multiline="true"
                  data-placeholder="{{ t('discussions.body_placeholder') }}" hidden></div>
         </div>
@@ -56,7 +56,7 @@
                                     <form method="post" action="{{ discussion_base_url }}/{{ comment.id }}/reply" data-discussion-form>
                                         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                                         <div class="discussion-editor compact-editor" data-discussion-editor data-link-prompt="{{ t('discussions.link_prompt') }}">
-                                            <textarea class="discussion-source" name="body" rows="3" maxlength="20000" placeholder="{{ t('discussions.body_placeholder') }}" required></textarea>
+                                            <textarea class="discussion-source" name="body" rows="3" maxlength="20000" placeholder="{{ t('discussions.body_placeholder') }}"></textarea>
                                             <div class="discussion-surface" contenteditable="true" role="textbox" aria-multiline="true"
                                                  data-placeholder="{{ t('discussions.body_placeholder') }}" hidden></div>
                                         </div>
@@ -70,7 +70,7 @@
                                         <form method="post" action="{{ discussion_base_url }}/{{ comment.id }}" data-discussion-form>
                                             <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                                             <div class="discussion-editor compact-editor" data-discussion-editor data-link-prompt="{{ t('discussions.link_prompt') }}">
-                                                <textarea class="discussion-source" name="body" rows="3" maxlength="20000" required>{{ comment.bodyHtml }}</textarea>
+                                                <textarea class="discussion-source" name="body" rows="3" maxlength="20000">{{ comment.bodyHtml }}</textarea>
                                                 <div class="discussion-surface" contenteditable="true" role="textbox" aria-multiline="true" hidden></div>
                                             </div>
                                             <button class="compact" type="submit">{{ t('discussions.save_edit') }}</button>
@@ -110,7 +110,7 @@
                                                         <form method="post" action="{{ discussion_base_url }}/{{ reply.id }}" data-discussion-form>
                                                             <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                                                             <div class="discussion-editor compact-editor" data-discussion-editor data-link-prompt="{{ t('discussions.link_prompt') }}">
-                                                                <textarea class="discussion-source" name="body" rows="3" maxlength="20000" required>{{ reply.bodyHtml }}</textarea>
+                                                                <textarea class="discussion-source" name="body" rows="3" maxlength="20000">{{ reply.bodyHtml }}</textarea>
                                                                 <div class="discussion-surface" contenteditable="true" role="textbox" aria-multiline="true" hidden></div>
                                                             </div>
                                                             <button class="compact" type="submit">{{ t('discussions.save_edit') }}</button>
