@@ -11,6 +11,8 @@ final readonly class TeamInvitationRecord
         public int $teamId,
         public string $teamName,
         public int $invitedUserId,
+        public string $invitedUsername,
+        public string $invitedEmail,
         public ?int $invitedBy,
         public ?string $invitedByUsername,
         public string $status,
