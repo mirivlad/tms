@@ -51,6 +51,9 @@ curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/projects/$project_id/d
 project_csrf=$(csrf_from /tmp/discussion-project-admin.html)
 test -n "$project_csrf"
 grep -q 'id="discussion"' /tmp/discussion-project-admin.html
+grep -q 'class="discussion-workspace project-discussion-workspace"' /tmp/discussion-project-admin.html
+grep -q 'class="project-task-discussion-rail"' /tmp/discussion-project-admin.html
+grep -q 'class="discussion-composer discussion-editor"' /tmp/discussion-project-admin.html
 grep -q 'src="/assets/discussions.js"' /tmp/discussion-project-admin.html
 grep -q 'data-discussion-command="bold"' /tmp/discussion-project-admin.html
 grep -q 'data-discussion-command="insertOrderedList"' /tmp/discussion-project-admin.html
@@ -167,6 +170,8 @@ curl --fail --silent --cookie "$MEMBER_COOKIES" "$BASE_URL/tasks/$task_id/discus
 task_csrf=$(csrf_from /tmp/discussion-task.html)
 test -n "$task_csrf"
 grep -q 'id="discussion"' /tmp/discussion-task.html
+grep -q 'class="discussion-workspace task-discussion-workspace"' /tmp/discussion-task.html
+grep -q 'class="discussion-composer discussion-editor"' /tmp/discussion-task.html
 grep -q 'src="/assets/discussions.js"' /tmp/discussion-task.html
 grep -q 'data-discussion-command="bold"' /tmp/discussion-task.html
 grep -q 'data-discussion-command="insertOrderedList"' /tmp/discussion-task.html
