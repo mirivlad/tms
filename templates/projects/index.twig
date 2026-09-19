@@ -79,7 +79,7 @@
                     <strong><a class="text-link" href="/projects/{{ project.id }}">{{ project.name }}</a></strong>
                     <div class="metadata-badges">
                         <span class="metadata-badge">{{ t('projects.status.' ~ project.lifecycleStatus) }}</span>
-                        {% if project.isTeamOwned %}
+                        {% if project.ownerTeamId %}
                             <span class="metadata-badge">{{ t('projects.owner_team', {'team': team_map[project.ownerTeamId].name|default('—')}) }}</span>
                         {% else %}
                             <span class="metadata-badge">{{ t('projects.personal') }}</span>
@@ -117,7 +117,7 @@
                         <button class="danger-link compact" type="submit">{{ t('common.delete') }}</button>
                     </form>
                 </div>
-                {% elseif project.isTeamOwned %}
+                {% elseif project.ownerTeamId %}
                     <p class="muted">{{ t('projects.team_member_readonly') }}</p>
                 {% endif %}
             </article>
