@@ -95,10 +95,47 @@ final class DiscussionRepository
         );
     }
 
-    public function updateForUser(int $userId, int $commentId, string $bodyHtml): bool
+    public function updateForProject(
+        int $userId,
+        int $projectId,
+        int $commentId,
+        string $bodyHtml,
+    ): bool {
+        return $this->updateForContext($userId, $commentId, $bodyHtml, $projectId, null);
+    }
+
+    public function updateForTask(
+        int $userId,
+        int $taskId,
+        int $commentId,
+        string $bodyHtml,
+    ): bool {
+        return $this->updateForContext($userId, $commentId, $bodyHtml, null, $taskId);
+    }
+
+    public function deleteForProject(int $userId, int $projectId, int $commentId): bool
     {
+        return $this->deleteForContext($userId, $commentId, $projectId, null);
+    }
+
+    public function deleteForTask(int $userId, int $taskId, int $commentId): bool
+    {
+        return $this->deleteForContext($userId, $commentId, null, $taskId);
+    }
+
+    private function updateForContext(
+        int $userId,
+        int $commentId,
+        string $bodyHtml,
+        ?int $projectId,
+        ?int $taskId,
+    ): bool {
         $context = $this->commentContextForMember($userId, $commentId);
-        if ($context === null || $context['author_user_id'] !== $userId || $context['deleted_at'] !== null) {
+        if ($context === null
+            || $context['author_user_id'] !== $userId
+            || $context['deleted_at'] !== null
+            || $context['project_id'] !== $projectId
+            || $context['task_id'] !== $taskId) {
             return false;
         }
 
@@ -115,10 +152,17 @@ final class DiscussionRepository
         return $stmt->rowCount() === 1;
     }
 
-    public function deleteForUser(int $userId, int $commentId): bool
-    {
+    private function deleteForContext(
+        int $userId,
+        int $commentId,
+        ?int $projectId,
+        ?int $taskId,
+    ): bool {
         $context = $this->commentContextForMember($userId, $commentId);
-        if ($context === null || $context['deleted_at'] !== null) {
+        if ($context === null
+            || $context['deleted_at'] !== null
+            || $context['project_id'] !== $projectId
+            || $context['task_id'] !== $taskId) {
             return false;
         }
         if ($context['author_user_id'] !== $userId && $context['role'] !== 'lead') {
@@ -241,11 +285,11 @@ final class DiscussionRepository
         return ['project_id' => (int) $row['project_id'], 'role' => (string) $row['role']];
     }
 
-    /** @return array{author_user_id:int,role:string,deleted_at:?string}|null */
+    /** @return array{author_user_id:int,role:string,deleted_at:?string,project_id:?int,task_id:?int}|null */
     private function commentContextForMember(int $userId, int $commentId): ?array
     {
         $stmt = $this->db->prepare(
-            'SELECT c.author_user_id, c.deleted_at, tm.role
+            'SELECT c.author_user_id, c.project_id, c.task_id, c.deleted_at, tm.role
              FROM discussion_comments c
              LEFT JOIN tasks t ON t.id = c.task_id
              INNER JOIN projects p
@@ -267,6 +311,8 @@ final class DiscussionRepository
             'author_user_id' => (int) $row['author_user_id'],
             'role' => (string) $row['role'],
             'deleted_at' => $row['deleted_at'] !== null ? (string) $row['deleted_at'] : null,
+            'project_id' => $row['project_id'] !== null ? (int) $row['project_id'] : null,
+            'task_id' => $row['task_id'] !== null ? (int) $row['task_id'] : null,
         ];
     }
 
