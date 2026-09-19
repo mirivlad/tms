@@ -18,7 +18,22 @@ final class AttachmentRepositoryTest extends TestCase
     {
         $this->db = new PDO('sqlite::memory:');
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-        $this->db->exec('CREATE TABLE tasks (id INTEGER PRIMARY KEY, created_by INTEGER NOT NULL)');
+        $this->db->exec('CREATE TABLE projects (
+            id INTEGER PRIMARY KEY,
+            owner_user_id INTEGER NULL,
+            owner_team_id INTEGER NULL
+        )');
+        $this->db->exec('CREATE TABLE team_members (
+            team_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL,
+            PRIMARY KEY (team_id, user_id)
+        )');
+        $this->db->exec('CREATE TABLE tasks (
+            id INTEGER PRIMARY KEY,
+            created_by INTEGER NOT NULL,
+            project_id INTEGER NULL
+        )');
         $this->db->exec(
             'CREATE TABLE attachments (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
