@@ -59,6 +59,7 @@ final class ProjectRepositoryTest extends TestCase
             title TEXT NOT NULL DEFAULT "",
             status_id INTEGER NULL,
             project_id INTEGER NULL,
+            assignee_user_id INTEGER NULL,
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )');
         $this->db->exec('CREATE TABLE custom_fields (
