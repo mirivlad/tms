@@ -19,6 +19,7 @@ final class ProjectCustomFieldRepositoryTest extends TestCase
         $this->db = new PDO('sqlite::memory:');
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        $this->db->exec('PRAGMA foreign_keys = ON');
 
         $this->db->exec('CREATE TABLE projects (
             id INTEGER PRIMARY KEY,
@@ -46,7 +47,8 @@ final class ProjectCustomFieldRepositoryTest extends TestCase
             value TEXT NOT NULL,
             created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (task_id, field_id)
+            PRIMARY KEY (task_id, field_id),
+            FOREIGN KEY (field_id) REFERENCES custom_fields (id) ON DELETE CASCADE
         )');
 
         $this->db->exec('INSERT INTO projects (id, owner_user_id, owner_team_id) VALUES
