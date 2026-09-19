@@ -159,7 +159,7 @@ final class ProjectStatusController
 
     private function projectAvailable(int $projectId): bool
     {
-        return $this->projects->findForUser($this->userId(), $projectId) !== null;
+        return $this->projects->findManageableForUser($this->userId(), $projectId) !== null;
     }
 
     /** @param array<string, mixed> $body */
