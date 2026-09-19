@@ -106,12 +106,14 @@
                     <button class="secondary compact" type="submit">{{ t('common.save') }}</button>
                 </form>
 
+                {% if project.isPersonal %}
                 <div class="metadata-actions">
                     <form method="post" action="/projects/{{ project.id }}/delete" onsubmit="return confirm('{{ t('projects.delete_confirm')|e('js') }}')">
                         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                         <button class="danger-link compact" type="submit">{{ t('common.delete') }}</button>
                     </form>
                 </div>
+                {% endif %}
                 {% endif %}
             </article>
         {% endfor %}
