@@ -140,7 +140,7 @@ final class CalendarController
             'statuses' => $this->statuses->listAccessibleForUser($userId),
             'types' => $this->taskTypes->listForUser($userId),
             'customers' => $this->customers->listForUser($userId, 500),
-            'projects' => $this->projects->listForUser($userId),
+            'projects' => $this->projects->listAccessibleForUser($userId),
             'status_map' => $this->statusMap($userId),
             'priority_labels' => $this->priorityLabels(),
         ]);
@@ -249,7 +249,7 @@ final class CalendarController
         }
         if (ctype_digit($value) && (int) $value > 0) {
             $projectId = (int) $value;
-            if ($this->projects->findForUser($userId, $projectId) !== null) {
+            if ($this->projects->findAccessibleForUser($userId, $projectId) !== null) {
                 return [$projectId, false, (string) $projectId];
             }
         }
