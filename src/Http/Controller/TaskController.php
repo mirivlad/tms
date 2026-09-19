@@ -528,6 +528,7 @@ final class TaskController
                 throw new DomainException($this->translator->trans('validation.team_project_personal_metadata'));
             }
             $this->assertMetadataForUser($userId, $input['type_id']);
+            $this->assertAssigneeForProject($userId, $input['project_id'], $input['assignee_user_id']);
             $customInput = $this->customInput($body, $this->fieldsForScope($userId, $input['project_id']));
             $customerId = $teamProject ? null : $this->resolveCustomer($userId, $input['customer']);
 
@@ -574,6 +575,7 @@ final class TaskController
                 throw new DomainException($this->translator->trans('validation.team_project_personal_metadata'));
             }
             $this->assertMetadataForUser($userId, $input['type_id']);
+            $this->assertAssigneeForProject($userId, $input['project_id'], $input['assignee_user_id']);
             $customInput = $this->customInput($body, $this->fieldsForScope($userId, $input['project_id']));
             $customerId = $teamProject ? null : $this->resolveCustomer($userId, $input['customer']);
 
@@ -921,6 +923,22 @@ final class TaskController
             return array_intersect($wanted, $selected) !== [];
         }
         return false;
+    }
+
+    private function assertAssigneeForProject(
+        int $userId,
+        ?int $projectId,
+        ?int $assigneeUserId,
+    ): void {
+        if ($assigneeUserId === null) {
+            return;
+        }
+        foreach ($this->assigneesForProject($userId, $projectId) as $member) {
+            if ($member->userId === $assigneeUserId) {
+                return;
+            }
+        }
+        throw new DomainException($this->translator->trans('validation.selected_assignee_unavailable'));
     }
 
     private function assertMetadataForUser(int $userId, ?int $typeId): void
