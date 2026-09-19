@@ -209,8 +209,8 @@ final class TeamRepository
         if ($current === $role) {
             return true;
         }
-        if ($current === 'lead' && $role !== 'lead' && $this->leadCount($teamId) <= 1) {
-            throw new DomainException('A team must have at least one lead.');
+        if ($current === 'lead' && $role !== 'lead' && !$this->hasOtherUsableLead($teamId, $targetUserId)) {
+            throw new DomainException('A team must have at least one usable lead.');
         }
 
         $stmt = $this->db->prepare(
@@ -233,8 +233,8 @@ final class TeamRepository
         if ($role === null) {
             return false;
         }
-        if ($role === 'lead' && $this->leadCount($teamId) <= 1) {
-            throw new DomainException('A team must have at least one lead.');
+        if ($role === 'lead' && !$this->hasOtherUsableLead($teamId, $targetUserId)) {
+            throw new DomainException('A team must have at least one usable lead.');
         }
 
         $this->clearAssignmentsForMember($teamId, $targetUserId);
@@ -251,8 +251,8 @@ final class TeamRepository
         if ($role === null) {
             return false;
         }
-        if ($role === 'lead' && $this->leadCount($teamId) <= 1) {
-            throw new DomainException('A team must have at least one lead.');
+        if ($role === 'lead' && !$this->hasOtherUsableLead($teamId, $userId)) {
+            throw new DomainException('A team must have at least one usable lead.');
         }
 
         $this->clearAssignmentsForMember($teamId, $userId);
@@ -296,13 +296,24 @@ final class TeamRepository
         $stmt->execute(['team_id' => $teamId, 'user_id' => $userId]);
     }
 
-    private function leadCount(int $teamId): int
+    private function hasOtherUsableLead(int $teamId, int $excludedUserId): bool
     {
         $stmt = $this->db->prepare(
-            "SELECT COUNT(*) FROM team_members WHERE team_id = :team_id AND role = 'lead'"
+            "SELECT 1
+             FROM team_members tm
+             INNER JOIN users u ON u.id = tm.user_id
+             WHERE tm.team_id = :team_id
+               AND tm.role = 'lead'
+               AND tm.user_id <> :excluded_user_id
+               AND u.is_active = 1
+               AND u.approved_at IS NOT NULL
+             LIMIT 1"
         );
-        $stmt->execute(['team_id' => $teamId]);
-        return (int) $stmt->fetchColumn();
+        $stmt->execute([
+            'team_id' => $teamId,
+            'excluded_user_id' => $excludedUserId,
+        ]);
+        return $stmt->fetchColumn() !== false;
     }
 
     private function normalizeRole(string $role): string
