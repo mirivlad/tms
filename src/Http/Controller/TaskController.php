@@ -634,7 +634,16 @@ final class TaskController
         $project = $projectId === null ? null : $this->projects->findForUser($userId, $projectId);
         $teamProject = $project?->isTeamOwned() ?? false;
         $scopeLocked = $task !== null && $task->ownerId !== $userId;
-        $discussionEnabled = $task !== null && $teamProject && $project?->ownerTeamId !== null;
+        $discussionEnabled = false;
+        $discussionComments = [];
+        $discussionBaseUrl = '';
+        $discussionCanModerate = false;
+        if ($task !== null && $project !== null && $project->ownerTeamId !== null && $project->isTeamOwned()) {
+            $discussionEnabled = true;
+            $discussionComments = $this->discussions->listForTask($userId, $task->id);
+            $discussionBaseUrl = '/tasks/' . $task->id . '/discussion';
+            $discussionCanModerate = $this->teams->roleForUser($userId, $project->ownerTeamId) === 'lead';
+        }
         $fields = $this->fieldsForScope($userId, $projectId);
         $response = $response->withStatus($status);
 
@@ -651,14 +660,11 @@ final class TaskController
             'team_project' => $teamProject,
             'assignees' => $this->assigneesForProject($userId, $projectId),
             'discussion_enabled' => $discussionEnabled,
-            'discussion_comments' => $discussionEnabled && $task !== null
-                ? $this->discussions->listForTask($userId, $task->id)
-                : [],
+            'discussion_comments' => $discussionComments,
             'discussion_notice' => $this->consumeDiscussionNotice(),
-            'discussion_base_url' => $task !== null ? '/tasks/' . $task->id . '/discussion' : '',
+            'discussion_base_url' => $discussionBaseUrl,
             'discussion_current_user_id' => $userId,
-            'discussion_can_moderate' => $discussionEnabled && $project?->ownerTeamId !== null
-                && $this->teams->roleForUser($userId, $project->ownerTeamId) === 'lead',
+            'discussion_can_moderate' => $discussionCanModerate,
             'scope_locked' => $scopeLocked,
             'custom_fields' => $fields,
             'custom_form_values' => $this->customFormValues($formData, $task, $fields, $projectId),
