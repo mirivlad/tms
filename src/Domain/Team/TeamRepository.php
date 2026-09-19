@@ -285,12 +285,13 @@ final class TeamRepository
     private function clearAssignmentsForMember(int $teamId, int $userId): void
     {
         $stmt = $this->db->prepare(
-            'UPDATE tasks t
-             INNER JOIN projects p ON p.id = t.project_id
-             SET t.assignee_user_id = NULL,
-                 t.updated_at = CURRENT_TIMESTAMP
-             WHERE p.owner_team_id = :team_id
-               AND t.assignee_user_id = :user_id'
+            'UPDATE tasks
+             SET assignee_user_id = NULL,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE assignee_user_id = :user_id
+               AND project_id IN (
+                    SELECT id FROM projects WHERE owner_team_id = :team_id
+               )'
         );
         $stmt->execute(['team_id' => $teamId, 'user_id' => $userId]);
     }
