@@ -1,0 +1,51 @@
+{% extends 'app_layout.twig' %}
+
+{% block title %}{{ t('teams.invitations_title') }} · TMS{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/assets/metadata.css">{% endblock %}
+
+{% block content %}
+<header class="page-header compact-page-header">
+    <div>
+        <h1>{{ t('teams.invitations_title') }}</h1>
+        <p class="muted">{{ t('teams.invitations_help') }}</p>
+    </div>
+</header>
+
+{% if notice %}<p class="success-notice" role="status">{{ notice }}</p>{% endif %}
+
+<section class="content-card metadata-section">
+    {% if invitations is empty %}
+        <div class="empty-state">
+            <strong>{{ t('teams.invitations_empty') }}</strong>
+            <span>{{ t('teams.invitations_empty_help') }}</span>
+        </div>
+    {% else %}
+        <div class="metadata-list">
+            {% for invitation in invitations %}
+                <article class="metadata-item">
+                    <div class="metadata-item-heading">
+                        <div>
+                            <strong>{{ invitation.teamName }}</strong>
+                            {% if invitation.invitedByUsername %}
+                                <span class="muted"> · {{ t('teams.invited_by', {'username': invitation.invitedByUsername}) }}</span>
+                            {% endif %}
+                        </div>
+                        <span class="metadata-badge">{{ t('teams.invite_status.pending') }}</span>
+                    </div>
+                    <p class="muted">{{ t('teams.invite_expires') }}: {{ invitation.expiresAt }}</p>
+                    <div class="metadata-actions">
+                        <form method="post" action="/invitations/{{ invitation.id }}/accept">
+                            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                            <button type="submit">{{ t('teams.invite_accept') }}</button>
+                        </form>
+                        <form method="post" action="/invitations/{{ invitation.id }}/decline">
+                            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                            <button class="secondary" type="submit">{{ t('teams.invite_decline') }}</button>
+                        </form>
+                    </div>
+                </article>
+            {% endfor %}
+        </div>
+    {% endif %}
+</section>
+{% endblock %}
