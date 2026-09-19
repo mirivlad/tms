@@ -25,7 +25,8 @@ final class CustomFieldRepositoriesTest extends TestCase
         $this->createSchema();
 
         $this->db->exec("INSERT INTO users (id) VALUES (1), (2)");
-        $this->db->exec("INSERT INTO tasks (id, created_by) VALUES (10, 1), (20, 2)");
+        $this->db->exec("INSERT INTO projects (id, owner_user_id, owner_team_id) VALUES (100, 1, NULL), (200, 2, NULL)");
+        $this->db->exec("INSERT INTO tasks (id, created_by, project_id) VALUES (10, 1, NULL), (11, 1, 100), (20, 2, NULL)");
 
         $this->fields = new CustomFieldRepository($this->db);
         $this->values = new TaskCustomFieldValueRepository($this->db);
@@ -60,6 +61,29 @@ final class CustomFieldRepositoriesTest extends TestCase
         $this->expectException(DomainException::class);
         $this->expectExceptionMessage('Custom field is unavailable.');
         $this->values->replaceForTask(1, 10, [$foreignField => 'nope']);
+    }
+
+    public function testProjectTaskRejectsPersonalAndForeignProjectFields(): void
+    {
+        $personal = $this->fields->createForUser(1, 'Personal', 'text', [], false);
+        $this->db->exec("INSERT INTO custom_fields (
+            id, user_id, project_id, source_field_id, name, field_type, sort_order
+        ) VALUES
+            (1000, NULL, 100, $personal, 'Project clone', 'text', 1),
+            (2000, NULL, 200, NULL, 'Foreign project field', 'text', 1)");
+
+        $this->values->replaceForTask(1, 11, [1000 => 'project value']);
+        self::assertSame([1000 => 'project value'], $this->values->listForTask(1, 11));
+
+        try {
+            $this->values->replaceForTask(1, 11, [$personal => 'wrong scope']);
+            self::fail('Personal field was accepted for a project task.');
+        } catch (DomainException $error) {
+            self::assertSame('Custom field is unavailable.', $error->getMessage());
+        }
+
+        $this->expectException(DomainException::class);
+        $this->values->replaceForTask(1, 11, [2000 => 'foreign project']);
     }
 
     public function testValuesRoundTripWithoutCrossUserLeakage(): void
@@ -146,15 +170,23 @@ final class CustomFieldRepositoriesTest extends TestCase
 CREATE TABLE users (
     id INTEGER PRIMARY KEY
 );
+CREATE TABLE projects (
+    id INTEGER PRIMARY KEY,
+    owner_user_id INTEGER NULL,
+    owner_team_id INTEGER NULL
+);
 CREATE TABLE tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     created_by INTEGER NOT NULL,
+    project_id INTEGER NULL,
     UNIQUE (id, created_by),
     FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE CASCADE
 );
 CREATE TABLE custom_fields (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
+    user_id INTEGER NULL,
+    project_id INTEGER NULL,
+    source_field_id INTEGER NULL,
     name TEXT NOT NULL,
     field_type TEXT NOT NULL,
     options_json TEXT NULL,
@@ -163,7 +195,7 @@ CREATE TABLE custom_fields (
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE (user_id, name),
-    UNIQUE (id, user_id),
+    UNIQUE (project_id, name),
     FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 CREATE TABLE task_custom_field_values (
@@ -175,7 +207,7 @@ CREATE TABLE task_custom_field_values (
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (task_id, field_id),
     FOREIGN KEY (task_id, user_id) REFERENCES tasks (id, created_by) ON DELETE CASCADE,
-    FOREIGN KEY (field_id, user_id) REFERENCES custom_fields (id, user_id) ON DELETE CASCADE
+    FOREIGN KEY (field_id) REFERENCES custom_fields (id) ON DELETE CASCADE
 );
 SQL);
     }
