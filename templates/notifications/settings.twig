@@ -11,6 +11,7 @@
 <form method="post" action="/settings/notifications" class="notification-form">
 <input type="hidden" name="_csrf" value="{{ csrf_token }}">
 <h2>{{ t('notifications.channels') }}</h2>
+<p class="field-help">{{ t('notifications.channels_help') }}</p>
 <label class="checkbox-inline"><input type="checkbox" name="email_enabled" value="1" {{ settings.emailEnabled ? 'checked' : '' }}> {{ t('notifications.email_enabled') }}</label>
 <label>{{ t('notifications.email_address') }}<input type="email" name="email_address" value="{{ settings.emailAddress|default('') }}" placeholder="{{ settings.accountEmail }}"><span class="field-help">{{ t('notifications.email_help', {'email': settings.accountEmail}) }}</span></label>
 <label class="checkbox-inline"><input type="checkbox" name="telegram_enabled" value="1" {{ settings.telegramEnabled ? 'checked' : '' }}> {{ t('notifications.telegram_enabled') }}</label>
