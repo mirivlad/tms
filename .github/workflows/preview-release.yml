@@ -118,6 +118,7 @@ jobs:
           - teams with lead/member roles, invitations and task assignees;
           - dedicated task discussion workspaces with rich editing for new comments, replies and edits;
           - project discussion aggregation across project-level and task-level threads, grouped by task;
+          - redesigned discussion workspaces with a compact integrated composer, flatter message hierarchy, reply rails and a desktop task-discussion sidebar;
           - discussion counters and unread indicators on task/project surfaces with per-user, per-team read cursors;
           - project/task discussions with shallow replies, @mentions and canonical in-app notifications;
           - collaboration ACL hardening and a tested v0.1.4-to-v0.2.0 database upgrade path;
