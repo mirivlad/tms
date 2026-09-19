@@ -1,7 +1,7 @@
 {% extends 'app_layout.twig' %}
 
 {% block title %}{{ t('projects.page_title') }} · TMS{% endblock %}
-{% block styles %}<link rel="stylesheet" href="/assets/metadata.css"><link rel="stylesheet" href="/assets/collaboration.css">{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/assets/metadata.css"><link rel="stylesheet" href="/assets/collaboration.css"><link rel="stylesheet" href="/assets/discussions.css">{% endblock %}
 
 {% block content %}
 <header class="page-header compact-page-header">
@@ -50,7 +50,12 @@
                     {% endif %}
                     <a class="button-link secondary-link compact" href="/projects/{{ project.id }}/files">{{ t('projects.action_files') }}</a>
                     {% if project.ownerTeamId %}
-                        <a class="button-link secondary-link compact" href="/projects/{{ project.id }}/discussion">{{ t('projects.action_discussion') }}</a>
+                        {% set discussion_stat = discussion_stats[project.id]|default({'count': 0, 'unread': 0}) %}
+                        <a class="button-link secondary-link compact discussion-link" href="/projects/{{ project.id }}/discussion">
+                            {{ t('projects.action_discussion') }}
+                            <span class="count-badge">{{ discussion_stat.count }}</span>
+                            {% if discussion_stat.unread > 0 %}<span class="discussion-unread-badge">{{ discussion_stat.unread }}</span>{% endif %}
+                        </a>
                     {% endif %}
                 </div>
             </article>
