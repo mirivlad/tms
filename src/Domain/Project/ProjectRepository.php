@@ -18,6 +18,79 @@ final class ProjectRepository
     }
 
     /** @return list<ProjectRecord> */
+    public function listAccessibleForUser(int $userId): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT p.id, p.owner_user_id, p.owner_team_id, p.created_by, p.name, p.description,
+                    p.lifecycle_status, p.created_at, p.updated_at, t.name AS owner_team_name,
+                    CASE
+                        WHEN p.owner_user_id = :role_user_id AND p.owner_team_id IS NULL THEN \'owner\'
+                        ELSE tm.role
+                    END AS access_role
+             FROM projects p
+             LEFT JOIN teams t ON t.id = p.owner_team_id
+             LEFT JOIN team_members tm
+                ON tm.team_id = p.owner_team_id
+               AND tm.user_id = :member_user_id
+             WHERE (p.owner_user_id = :owner_user_id AND p.owner_team_id IS NULL)
+                OR (p.owner_user_id IS NULL AND p.owner_team_id IS NOT NULL AND tm.user_id IS NOT NULL)
+             ORDER BY
+                CASE p.lifecycle_status
+                    WHEN \'active\' THEN 0
+                    WHEN \'paused\' THEN 1
+                    WHEN \'done\' THEN 2
+                    ELSE 3
+                END,
+                p.updated_at DESC,
+                p.id DESC'
+        );
+        $stmt->execute([
+            'role_user_id' => $userId,
+            'member_user_id' => $userId,
+            'owner_user_id' => $userId,
+        ]);
+        return $this->fetchProjects($stmt);
+    }
+
+    public function findAccessibleForUser(int $userId, int $projectId): ?ProjectRecord
+    {
+        $stmt = $this->db->prepare(
+            'SELECT p.id, p.owner_user_id, p.owner_team_id, p.created_by, p.name, p.description,
+                    p.lifecycle_status, p.created_at, p.updated_at, t.name AS owner_team_name,
+                    CASE
+                        WHEN p.owner_user_id = :role_user_id AND p.owner_team_id IS NULL THEN \'owner\'
+                        ELSE tm.role
+                    END AS access_role
+             FROM projects p
+             LEFT JOIN teams t ON t.id = p.owner_team_id
+             LEFT JOIN team_members tm
+                ON tm.team_id = p.owner_team_id
+               AND tm.user_id = :member_user_id
+             WHERE p.id = :project_id
+               AND (
+                    (p.owner_user_id = :owner_user_id AND p.owner_team_id IS NULL)
+                    OR
+                    (p.owner_user_id IS NULL AND p.owner_team_id IS NOT NULL AND tm.user_id IS NOT NULL)
+               )
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'role_user_id' => $userId,
+            'member_user_id' => $userId,
+            'project_id' => $projectId,
+            'owner_user_id' => $userId,
+        ]);
+        $row = $stmt->fetch();
+        return is_array($row) ? $this->hydrate($row) : null;
+    }
+
+    public function findManageableForUser(int $userId, int $projectId): ?ProjectRecord
+    {
+        $project = $this->findAccessibleForUser($userId, $projectId);
+        return $project !== null && $project->canManage() ? $project : null;
+    }
+
+    /** @return list<ProjectRecord> */
     public function listForUser(int $userId): array
     {
         $stmt = $this->db->prepare(
@@ -70,6 +143,54 @@ final class ProjectRepository
         string $description,
         string $lifecycleStatus = 'active',
     ): int {
+        return $this->createOwnedProject(
+            ownerUserId: $userId,
+            ownerTeamId: null,
+            createdBy: $userId,
+            cloneSourceUserId: $userId,
+            name: $name,
+            description: $description,
+            lifecycleStatus: $lifecycleStatus,
+        );
+    }
+
+    public function createForTeam(
+        int $userId,
+        int $teamId,
+        string $name,
+        string $description,
+        string $lifecycleStatus = 'active',
+    ): int {
+        $lead = $this->db->prepare(
+            "SELECT 1 FROM team_members
+             WHERE team_id = :team_id AND user_id = :user_id AND role = 'lead'
+             LIMIT 1"
+        );
+        $lead->execute(['team_id' => $teamId, 'user_id' => $userId]);
+        if ($lead->fetchColumn() === false) {
+            throw new DomainException('Only a Team Lead can create a team project.');
+        }
+
+        return $this->createOwnedProject(
+            ownerUserId: null,
+            ownerTeamId: $teamId,
+            createdBy: $userId,
+            cloneSourceUserId: $userId,
+            name: $name,
+            description: $description,
+            lifecycleStatus: $lifecycleStatus,
+        );
+    }
+
+    private function createOwnedProject(
+        ?int $ownerUserId,
+        ?int $ownerTeamId,
+        int $createdBy,
+        int $cloneSourceUserId,
+        string $name,
+        string $description,
+        string $lifecycleStatus,
+    ): int {
         $name = $this->normalizeName($name);
         $description = $this->normalizeDescription($description);
         $lifecycleStatus = $this->normalizeLifecycleStatus($lifecycleStatus);
@@ -81,13 +202,14 @@ final class ProjectRepository
                     owner_user_id, owner_team_id, created_by, name, description,
                     lifecycle_status, created_at, updated_at
                  ) VALUES (
-                    :user_id, NULL, :created_by, :name, :description,
+                    :owner_user_id, :owner_team_id, :created_by, :name, :description,
                     :lifecycle_status, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                  )'
             );
             $stmt->execute([
-                'user_id' => $userId,
-                'created_by' => $userId,
+                'owner_user_id' => $ownerUserId,
+                'owner_team_id' => $ownerTeamId,
+                'created_by' => $createdBy,
                 'name' => $name,
                 'description' => $description,
                 'lifecycle_status' => $lifecycleStatus,
@@ -106,7 +228,7 @@ final class ProjectRepository
                  WHERE user_id = :user_id AND project_id IS NULL
                  ORDER BY sort_order ASC, id ASC'
             );
-            $clone->execute(['project_id' => $projectId, 'user_id' => $userId]);
+            $clone->execute(['project_id' => $projectId, 'user_id' => $cloneSourceUserId]);
 
             $cloneFields = $this->db->prepare(
                 'INSERT INTO custom_fields (
@@ -120,7 +242,7 @@ final class ProjectRepository
                  WHERE user_id = :user_id AND project_id IS NULL
                  ORDER BY sort_order ASC, id ASC'
             );
-            $cloneFields->execute(['project_id' => $projectId, 'user_id' => $userId]);
+            $cloneFields->execute(['project_id' => $projectId, 'user_id' => $cloneSourceUserId]);
 
             $this->db->commit();
             return $projectId;
@@ -130,6 +252,34 @@ final class ProjectRepository
             }
             throw $error;
         }
+    }
+
+    public function updateForActor(
+        int $userId,
+        int $projectId,
+        string $name,
+        string $description,
+        string $lifecycleStatus,
+    ): bool {
+        if ($this->findManageableForUser($userId, $projectId) === null) {
+            return false;
+        }
+
+        $stmt = $this->db->prepare(
+            'UPDATE projects
+             SET name = :name,
+                 description = :description,
+                 lifecycle_status = :lifecycle_status,
+                 updated_at = CURRENT_TIMESTAMP
+             WHERE id = :project_id'
+        );
+        $stmt->execute([
+            'name' => $this->normalizeName($name),
+            'description' => $this->normalizeDescription($description),
+            'lifecycle_status' => $this->normalizeLifecycleStatus($lifecycleStatus),
+            'project_id' => $projectId,
+        ]);
+        return true;
     }
 
     public function updateForUser(
@@ -416,6 +566,18 @@ final class ProjectRepository
         return $status;
     }
 
+    /** @return list<ProjectRecord> */
+    private function fetchProjects(\PDOStatement $stmt): array
+    {
+        $projects = [];
+        while (($row = $stmt->fetch()) !== false) {
+            if (is_array($row)) {
+                $projects[] = $this->hydrate($row);
+            }
+        }
+        return $projects;
+    }
+
     /** @param array<string, mixed> $row */
     private function hydrate(array $row): ProjectRecord
     {
@@ -429,6 +591,12 @@ final class ProjectRepository
             lifecycleStatus: (string) $row['lifecycle_status'],
             createdAt: (string) $row['created_at'],
             updatedAt: (string) $row['updated_at'],
+            ownerTeamName: isset($row['owner_team_name']) && $row['owner_team_name'] !== null
+                ? (string) $row['owner_team_name']
+                : null,
+            accessRole: isset($row['access_role']) && $row['access_role'] !== null
+                ? (string) $row['access_role']
+                : null,
         );
     }
 }
