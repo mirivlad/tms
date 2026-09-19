@@ -307,6 +307,8 @@ final class ApplicationFactory
             $twig,
             $sessions,
             $internalNotifications,
+            $projects,
+            $tasks,
             $translator,
         );
         $notificationController = new NotificationSettingsController(
