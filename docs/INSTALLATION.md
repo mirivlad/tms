@@ -96,7 +96,7 @@ Set `APP_URL` to the public browser URL, not the Docker service name.
 
 Create a Stack from `compose.portainer.yaml` or paste its contents. Define `APP_URL`, `APP_TIMEZONE`, `APP_LOCALE`, `DB_PASS`, `SESSION_SECURE` and optionally `TMS_PORT` in the Stack environment.
 
-The file is pinned to `ghcr.io/mirivlad/tms:v0.1.3`. Set `TMS_IMAGE` only when you deliberately want another version, `latest`, `edge`, or an immutable `sha-*` build.
+The file is pinned to `ghcr.io/mirivlad/tms:v0.2.0`. Set `TMS_IMAGE` only when you deliberately want another version, `latest`, `edge`, or an immutable `sha-*` build.
 
 After deployment, open the `app` container console and run `php bin/create-admin.php ...` for the first account.
 
