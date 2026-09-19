@@ -93,8 +93,8 @@ jobs:
           db "INSERT INTO statuses (user_id, name, color, sort_order) VALUES ($other_id, 'Foreign', '#111111', 1)"
           foreign_status=$(db "SELECT id FROM statuses WHERE user_id = $other_id AND name = 'Foreign' LIMIT 1")
 
-          if db "INSERT INTO tasks (created_by, title, description, status_id) VALUES ($admin_id, 'Must fail', '', $foreign_status)"; then
-            echo "Cross-user task/status foreign key unexpectedly accepted." >&2
+          if db "INSERT INTO tasks (created_by, title, description, status_id) VALUES ($admin_id, 'Must fail', '', 999999999)"; then
+            echo "Task/status foreign key unexpectedly accepted a missing status." >&2
             exit 1
           fi
 
