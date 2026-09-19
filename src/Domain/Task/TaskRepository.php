@@ -17,7 +17,7 @@ final class TaskRepository
     {
         $stmt = $this->db->prepare(
             'SELECT t.id, t.created_by, t.title, t.description, t.deadline, t.status_id, t.type_id,
-                    t.priority, t.customer_id, t.project_id, t.created_at, t.updated_at
+                    t.priority, t.customer_id, t.project_id, t.assignee_user_id, t.created_at, t.updated_at
              FROM tasks t
              WHERE t.id = :task_id
                AND ' . $this->taskAccessCondition('t', 'find_') . '
@@ -55,7 +55,7 @@ final class TaskRepository
     ): array {
         $customerQuery = trim($customerQuery);
         $sql = 'SELECT t.id, t.created_by, t.title, t.description, t.deadline, t.status_id, t.type_id,
-                       t.priority, t.customer_id, t.project_id, t.created_at, t.updated_at
+                       t.priority, t.customer_id, t.project_id, t.assignee_user_id, t.created_at, t.updated_at
                 FROM tasks t';
         if ($overdue) {
             $sql .= ' LEFT JOIN statuses s ON s.id = t.status_id';
@@ -166,7 +166,7 @@ final class TaskRepository
 
         $customerQuery = trim($customerQuery);
         $sql = 'SELECT t.id, t.created_by, t.title, t.description, t.deadline, t.status_id, t.type_id,
-                       t.priority, t.customer_id, t.project_id, t.created_at, t.updated_at
+                       t.priority, t.customer_id, t.project_id, t.assignee_user_id, t.created_at, t.updated_at
                 FROM tasks t';
         if ($customerQuery !== '') {
             $sql .= ' LEFT JOIN customers c ON c.id = t.customer_id AND c.user_id = t.created_by';
@@ -264,20 +264,22 @@ final class TaskRepository
         int $priority,
         ?int $customerId,
         ?int $projectId = null,
+        ?int $assigneeUserId = null,
     ): int {
         $title = $this->validateTitle($title);
         $this->assertPriority($priority);
         $this->assertAccessibleProject($userId, $projectId);
         $this->assertStatusForScope($userId, $statusId, $projectId);
         $this->assertMetadataForProjectScope($userId, $projectId, $typeId, $customerId);
+        $this->assertAssigneeForProject($projectId, $assigneeUserId);
 
         $stmt = $this->db->prepare(
             'INSERT INTO tasks (
                 created_by, title, description, deadline, status_id, type_id, priority, customer_id, project_id,
-                created_at, updated_at
+                assignee_user_id, created_at, updated_at
              ) VALUES (
                 :user_id, :title, :description, :deadline, :status_id, :type_id, :priority, :customer_id, :project_id,
-                CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                :assignee_user_id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
              )'
         );
         $stmt->execute([
@@ -290,6 +292,7 @@ final class TaskRepository
             'priority' => $priority,
             'customer_id' => $customerId,
             'project_id' => $projectId,
+            'assignee_user_id' => $assigneeUserId,
         ]);
 
         return (int) $this->db->lastInsertId();
@@ -306,6 +309,7 @@ final class TaskRepository
         int $priority,
         ?int $customerId,
         ?int $projectId = null,
+        ?int $assigneeUserId = null,
     ): bool {
         $existing = $this->findForUser($userId, $taskId);
         if ($existing === null) {
@@ -320,6 +324,7 @@ final class TaskRepository
         $this->assertAccessibleProject($userId, $projectId);
         $this->assertStatusForScope($userId, $statusId, $projectId);
         $this->assertMetadataForProjectScope($userId, $projectId, $typeId, $customerId);
+        $this->assertAssigneeForProject($projectId, $assigneeUserId);
 
         $stmt = $this->db->prepare(
             'UPDATE tasks
@@ -331,6 +336,7 @@ final class TaskRepository
                  priority = :priority,
                  customer_id = :customer_id,
                  project_id = :project_id,
+                 assignee_user_id = :assignee_user_id,
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = :task_id'
         );
@@ -343,6 +349,7 @@ final class TaskRepository
             'priority' => $priority,
             'customer_id' => $customerId,
             'project_id' => $projectId,
+            'assignee_user_id' => $assigneeUserId,
             'task_id' => $taskId,
         ]);
         return true;
@@ -715,6 +722,35 @@ final class TaskRepository
         return $stmt->fetchColumn() !== false;
     }
 
+    private function assertAssigneeForProject(?int $projectId, ?int $assigneeUserId): void
+    {
+        if ($assigneeUserId === null) {
+            return;
+        }
+        if ($projectId === null) {
+            throw new DomainException('Assignee is only available for team project tasks.');
+        }
+
+        $stmt = $this->db->prepare(
+            'SELECT 1
+             FROM projects p
+             INNER JOIN team_members tm
+               ON tm.team_id = p.owner_team_id
+              AND tm.user_id = :assignee_user_id
+             WHERE p.id = :project_id
+               AND p.owner_user_id IS NULL
+               AND p.owner_team_id IS NOT NULL
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'project_id' => $projectId,
+            'assignee_user_id' => $assigneeUserId,
+        ]);
+        if ($stmt->fetchColumn() === false) {
+            throw new DomainException('Selected assignee is unavailable for this project.');
+        }
+    }
+
     private function taskAccessCondition(string $alias, string $prefix): string
     {
         return sprintf(
@@ -806,6 +842,7 @@ final class TaskRepository
             priority: (int) ($row['priority'] ?? 0),
             customerId: $row['customer_id'] !== null ? (int) $row['customer_id'] : null,
             projectId: $row['project_id'] !== null ? (int) $row['project_id'] : null,
+            assigneeUserId: $row['assignee_user_id'] !== null ? (int) $row['assignee_user_id'] : null,
             createdAt: (string) $row['created_at'],
             updatedAt: (string) $row['updated_at'],
         );
