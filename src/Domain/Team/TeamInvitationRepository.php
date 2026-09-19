@@ -219,6 +219,7 @@ final class TeamInvitationRepository
             'responded_at' => $now->format('Y-m-d H:i:s'),
             'id' => $invitationId,
             'team_id' => $teamId,
+            'lead_team_id' => $teamId,
             'actor_user_id' => $actorUserId,
         ]);
         return $stmt->rowCount() === 1;
