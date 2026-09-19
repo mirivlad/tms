@@ -33,7 +33,7 @@ final class DiscussionReadRepository
                     COUNT(*) AS comment_count,
                     SUM(
                         CASE
-                            WHEN c.author_user_id <> :actor_user_id
+                            WHEN COALESCE(c.author_user_id, 0) <> :actor_user_id
                              AND c.id > COALESCE(r.last_read_comment_id, 0)
                             THEN 1 ELSE 0
                         END
@@ -53,7 +53,7 @@ final class DiscussionReadRepository
                AND c.project_id IS NULL
                AND c.team_id = p.owner_team_id
                AND c.deleted_at IS NULL
-             GROUP BY c.task_id"
+             GROUP BY c.task_id, p.owner_team_id"
         );
         $stmt->execute($params);
 
@@ -118,7 +118,7 @@ final class DiscussionReadRepository
              WHERE p.id IN ($in)
                AND c.team_id = p.owner_team_id
                AND c.deleted_at IS NULL
-             GROUP BY p.id"
+             GROUP BY p.id, p.owner_team_id"
         );
         $stmt->execute($params);
 
@@ -157,7 +157,7 @@ final class DiscussionReadRepository
               AND c.project_id IS NULL
               AND c.team_id = p.owner_team_id
              WHERE t.id = :task_id
-             GROUP BY t.id
+             GROUP BY t.id, p.owner_team_id
              ON DUPLICATE KEY UPDATE
                 last_read_comment_id = GREATEST(last_read_comment_id, VALUES(last_read_comment_id)),
                 updated_at = CURRENT_TIMESTAMP"
@@ -213,7 +213,7 @@ final class DiscussionReadRepository
                   AND c.project_id IS NULL
                   AND c.team_id = p.owner_team_id
                  WHERE p.id = :project_id
-                 GROUP BY t.id
+                 GROUP BY t.id, p.owner_team_id
                  ON DUPLICATE KEY UPDATE
                     last_read_comment_id = GREATEST(last_read_comment_id, VALUES(last_read_comment_id)),
                     updated_at = CURRENT_TIMESTAMP"
