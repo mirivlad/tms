@@ -80,7 +80,7 @@ test -n "$member_csrf"
 grep -q 'id="discussion"' /tmp/discussion-project-member.html
 
 # Member posts sanitized project comment.
-code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"   --data-urlencode "_csrf=$member_csrf"   --data-urlencode 'body=<p>Hello <script>alert(1)</script><strong>team</strong></p>'   "$BASE_URL/projects/$project_id/discussion")
+code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"   --data-urlencode "_csrf=$member_csrf"   --data-urlencode 'body=<p>Hello @ciadmin <script>alert(1)</script><strong>team</strong></p>'   "$BASE_URL/projects/$project_id/discussion")
 test "$code" = "302"
 root_id=$(db "SELECT id FROM discussion_comments
               WHERE project_id=$project_id AND task_id IS NULL AND author_user_id=$member_id
@@ -94,7 +94,7 @@ if printf '%s' "$root_body" | grep -qi '<script'; then
 fi
 
 # Lead replies; reply-to-reply is rejected.
-code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$project_csrf"   --data-urlencode 'body=<p>Lead reply</p>'   "$BASE_URL/projects/$project_id/discussion/$root_id/reply")
+code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$project_csrf"   --data-urlencode 'body=<p>@discussionmember Lead reply</p>'   "$BASE_URL/projects/$project_id/discussion/$root_id/reply")
 test "$code" = "302"
 reply_id=$(db "SELECT id FROM discussion_comments WHERE parent_comment_id=$root_id ORDER BY id DESC LIMIT 1")
 test -n "$reply_id"
@@ -105,7 +105,7 @@ test "$code" = "302"
 test "$(db "SELECT COUNT(*) FROM discussion_comments WHERE project_id=$project_id")" = "$before"
 
 # Member edits own root but cannot delete Lead reply.
-code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"   --data-urlencode "_csrf=$member_csrf"   --data-urlencode 'body=<p>Edited root</p>'   "$BASE_URL/projects/$project_id/discussion/$root_id")
+code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"   --data-urlencode "_csrf=$member_csrf"   --data-urlencode 'body=<p>Edited root @ciadmin</p>'   "$BASE_URL/projects/$project_id/discussion/$root_id")
 test "$code" = "302"
 grep -q 'Edited root' < <(db "SELECT body_html FROM discussion_comments WHERE id=$root_id")
 
@@ -129,7 +129,7 @@ task_csrf=$(csrf_from /tmp/discussion-task.html)
 test -n "$task_csrf"
 grep -q 'id="discussion"' /tmp/discussion-task.html
 
-code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"   --data-urlencode "_csrf=$task_csrf"   --data-urlencode 'body=<p>Task-specific context</p>'   "$BASE_URL/tasks/$task_id/discussion")
+code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"   --data-urlencode "_csrf=$task_csrf"   --data-urlencode 'body=<p>Task-specific context @ciadmin</p>'   "$BASE_URL/tasks/$task_id/discussion")
 test "$code" = "302"
 task_comment=$(db "SELECT id FROM discussion_comments
                    WHERE task_id=$task_id AND project_id IS NULL
