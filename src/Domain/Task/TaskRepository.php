@@ -444,6 +444,20 @@ final class TaskRepository
             $params['project_id'] = $statusScope;
         }
 
+        $ownedParams = $params;
+        unset($ownedParams['project_id']);
+        $owned = $this->db->prepare(
+            'SELECT COUNT(*)
+             FROM tasks
+             WHERE created_by = :user_id
+               AND id IN (' . implode(', ', $placeholders) . ')'
+        );
+        $owned->execute($ownedParams);
+        $ownedCount = (int) $owned->fetchColumn();
+        if ($ownedCount === 0) {
+            return 0;
+        }
+
         $check = $this->db->prepare(
             'SELECT COUNT(*)
              FROM tasks
@@ -452,7 +466,7 @@ final class TaskRepository
                AND ' . $scopeSql
         );
         $check->execute($params);
-        if ((int) $check->fetchColumn() !== count($taskIds)) {
+        if ((int) $check->fetchColumn() !== $ownedCount) {
             throw new DomainException('Selected status is unavailable for one or more tasks.');
         }
 
