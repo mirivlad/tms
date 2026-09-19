@@ -1148,19 +1148,6 @@ final class TaskController
         return $response->withHeader('Content-Type', 'application/json; charset=utf-8')->withStatus($status);
     }
 
-    /** @return array{kind:string,message:string}|null */
-    private function consumeDiscussionNotice(): ?array
-    {
-        $notice = $_SESSION['_discussion_notice'] ?? null;
-        unset($_SESSION['_discussion_notice']);
-        if (!is_array($notice)
-            || !is_string($notice['kind'] ?? null)
-            || !is_string($notice['message'] ?? null)) {
-            return null;
-        }
-        return ['kind' => $notice['kind'], 'message' => $notice['message']];
-    }
-
     /** @return array<string, mixed> */
     private function commonViewData(ServerRequestInterface $request): array
     {
