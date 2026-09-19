@@ -28,6 +28,16 @@
             <input type="text" name="name" maxlength="160" required value="{{ create_form.name|default('') }}">
         </label>
         <label>
+            <span>{{ t('projects.owner') }}</span>
+            {% set create_team = create_form.owner_team_id|default('') %}
+            <select name="owner_team_id">
+                <option value="">{{ t('projects.owner_personal') }}</option>
+                {% for team in lead_teams %}
+                    <option value="{{ team.id }}" {{ create_team == (team.id ~ '') ? 'selected' : '' }}>{{ t('projects.owner_team', {'team': team.name}) }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>
             <span>{{ t('projects.status') }}</span>
             {% set create_status = create_form.lifecycle_status|default('active') %}
             <select name="lifecycle_status">
@@ -68,12 +78,13 @@
                     <strong><a class="text-link" href="/projects/{{ project.id }}">{{ project.name }}</a></strong>
                     <div class="metadata-badges">
                         <span class="metadata-badge">{{ t('projects.status.' ~ project.lifecycleStatus) }}</span>
-                        <span class="metadata-badge">{{ t('projects.personal') }}</span>
+                        <span class="metadata-badge">{{ project.isTeamOwned ? (project.ownerTeamName ?? t('projects.team')) : t('projects.personal') }}</span>
                     </div>
                 </div>
 
                 {% if editing and error %}<p class="alert" role="alert">{{ error }}</p>{% endif %}
 
+                {% if project.canManage %}
                 <form class="metadata-edit" method="post" action="/projects/{{ project.id }}">
                     <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                     <label>
@@ -101,6 +112,7 @@
                         <button class="danger-link compact" type="submit">{{ t('common.delete') }}</button>
                     </form>
                 </div>
+                {% endif %}
             </article>
         {% endfor %}
         </div>
