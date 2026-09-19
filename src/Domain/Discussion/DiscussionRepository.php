@@ -24,7 +24,7 @@ final class DiscussionRepository
             'SELECT c.id, c.project_id, c.task_id, c.parent_comment_id, c.author_user_id,
                     u.username AS author_username, c.body_html, c.created_at, c.updated_at, c.deleted_at
              FROM discussion_comments c
-             INNER JOIN users u ON u.id = c.author_user_id
+             LEFT JOIN users u ON u.id = c.author_user_id
              WHERE c.project_id = :project_id AND c.task_id IS NULL
              ORDER BY COALESCE(c.parent_comment_id, c.id) ASC,
                       CASE WHEN c.parent_comment_id IS NULL THEN 0 ELSE 1 END ASC,
@@ -45,7 +45,7 @@ final class DiscussionRepository
             'SELECT c.id, c.project_id, c.task_id, c.parent_comment_id, c.author_user_id,
                     u.username AS author_username, c.body_html, c.created_at, c.updated_at, c.deleted_at
              FROM discussion_comments c
-             INNER JOIN users u ON u.id = c.author_user_id
+             LEFT JOIN users u ON u.id = c.author_user_id
              WHERE c.task_id = :task_id AND c.project_id IS NULL
              ORDER BY COALESCE(c.parent_comment_id, c.id) ASC,
                       CASE WHEN c.parent_comment_id IS NULL THEN 0 ELSE 1 END ASC,
@@ -308,7 +308,7 @@ final class DiscussionRepository
             return null;
         }
         return [
-            'author_user_id' => (int) $row['author_user_id'],
+            'author_user_id' => $row['author_user_id'] !== null ? (int) $row['author_user_id'] : 0,
             'role' => (string) $row['role'],
             'deleted_at' => $row['deleted_at'] !== null ? (string) $row['deleted_at'] : null,
             'project_id' => $row['project_id'] !== null ? (int) $row['project_id'] : null,
@@ -327,8 +327,8 @@ final class DiscussionRepository
                     projectId: $row['project_id'] !== null ? (int) $row['project_id'] : null,
                     taskId: $row['task_id'] !== null ? (int) $row['task_id'] : null,
                     parentCommentId: $row['parent_comment_id'] !== null ? (int) $row['parent_comment_id'] : null,
-                    authorUserId: (int) $row['author_user_id'],
-                    authorUsername: (string) $row['author_username'],
+                    authorUserId: $row['author_user_id'] !== null ? (int) $row['author_user_id'] : null,
+                    authorUsername: $row['author_username'] !== null ? (string) $row['author_username'] : null,
                     bodyHtml: (string) $row['body_html'],
                     createdAt: (string) $row['created_at'],
                     updatedAt: (string) $row['updated_at'],
