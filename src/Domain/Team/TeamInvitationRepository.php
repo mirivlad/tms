@@ -75,15 +75,19 @@ final class TeamInvitationRepository
 
     public function countPendingForUser(int $userId): int
     {
-        $this->expirePending(new DateTimeImmutable('now', new DateTimeZone('UTC')));
+        $now = new DateTimeImmutable('now', new DateTimeZone('UTC'));
+        $this->expirePending($now);
         $stmt = $this->db->prepare(
             "SELECT COUNT(*)
              FROM team_invitations
              WHERE invited_user_id = :user_id
                AND status = 'pending'
-               AND expires_at > CURRENT_TIMESTAMP"
+               AND expires_at > :now"
         );
-        $stmt->execute(['user_id' => $userId]);
+        $stmt->execute([
+            'user_id' => $userId,
+            'now' => $now->format('Y-m-d H:i:s'),
+        ]);
         return (int) $stmt->fetchColumn();
     }
 
@@ -103,6 +107,7 @@ final class TeamInvitationRepository
         );
         $stmt->execute([
             'team_id' => $teamId,
+            'lead_team_id' => $teamId,
             'actor_user_id' => $actorUserId,
         ]);
         return $this->fetchAll($stmt);
@@ -204,7 +209,7 @@ final class TeamInvitationRepository
                AND status = 'pending'
                AND EXISTS (
                     SELECT 1 FROM team_members tm
-                    WHERE tm.team_id = team_invitations.team_id
+                    WHERE tm.team_id = :lead_team_id
                       AND tm.user_id = :actor_user_id
                       AND tm.role = 'lead'
                )"
