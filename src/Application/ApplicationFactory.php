@@ -214,6 +214,7 @@ final class ApplicationFactory
             $emailSender,
             $telegramSender,
             $appUrl,
+            $translator,
         );
         $passwordRecovery = new PasswordRecoveryService(
             $users,
