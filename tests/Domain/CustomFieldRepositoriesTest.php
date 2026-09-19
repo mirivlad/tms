@@ -26,7 +26,7 @@ final class CustomFieldRepositoriesTest extends TestCase
 
         $this->db->exec("INSERT INTO users (id) VALUES (1), (2)");
         $this->db->exec("INSERT INTO projects (id, owner_user_id, owner_team_id) VALUES (100, 1, NULL), (200, 2, NULL)");
-        $this->db->exec("INSERT INTO tasks (id, created_by, project_id) VALUES (10, 1, NULL), (11, 1, 100), (20, 2, NULL)");
+        $this->db->exec("INSERT INTO tasks (id, created_by, project_id) VALUES (10, 1, NULL), (110, 1, 100), (20, 2, NULL)");
 
         $this->fields = new CustomFieldRepository($this->db);
         $this->values = new TaskCustomFieldValueRepository($this->db);
@@ -72,18 +72,18 @@ final class CustomFieldRepositoriesTest extends TestCase
             (1000, NULL, 100, $personal, 'Project clone', 'text', 1),
             (2000, NULL, 200, NULL, 'Foreign project field', 'text', 1)");
 
-        $this->values->replaceForTask(1, 11, [1000 => 'project value']);
-        self::assertSame([1000 => 'project value'], $this->values->listForTask(1, 11));
+        $this->values->replaceForTask(1, 110, [1000 => 'project value']);
+        self::assertSame([1000 => 'project value'], $this->values->listForTask(1, 110));
 
         try {
-            $this->values->replaceForTask(1, 11, [$personal => 'wrong scope']);
+            $this->values->replaceForTask(1, 110, [$personal => 'wrong scope']);
             self::fail('Personal field was accepted for a project task.');
         } catch (DomainException $error) {
             self::assertSame('Custom field is unavailable.', $error->getMessage());
         }
 
         $this->expectException(DomainException::class);
-        $this->values->replaceForTask(1, 11, [2000 => 'foreign project']);
+        $this->values->replaceForTask(1, 110, [2000 => 'foreign project']);
     }
 
     public function testValuesRoundTripWithoutCrossUserLeakage(): void
@@ -128,7 +128,7 @@ final class CustomFieldRepositoriesTest extends TestCase
             false,
         ));
         self::assertSame([$fieldId => 'Prod'], $this->values->listForTask(1, 10));
-        self::assertSame([], $this->values->listForTask(1, 11));
+        self::assertSame([], $this->values->listForTask(1, 110));
     }
 
     public function testChangingCheckboxListOptionsPrunesOnlyRemovedSelections(): void
