@@ -20,11 +20,11 @@
     <div class="section-heading">
         <div>
             <h2>{{ t('teams.about') }}</h2>
-            <p class="muted">{{ team.currentUserIsLead ? t('teams.about_lead_help') : t('teams.about_member_help') }}</p>
+            <p class="muted">{{ is_lead ? t('teams.about_lead_help') : t('teams.about_member_help') }}</p>
         </div>
     </div>
 
-    {% if team.currentUserIsLead %}
+    {% if is_lead %}
         <form class="metadata-create" method="post" action="/teams/{{ team.id }}">
             <input type="hidden" name="_csrf" value="{{ csrf_token }}">
             <label>
@@ -61,7 +61,7 @@
                     <span class="metadata-badge">{{ t('teams.role.' ~ member.role) }}</span>
                 </div>
 
-                {% if team.currentUserIsLead %}
+                {% if is_lead %}
                     <div class="metadata-actions">
                         <form method="post" action="/teams/{{ team.id }}/members/{{ member.userId }}/role">
                             <input type="hidden" name="_csrf" value="{{ csrf_token }}">
@@ -83,7 +83,7 @@
     </div>
 </section>
 
-{% if team.currentUserIsLead %}
+{% if is_lead %}
 <section class="content-card metadata-section">
     <div class="section-heading">
         <div>
@@ -137,7 +137,7 @@
             <input type="hidden" name="_csrf" value="{{ csrf_token }}">
             <button class="secondary" type="submit">{{ t('teams.leave') }}</button>
         </form>
-        {% if team.currentUserIsLead %}
+        {% if is_lead %}
             <form method="post" action="/teams/{{ team.id }}/delete" onsubmit="return confirm('{{ t('teams.delete_confirm')|e('js') }}')">
                 <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                 <button class="danger-link" type="submit">{{ t('teams.delete') }}</button>
