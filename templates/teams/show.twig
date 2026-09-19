@@ -1,7 +1,7 @@
 {% extends 'app_layout.twig' %}
 
 {% block title %}{{ team.name }} · TMS{% endblock %}
-{% block styles %}<link rel="stylesheet" href="/assets/metadata.css">{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/assets/metadata.css"><link rel="stylesheet" href="/assets/collaboration.css">{% endblock %}
 
 {% block content %}
 <header class="page-header compact-page-header">
@@ -16,7 +16,8 @@
     <p class="{{ notice.kind == 'error' ? 'alert' : 'success-notice' }}" role="status">{{ notice.message }}</p>
 {% endif %}
 
-<section class="content-card metadata-section">
+<div class="team-detail-grid">
+<section class="content-card metadata-section team-about-card">
     <div class="section-heading">
         <div>
             <h2>{{ t('teams.about') }}</h2>
@@ -42,7 +43,7 @@
     {% endif %}
 </section>
 
-<section class="content-card metadata-section">
+<section class="content-card metadata-section team-projects-card">
     <div class="section-heading">
         <div>
             <h2>{{ t('teams.projects') }}</h2>
@@ -56,7 +57,7 @@
     {% if projects is empty %}
         <div class="empty-state"><strong>{{ t('teams.projects_empty') }}</strong></div>
     {% else %}
-        <div class="metadata-list">
+        <div class="metadata-list team-project-grid">
             {% for project in projects %}
                 <article class="metadata-item">
                     <div class="metadata-item-heading">
@@ -70,7 +71,7 @@
     {% endif %}
 </section>
 
-<section class="content-card metadata-section">
+<section class="content-card metadata-section team-members-card">
     <div class="section-heading">
         <div>
             <h2>{{ t('teams.members') }}</h2>
@@ -78,7 +79,7 @@
         </div>
     </div>
 
-    <div class="metadata-list">
+    <div class="metadata-list team-member-list">
         {% for member in members %}
             <article class="metadata-item">
                 <div class="metadata-item-heading">
@@ -112,7 +113,7 @@
 </section>
 
 {% if is_lead %}
-<section class="content-card metadata-section">
+<section class="content-card metadata-section team-invite-card">
     <div class="section-heading">
         <div>
             <h2>{{ t('teams.invite_title') }}</h2>
@@ -154,7 +155,7 @@
 </section>
 {% endif %}
 
-<section class="content-card metadata-section">
+<section class="content-card metadata-section team-actions-card">
     <div class="section-heading">
         <div>
             <h2>{{ t('teams.membership_actions') }}</h2>
@@ -173,4 +174,5 @@
         {% endif %}
     </div>
 </section>
+</div>
 {% endblock %}
