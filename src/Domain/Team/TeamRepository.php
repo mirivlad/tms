@@ -237,6 +237,7 @@ final class TeamRepository
             throw new DomainException('A team must have at least one lead.');
         }
 
+        $this->clearAssignmentsForMember($teamId, $targetUserId);
         $stmt = $this->db->prepare(
             'DELETE FROM team_members WHERE team_id = :team_id AND user_id = :user_id'
         );
@@ -254,6 +255,7 @@ final class TeamRepository
             throw new DomainException('A team must have at least one lead.');
         }
 
+        $this->clearAssignmentsForMember($teamId, $userId);
         $stmt = $this->db->prepare(
             'DELETE FROM team_members WHERE team_id = :team_id AND user_id = :user_id'
         );
@@ -278,6 +280,19 @@ final class TeamRepository
         $stmt = $this->db->prepare('DELETE FROM teams WHERE id = :team_id');
         $stmt->execute(['team_id' => $teamId]);
         return $stmt->rowCount() === 1;
+    }
+
+    private function clearAssignmentsForMember(int $teamId, int $userId): void
+    {
+        $stmt = $this->db->prepare(
+            'UPDATE tasks t
+             INNER JOIN projects p ON p.id = t.project_id
+             SET t.assignee_user_id = NULL,
+                 t.updated_at = CURRENT_TIMESTAMP
+             WHERE p.owner_team_id = :team_id
+               AND t.assignee_user_id = :user_id'
+        );
+        $stmt->execute(['team_id' => $teamId, 'user_id' => $userId]);
     }
 
     private function leadCount(int $teamId): int
