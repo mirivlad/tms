@@ -18,6 +18,7 @@ use Tms\Domain\CustomField\CustomFieldRecord;
 use Tms\Domain\CustomField\CustomFieldRepository;
 use Tms\Domain\CustomField\CustomFieldValueCodec;
 use Tms\Domain\CustomField\TaskCustomFieldValueRepository;
+use Tms\Domain\Project\ProjectCustomFieldRepository;
 use Tms\Domain\Project\ProjectRecord;
 use Tms\Domain\Project\ProjectStatusRepository;
 use Tms\Domain\Project\ProjectRepository;
@@ -50,6 +51,7 @@ final class TaskController
         private readonly CustomerRepository $customers,
         private readonly ProjectRepository $projects,
         private readonly ProjectStatusRepository $projectStatuses,
+        private readonly ProjectCustomFieldRepository $projectCustomFields,
         private readonly CustomFieldRepository $customFields,
         private readonly TaskCustomFieldValueRepository $customValues,
         private readonly CustomFieldValueCodec $customValueCodec,
@@ -83,7 +85,7 @@ final class TaskController
         $createdTo = $this->queryDate($query, 'created_to');
         [$projectId, $withoutProject, $projectFilter] = $this->projectFilter($query, $userId);
 
-        $fields = $this->customFields->listForUser($userId);
+        $fields = $this->fieldsForScope($userId, $projectId);
         $customFilters = $this->customFilters($query, $fields);
         $tasks = $this->tasks->listFilteredForUser(
             $userId,
@@ -222,7 +224,7 @@ final class TaskController
         $type = $task->typeId === null ? null : ($this->typeMap($userId)[$task->typeId] ?? null);
         $customer = $task->customerId === null ? null : ($this->customerMap($userId)[$task->customerId] ?? null);
         $project = $task->projectId === null ? null : ($this->projectMap($userId)[$task->projectId] ?? null);
-        $fields = $this->customFields->listForUser($userId);
+        $fields = $this->fieldsForScope($userId, $task->projectId);
         $values = $this->customValues->listForTasks($userId, [$task->id])[$task->id] ?? [];
         $custom = [];
         foreach ($fields as $field) {
@@ -314,6 +316,34 @@ final class TaskController
                 'message' => $error->getMessage(),
             ], 422);
         }
+    }
+
+    public function customFieldsFragment(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $userId = $this->userId();
+        $query = $request->getQueryParams();
+        $projectId = $this->queryInt($query, 'project_id');
+        if ($projectId !== null && $this->projects->findForUser($userId, $projectId) === null) {
+            $response->getBody()->write($this->translator->trans('validation.selected_project_unavailable'));
+            return $response->withStatus(404)->withHeader('Content-Type', 'text/plain; charset=utf-8');
+        }
+
+        $task = null;
+        $taskId = $this->queryInt($query, 'task_id');
+        if ($taskId !== null) {
+            $task = $this->tasks->findForUser($userId, $taskId);
+            if ($task === null) {
+                return $this->notFound($response);
+            }
+        }
+
+        $fields = $this->fieldsForScope($userId, $projectId);
+        return $this->view->render($response, 'tasks/_custom_fields.twig', [
+            'custom_fields' => $fields,
+            'custom_form_values' => $task === null
+                ? []
+                : $this->mappedCustomFormValues($task, $projectId, $fields),
+        ]);
     }
 
     public function statusOptionsJson(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
@@ -445,7 +475,7 @@ final class TaskController
             $this->assertProjectForUser($userId, $input['project_id']);
             $this->assertStatusForScope($userId, $input['status_id'], $input['project_id']);
             $this->assertMetadataForUser($userId, $input['type_id']);
-            $customInput = $this->customInput($body, $this->customFields->listForUser($userId));
+            $customInput = $this->customInput($body, $this->fieldsForScope($userId, $input['project_id']));
             $customerId = $this->resolveCustomer($userId, $input['customer']);
 
             $taskId = $this->tasks->createForUser(
@@ -483,7 +513,7 @@ final class TaskController
             $this->assertProjectForUser($userId, $input['project_id']);
             $this->assertStatusForScope($userId, $input['status_id'], $input['project_id']);
             $this->assertMetadataForUser($userId, $input['type_id']);
-            $customInput = $this->customInput($body, $this->customFields->listForUser($userId));
+            $customInput = $this->customInput($body, $this->fieldsForScope($userId, $input['project_id']));
             $customerId = $this->resolveCustomer($userId, $input['customer']);
 
             $this->tasks->updateForUser(
@@ -534,19 +564,21 @@ final class TaskController
         int $status = 200,
     ): ResponseInterface {
         $userId = $this->userId();
-        $fields = $this->customFields->listForUser($userId);
+        $projectId = $this->formProjectId($formData, $task);
+        $fields = $this->fieldsForScope($userId, $projectId);
         $response = $response->withStatus($status);
 
         return $this->view->render($response, 'tasks/form.twig', $this->commonViewData($request) + [
             'task' => $task,
             'form' => $formData,
             'error' => $error,
-            'statuses' => $this->statusesForScope($userId, $this->formProjectId($formData, $task)),
+            'statuses' => $this->statusesForScope($userId, $projectId),
             'status_options_url' => '/api/task-statuses',
+            'custom_fields_url' => '/api/task-custom-fields',
             'types' => $this->taskTypes->listForUser($userId),
             'projects' => $this->projects->listForUser($userId),
             'custom_fields' => $fields,
-            'custom_form_values' => $this->customFormValues($formData, $task, $fields),
+            'custom_form_values' => $this->customFormValues($formData, $task, $fields, $projectId),
         ]);
     }
 
@@ -617,7 +649,12 @@ final class TaskController
      * @param list<CustomFieldRecord> $fields
      * @return array<int, mixed>
      */
-    private function customFormValues(array $formData, ?TaskRecord $task, array $fields): array
+    private function customFormValues(
+        array $formData,
+        ?TaskRecord $task,
+        array $fields,
+        ?int $targetProjectId,
+    ): array
     {
         if (is_array($formData['custom_fields'] ?? null)) {
             $values = [];
@@ -633,19 +670,7 @@ final class TaskController
             return [];
         }
 
-        $stored = $this->customValues->listForTask($this->userId(), $task->id);
-        $values = [];
-        foreach ($fields as $field) {
-            $value = $stored[$field->id] ?? null;
-            if ($field->type === 'checkbox') {
-                $values[$field->id] = $value === '1';
-            } elseif ($field->type === 'checkbox_list') {
-                $values[$field->id] = $this->customValueCodec->selectedOptions($field, $value);
-            } else {
-                $values[$field->id] = $value ?? '';
-            }
-        }
-        return $values;
+        return $this->mappedCustomFormValues($task, $targetProjectId, $fields);
     }
 
     /**
@@ -842,6 +867,72 @@ final class TaskController
         if ($status === null) {
             throw new DomainException($this->translator->trans('validation.selected_status_unavailable'));
         }
+    }
+
+    /** @return list<CustomFieldRecord> */
+    private function fieldsForScope(int $userId, ?int $projectId): array
+    {
+        return $projectId === null
+            ? $this->customFields->listForUser($userId)
+            : $this->projectCustomFields->listForProject($userId, $projectId);
+    }
+
+    /**
+     * @param list<CustomFieldRecord> $targetFields
+     * @return array<int, mixed>
+     */
+    private function mappedCustomFormValues(
+        TaskRecord $task,
+        ?int $targetProjectId,
+        array $targetFields,
+    ): array {
+        $stored = $this->customValues->listForTask($this->userId(), $task->id);
+        $currentFields = $this->fieldsForScope($this->userId(), $task->projectId);
+        $currentById = [];
+        $currentBySource = [];
+        foreach ($currentFields as $field) {
+            $currentById[$field->id] = $field;
+            $source = $this->fieldLineageId($field);
+            if ($source !== null) {
+                $currentBySource[$source] = $field;
+            }
+        }
+
+        $sameScope = $task->projectId === $targetProjectId;
+        $values = [];
+        foreach ($targetFields as $target) {
+            $raw = null;
+            if ($sameScope) {
+                $raw = $stored[$target->id] ?? null;
+            } else {
+                $source = $this->fieldLineageId($target);
+                $current = $source === null ? null : ($currentBySource[$source] ?? null);
+                if ($current instanceof CustomFieldRecord && $current->type === $target->type) {
+                    $raw = $stored[$current->id] ?? null;
+                }
+            }
+            $values[$target->id] = $this->customValueForForm($target, $raw);
+        }
+        return $values;
+    }
+
+    private function fieldLineageId(CustomFieldRecord $field): ?int
+    {
+        if ($field->isPersonal()) {
+            return $field->id;
+        }
+        return $field->sourceFieldId;
+    }
+
+    private function customValueForForm(CustomFieldRecord $field, ?string $value): mixed
+    {
+        if ($field->type === 'checkbox') {
+            return $value === '1';
+        }
+        if ($field->type === 'checkbox_list') {
+            return $this->customValueCodec->selectedOptions($field, $value);
+        }
+        return $value ?? '';
     }
 
     /** @return list<StatusRecord> */
