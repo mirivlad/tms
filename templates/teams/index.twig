@@ -1,7 +1,7 @@
 {% extends 'app_layout.twig' %}
 
 {% block title %}{{ t('teams.page_title') }} · TMS{% endblock %}
-{% block styles %}<link rel="stylesheet" href="/assets/metadata.css">{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/assets/metadata.css"><link rel="stylesheet" href="/assets/collaboration.css">{% endblock %}
 
 {% block content %}
 <header class="page-header compact-page-header">
@@ -15,7 +15,8 @@
     <p class="{{ notice.kind == 'error' ? 'alert' : 'success-notice' }}" role="status">{{ notice.message }}</p>
 {% endif %}
 
-<section class="content-card metadata-section">
+<div class="collab-index-layout teams-index-layout">
+<section class="content-card metadata-section collab-create-panel">
     <div class="section-heading">
         <div>
             <h2>{{ t('teams.create_title') }}</h2>
@@ -37,7 +38,7 @@
     </form>
 </section>
 
-<section class="content-card metadata-section">
+<section class="content-card metadata-section collab-list-panel">
     <div class="section-heading">
         <div>
             <h2>{{ t('teams.yours') }}</h2>
@@ -51,9 +52,9 @@
             <span>{{ t('teams.empty_help') }}</span>
         </div>
     {% else %}
-        <div class="metadata-list">
+        <div class="metadata-list collab-team-grid">
             {% for team in teams %}
-                <article class="metadata-item">
+                <article class="metadata-item collab-team-card">
                     <div class="metadata-item-heading">
                         <strong><a class="text-link" href="/teams/{{ team.id }}">{{ team.name }}</a></strong>
                         <div class="metadata-badges">
@@ -66,4 +67,5 @@
         </div>
     {% endif %}
 </section>
+</div>
 {% endblock %}
