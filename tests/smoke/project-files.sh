@@ -16,8 +16,8 @@ db "INSERT INTO projects (owner_user_id, owner_team_id, created_by, name, descri
 project_id=$(db "SELECT id FROM projects WHERE owner_user_id=$admin_id AND name='Project Files Smoke' LIMIT 1")
 test -n "$project_id"
 
-curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/projects/$project_id" > /tmp/project-files-detail.html
-csrf=$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' /tmp/project-files-detail.html | head -n1)
+curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/projects/$project_id/files" > /tmp/project-files-detail.html
+csrf=$(grep -m1 -o 'name="_csrf" value="[^"]*"' /tmp/project-files-detail.html | sed 's/.*value="//;s/"$//')
 test -n "$csrf"
 
 printf 'project file smoke\n' > /tmp/project-file.txt
@@ -34,7 +34,7 @@ test -n "$attachment_id"
 test -n "$storage_name"
 docker compose exec -T app test -f "$STORAGE_ROOT/${storage_name:0:2}/$storage_name"
 
-curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/projects/$project_id" > /tmp/project-files-after-upload.html
+curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/projects/$project_id/files" > /tmp/project-files-after-upload.html
 grep -q 'project-file.txt' /tmp/project-files-after-upload.html
 
 curl --fail --silent --cookie "$COOKIE_JAR" \
