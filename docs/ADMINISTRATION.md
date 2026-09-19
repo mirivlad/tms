@@ -20,6 +20,8 @@ When registration is enabled, email verification links use `APP_URL`. With `REGI
 
 Administrators can create users directly, change role/active state, approve accounts, mark email as verified, resend verification, inspect user details and impersonate an account for troubleshooting. Do not use impersonation as a substitute for reproducing authorization bugs with a normal test account.
 
+A user who is the sole Lead of any team cannot be disabled or deleted. Promote another team member to Lead first; this prevents a team from becoming permanently unmanaged through an administrative account operation.
+
 ## Metadata and custom fields
 
 Statuses, task types, customers and custom fields are user-owned. A user's metadata does not become global merely because the user is an administrator.
