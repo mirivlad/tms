@@ -474,9 +474,16 @@ final class TaskController
             $userId = $this->userId();
             $this->assertProjectForUser($userId, $input['project_id']);
             $this->assertStatusForScope($userId, $input['status_id'], $input['project_id']);
+            $project = $input['project_id'] === null
+                ? null
+                : $this->projects->findForUser($userId, $input['project_id']);
+            $teamProject = $project?->isTeamOwned() ?? false;
+            if ($teamProject && ($input['type_id'] !== null || $input['customer'] !== '')) {
+                throw new DomainException($this->translator->trans('validation.team_project_personal_metadata'));
+            }
             $this->assertMetadataForUser($userId, $input['type_id']);
             $customInput = $this->customInput($body, $this->fieldsForScope($userId, $input['project_id']));
-            $customerId = $this->resolveCustomer($userId, $input['customer']);
+            $customerId = $teamProject ? null : $this->resolveCustomer($userId, $input['customer']);
 
             $taskId = $this->tasks->createForUser(
                 $userId,
@@ -512,9 +519,16 @@ final class TaskController
             $input = $this->taskInput($body);
             $this->assertProjectForUser($userId, $input['project_id']);
             $this->assertStatusForScope($userId, $input['status_id'], $input['project_id']);
+            $project = $input['project_id'] === null
+                ? null
+                : $this->projects->findForUser($userId, $input['project_id']);
+            $teamProject = $project?->isTeamOwned() ?? false;
+            if ($teamProject && ($input['type_id'] !== null || $input['customer'] !== '')) {
+                throw new DomainException($this->translator->trans('validation.team_project_personal_metadata'));
+            }
             $this->assertMetadataForUser($userId, $input['type_id']);
             $customInput = $this->customInput($body, $this->fieldsForScope($userId, $input['project_id']));
-            $customerId = $this->resolveCustomer($userId, $input['customer']);
+            $customerId = $teamProject ? null : $this->resolveCustomer($userId, $input['customer']);
 
             $this->tasks->updateForUser(
                 $userId,
@@ -565,6 +579,9 @@ final class TaskController
     ): ResponseInterface {
         $userId = $this->userId();
         $projectId = $this->formProjectId($formData, $task);
+        $project = $projectId === null ? null : $this->projects->findForUser($userId, $projectId);
+        $teamProject = $project?->isTeamOwned() ?? false;
+        $scopeLocked = $task !== null && $task->ownerId !== $userId;
         $fields = $this->fieldsForScope($userId, $projectId);
         $response = $response->withStatus($status);
 
@@ -577,6 +594,8 @@ final class TaskController
             'custom_fields_url' => '/api/task-custom-fields',
             'types' => $this->taskTypes->listForUser($userId),
             'projects' => $this->projects->listForUser($userId),
+            'team_project' => $teamProject,
+            'scope_locked' => $scopeLocked,
             'custom_fields' => $fields,
             'custom_form_values' => $this->customFormValues($formData, $task, $fields, $projectId),
         ]);
