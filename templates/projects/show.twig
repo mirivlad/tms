@@ -2,6 +2,7 @@
 
 {% block title %}{{ project.name }} · TMS{% endblock %}
 {% block styles %}<link rel="stylesheet" href="/assets/task-form.css"><link rel="stylesheet" href="/assets/metadata.css">{% endblock %}
+{% block scripts %}<script src="/assets/custom-fields.js" defer></script>{% endblock %}
 
 {% block content %}
 <header class="page-header compact-page-header">
@@ -158,6 +159,109 @@
             </article>
         {% endfor %}
     </div>
+</section>
+
+<section class="content-card metadata-section" id="project-fields">
+    <div class="section-heading">
+        <div>
+            <h2>{{ t('projects.fields_title') }}</h2>
+            <p class="muted">{{ t('projects.fields_help') }}</p>
+        </div>
+    </div>
+
+    {% if field_notice %}
+        <p class="{{ field_notice.kind == 'error' ? 'alert' : 'success-notice' }}" role="status">{{ field_notice.message }}</p>
+    {% endif %}
+
+    <form class="custom-field-editor custom-field-create" method="post" action="/projects/{{ project.id }}/fields" data-custom-field-form>
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <label class="custom-field-name">
+            <span>{{ t('custom_fields.name') }}</span>
+            <input type="text" name="name" maxlength="96" required>
+        </label>
+        <label class="custom-field-type">
+            <span>{{ t('custom_fields.type') }}</span>
+            <select name="field_type" required>
+                {% for type in custom_field_types %}
+                    <option value="{{ type }}">{{ t('custom_fields.type.' ~ type) }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label class="custom-field-options" data-custom-field-options hidden>
+            <span>{{ t('custom_fields.options') }}</span>
+            <textarea name="options" rows="5" placeholder="{{ t('custom_fields.options_placeholder') }}" disabled></textarea>
+            <small class="field-help">{{ t('custom_fields.options_inline_help') }}</small>
+        </label>
+        <label class="checkbox-inline compact-check custom-field-required">
+            <input type="checkbox" name="is_required" value="1">
+            {{ t('custom_fields.required') }}
+        </label>
+        <button class="custom-field-submit" type="submit">{{ t('custom_fields.add') }}</button>
+    </form>
+
+    {% if custom_fields is empty %}
+        <div class="empty-state">
+            <strong>{{ t('projects.fields_empty') }}</strong>
+            <span>{{ t('projects.fields_empty_help') }}</span>
+        </div>
+    {% else %}
+        <div class="metadata-list">
+        {% for field in custom_fields %}
+            <article class="metadata-item">
+                <div class="metadata-item-heading">
+                    <strong>{{ field.name }}</strong>
+                    <div class="metadata-badges">
+                        <span class="metadata-badge">{{ t('custom_fields.type.' ~ field.type) }}</span>
+                        {% if field.isRequired %}<span class="metadata-badge">{{ t('custom_fields.required_badge') }}</span>{% endif %}
+                    </div>
+                </div>
+
+                <form class="custom-field-editor custom-field-edit" method="post" action="/projects/{{ project.id }}/fields/{{ field.id }}" data-custom-field-form>
+                    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                    <label class="custom-field-name">
+                        <span>{{ t('custom_fields.name') }}</span>
+                        <input type="text" name="name" maxlength="96" value="{{ field.name }}" required>
+                    </label>
+                    <label class="custom-field-type">
+                        <span>{{ t('custom_fields.type') }}</span>
+                        <select name="field_type" required>
+                            {% for type in custom_field_types %}
+                                <option value="{{ type }}" {{ field.type == type ? 'selected' : '' }}>{{ t('custom_fields.type.' ~ type) }}</option>
+                            {% endfor %}
+                        </select>
+                    </label>
+                    <label class="custom-field-options" data-custom-field-options {{ field.type in ['select', 'checkbox_list'] ? '' : 'hidden' }}>
+                        <span>{{ t('custom_fields.options') }}</span>
+                        <textarea name="options" rows="5" placeholder="{{ t('custom_fields.options_placeholder') }}" {{ field.type in ['select', 'checkbox_list'] ? '' : 'disabled' }}>{{ field.options|join('\n') }}</textarea>
+                        <small class="field-help">{{ t('custom_fields.options_inline_help') }}</small>
+                    </label>
+                    <label class="checkbox-inline compact-check custom-field-required">
+                        <input type="checkbox" name="is_required" value="1" {{ field.isRequired ? 'checked' : '' }}>
+                        {{ t('custom_fields.required') }}
+                    </label>
+                    <button class="custom-field-submit" type="submit">{{ t('common.save') }}</button>
+                </form>
+
+                <div class="metadata-actions">
+                    <form method="post" action="/projects/{{ project.id }}/fields/{{ field.id }}/move">
+                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                        <input type="hidden" name="direction" value="up">
+                        <button class="secondary compact" type="submit" {{ loop.first ? 'disabled' : '' }}>{{ t('common.move_up') }}</button>
+                    </form>
+                    <form method="post" action="/projects/{{ project.id }}/fields/{{ field.id }}/move">
+                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                        <input type="hidden" name="direction" value="down">
+                        <button class="secondary compact" type="submit" {{ loop.last ? 'disabled' : '' }}>{{ t('common.move_down') }}</button>
+                    </form>
+                    <form method="post" action="/projects/{{ project.id }}/fields/{{ field.id }}/delete" onsubmit="return confirm('{{ t('projects.field_delete_confirm')|e('js') }}')">
+                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                        <button class="danger-link" type="submit">{{ t('common.delete') }}</button>
+                    </form>
+                </div>
+            </article>
+        {% endfor %}
+        </div>
+    {% endif %}
 </section>
 
 <section class="content-card task-table-card">
