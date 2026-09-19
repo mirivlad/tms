@@ -70,12 +70,9 @@
             <span>{{ t('projects.empty_help') }}</span>
         </div>
     {% else %}
-        <div class="metadata-list collab-project-list">
+        <div class="metadata-list collab-project-grid">
         {% for project in projects %}
-            {% set editing = edit_project_id == project.id %}
-            {% set values = editing ? edit_form : {} %}
-            {% set lifecycle = values.lifecycle_status|default(project.lifecycleStatus) %}
-            <article class="metadata-item collab-project-row">
+            <article class="metadata-item collab-project-card">
                 <div class="metadata-item-heading">
                     <strong><a class="text-link" href="/projects/{{ project.id }}">{{ project.name }}</a></strong>
                     <div class="metadata-badges">
@@ -87,40 +84,7 @@
                         {% endif %}
                     </div>
                 </div>
-
-                {% if editing and error and manageable_projects[project.id]|default(false) %}<p class="alert" role="alert">{{ error }}</p>{% endif %}
-
-                {% if manageable_projects[project.id]|default(false) %}
-                <form class="metadata-edit collab-project-edit" method="post" action="/projects/{{ project.id }}">
-                    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                    <label>
-                        <span>{{ t('projects.name') }}</span>
-                        <input type="text" name="name" maxlength="160" required value="{{ values.name|default(project.name) }}">
-                    </label>
-                    <label>
-                        <span>{{ t('projects.status') }}</span>
-                        <select name="lifecycle_status">
-                            {% for status in lifecycle_statuses %}
-                                <option value="{{ status }}" {{ lifecycle == status ? 'selected' : '' }}>{{ t('projects.status.' ~ status) }}</option>
-                            {% endfor %}
-                        </select>
-                    </label>
-                    <label class="field-wide">
-                        <span>{{ t('projects.description') }}</span>
-                        <textarea name="description" rows="5" maxlength="20000">{{ values.description|default(project.description) }}</textarea>
-                    </label>
-                    <button class="secondary compact" type="submit">{{ t('common.save') }}</button>
-                </form>
-
-                <div class="metadata-actions">
-                    <form method="post" action="/projects/{{ project.id }}/delete" onsubmit="return confirm('{{ t('projects.delete_confirm')|e('js') }}')">
-                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-                        <button class="danger-link compact" type="submit">{{ t('common.delete') }}</button>
-                    </form>
-                </div>
-                {% elseif project.ownerTeamId %}
-                    <p class="muted">{{ t('projects.team_member_readonly') }}</p>
-                {% endif %}
+                {% if project.description %}<p class="muted">{{ project.description }}</p>{% endif %}
             </article>
         {% endfor %}
         </div>
