@@ -16,6 +16,7 @@
       data-task-form
       data-status-options-url="{{ status_options_url }}"
       data-custom-fields-url="{{ custom_fields_url }}"
+      data-assignee-options-url="{{ assignee_options_url }}"
       data-task-id="{{ task ? task.id : '' }}">
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
 
@@ -75,6 +76,19 @@
                     <option value="{{ type.id }}" {{ form.type_id == type.id ? 'selected' : '' }}>{{ type.name }}</option>
                 {% endfor %}
             </select>
+        </label>
+
+        <label data-assignee-field {{ team_project ? '' : 'hidden' }}>
+            {{ t('task_form.assignee') }}
+            <select name="assignee_user_id" data-assignee-select {{ team_project ? '' : 'disabled' }}>
+                <option value="">{{ t('task_form.unassigned') }}</option>
+                {% for member in assignees %}
+                    <option value="{{ member.userId }}" {{ form.assignee_user_id == member.userId ? 'selected' : '' }}>
+                        {{ member.username }}{% if member.role == 'lead' %} · {{ t('teams.role.lead') }}{% endif %}
+                    </option>
+                {% endfor %}
+            </select>
+            <span class="field-help">{{ t('task_form.assignee_help') }}</span>
         </label>
 
         <label>
