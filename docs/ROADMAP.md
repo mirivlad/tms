@@ -19,7 +19,7 @@ No schema migration is required.
 
 The 0.2 line is the transition from isolated personal task management to optional project-based collaboration. The stages are intentionally ordered so each layer has a clear authorization model before the next one depends on it.
 
-**Current implementation status:** Stages A, B and C are implemented on `main`. The next feature stage is D — Discussions, followed by hardening for the 0.2.0 stable release.
+**Current implementation status:** Stages A, B and C are implemented on `main`. Stage D is split into D1 discussion core and D2 mentions/notifications; after D1 lands, D2 is the next feature slice, followed by hardening for the 0.2.0 stable release.
 
 ### Stage A — Projects Core
 
@@ -96,15 +96,25 @@ No Workspace layer is required for 0.2. It can be introduced later only if a rea
 
 ### Stage D — Discussions
 
-Discussions are added only after Teams because discussion visibility depends on the team/project authorization model:
+Discussions are added only after Teams because discussion visibility depends on the team/project authorization model.
 
-- project-level discussion;
-- task-level discussion;
-- comments remain attached to their work context instead of moving into external chats or email threads;
-- replies are shallow rather than an unlimited discussion tree;
-- `@mentions` and direct replies create TMS notifications;
-- Telegram/email act as notification transports linking back to TMS, not as a second source of discussion state;
-- system activity and human comments may share a chronological UI but remain different data types.
+#### D1 — Discussion core
+
+- project-level discussion for team-owned projects;
+- task-level discussion for tasks in team-owned projects;
+- sanitized rich-text comments attached to work context rather than external chats or email threads;
+- replies are limited to one level rather than an unlimited tree;
+- authors may edit/delete their own comments;
+- Team Leads may moderate by deleting comments without silently rewriting another author;
+- human comments stay separate from future immutable system activity.
+
+#### D2 — Mentions and notifications
+
+- `@mentions` resolve only against current members of the owning team;
+- direct replies and mentions create internal TMS notifications;
+- notification links open the exact project/task/comment context;
+- Telegram/email act only as notification transports linking back to TMS;
+- unread state and internal notification history remain canonical inside TMS.
 
 ### Stage E — Hardening and v0.2.0 stable
 

@@ -1,0 +1,138 @@
+<section class="content-card discussion-section" id="discussion">
+    <div class="section-heading">
+        <div>
+            <h2>{{ t('discussions.title') }}</h2>
+            <p class="muted">{{ t('discussions.help') }}</p>
+        </div>
+    </div>
+
+    {% if discussion_notice %}
+        <p class="{{ discussion_notice.kind == 'error' ? 'alert' : 'success-notice' }}" role="status">{{ discussion_notice.message }}</p>
+    {% endif %}
+
+    <form class="discussion-compose" method="post" action="{{ discussion_base_url }}" data-discussion-form>
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <div class="discussion-editor" data-discussion-editor data-link-prompt="{{ t('discussions.link_prompt') }}">
+            <div class="discussion-toolbar" role="toolbar" aria-label="{{ t('discussions.toolbar_aria') }}">
+                <button type="button" class="secondary compact" data-discussion-command="bold"><strong>B</strong></button>
+                <button type="button" class="secondary compact" data-discussion-command="italic"><em>I</em></button>
+                <button type="button" class="secondary compact" data-discussion-command="underline"><u>U</u></button>
+                <button type="button" class="secondary compact" data-discussion-command="insertUnorderedList">•</button>
+                <button type="button" class="secondary compact" data-discussion-command="createLink">↗</button>
+                <button type="button" class="secondary compact" data-discussion-command="removeFormat">×</button>
+            </div>
+            <textarea class="discussion-source" name="body" rows="4" maxlength="20000" placeholder="{{ t('discussions.body_placeholder') }}"></textarea>
+            <div class="discussion-surface" contenteditable="true" role="textbox" aria-multiline="true"
+                 data-placeholder="{{ t('discussions.body_placeholder') }}" hidden></div>
+        </div>
+        <button type="submit">{{ t('discussions.post') }}</button>
+    </form>
+
+    {% if discussion_comments is empty %}
+        <div class="empty-state discussion-empty">
+            <strong>{{ t('discussions.empty') }}</strong>
+            <span>{{ t('discussions.empty_help') }}</span>
+        </div>
+    {% else %}
+        <div class="discussion-thread">
+            {% for comment in discussion_comments %}
+                {% if comment.parentCommentId is null %}
+                    <article class="discussion-comment discussion-root" id="comment-{{ comment.id }}">
+                        <header class="discussion-comment-meta">
+                            <strong>{{ comment.authorUsername|default(t('discussions.deleted_user')) }}</strong>
+                            <span class="muted">{{ comment.createdAt|date('Y-m-d H:i') }}</span>
+                            {% if not comment.isDeleted and comment.updatedAt != comment.createdAt %}
+                                <span class="muted">· {{ t('discussions.edited') }}</span>
+                            {% endif %}
+                        </header>
+
+                        {% if comment.isDeleted %}
+                            <p class="muted discussion-deleted">{{ t('discussions.deleted_placeholder') }}</p>
+                        {% else %}
+                            <div class="discussion-body">{{ comment.bodyHtml|raw }}</div>
+                            <div class="discussion-actions">
+                                <details>
+                                    <summary class="text-link">{{ t('discussions.reply') }}</summary>
+                                    <form method="post" action="{{ discussion_base_url }}/{{ comment.id }}/reply" data-discussion-form>
+                                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                                        <div class="discussion-editor compact-editor" data-discussion-editor data-link-prompt="{{ t('discussions.link_prompt') }}">
+                                            <textarea class="discussion-source" name="body" rows="3" maxlength="20000" placeholder="{{ t('discussions.body_placeholder') }}"></textarea>
+                                            <div class="discussion-surface" contenteditable="true" role="textbox" aria-multiline="true"
+                                                 data-placeholder="{{ t('discussions.body_placeholder') }}" hidden></div>
+                                        </div>
+                                        <button class="compact" type="submit">{{ t('discussions.post_reply') }}</button>
+                                    </form>
+                                </details>
+
+                                {% if comment.authorUserId == discussion_current_user_id %}
+                                    <details>
+                                        <summary class="text-link">{{ t('discussions.edit') }}</summary>
+                                        <form method="post" action="{{ discussion_base_url }}/{{ comment.id }}" data-discussion-form>
+                                            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                                            <div class="discussion-editor compact-editor" data-discussion-editor data-link-prompt="{{ t('discussions.link_prompt') }}">
+                                                <textarea class="discussion-source" name="body" rows="3" maxlength="20000">{{ comment.bodyHtml }}</textarea>
+                                                <div class="discussion-surface" contenteditable="true" role="textbox" aria-multiline="true" hidden></div>
+                                            </div>
+                                            <button class="compact" type="submit">{{ t('discussions.save_edit') }}</button>
+                                        </form>
+                                    </details>
+                                {% endif %}
+
+                                {% if comment.authorUserId == discussion_current_user_id or discussion_can_moderate %}
+                                    <form method="post" action="{{ discussion_base_url }}/{{ comment.id }}/delete"
+                                          onsubmit="return confirm('{{ t('discussions.delete_confirm')|e('js') }}')">
+                                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                                        <button class="danger-link compact" type="submit">{{ t('discussions.delete') }}</button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        {% endif %}
+
+                        <div class="discussion-replies">
+                            {% for reply in discussion_comments %}
+                                {% if reply.parentCommentId == comment.id %}
+                                    <article class="discussion-comment discussion-reply" id="comment-{{ reply.id }}">
+                                        <header class="discussion-comment-meta">
+                                            <strong>{{ reply.authorUsername|default(t('discussions.deleted_user')) }}</strong>
+                                            <span class="muted">{{ reply.createdAt|date('Y-m-d H:i') }}</span>
+                                            {% if not reply.isDeleted and reply.updatedAt != reply.createdAt %}
+                                                <span class="muted">· {{ t('discussions.edited') }}</span>
+                                            {% endif %}
+                                        </header>
+                                        {% if reply.isDeleted %}
+                                            <p class="muted discussion-deleted">{{ t('discussions.deleted_placeholder') }}</p>
+                                        {% else %}
+                                            <div class="discussion-body">{{ reply.bodyHtml|raw }}</div>
+                                            <div class="discussion-actions">
+                                                {% if reply.authorUserId == discussion_current_user_id %}
+                                                    <details>
+                                                        <summary class="text-link">{{ t('discussions.edit') }}</summary>
+                                                        <form method="post" action="{{ discussion_base_url }}/{{ reply.id }}" data-discussion-form>
+                                                            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                                                            <div class="discussion-editor compact-editor" data-discussion-editor data-link-prompt="{{ t('discussions.link_prompt') }}">
+                                                                <textarea class="discussion-source" name="body" rows="3" maxlength="20000">{{ reply.bodyHtml }}</textarea>
+                                                                <div class="discussion-surface" contenteditable="true" role="textbox" aria-multiline="true" hidden></div>
+                                                            </div>
+                                                            <button class="compact" type="submit">{{ t('discussions.save_edit') }}</button>
+                                                        </form>
+                                                    </details>
+                                                {% endif %}
+                                                {% if reply.authorUserId == discussion_current_user_id or discussion_can_moderate %}
+                                                    <form method="post" action="{{ discussion_base_url }}/{{ reply.id }}/delete"
+                                                          onsubmit="return confirm('{{ t('discussions.delete_confirm')|e('js') }}')">
+                                                        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                                                        <button class="danger-link compact" type="submit">{{ t('discussions.delete') }}</button>
+                                                    </form>
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
+                                    </article>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </article>
+                {% endif %}
+            {% endfor %}
+        </div>
+    {% endif %}
+</section>
