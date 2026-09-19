@@ -226,6 +226,16 @@ final class ApplicationFactory
             $appUrl,
             $translator,
         );
+        $discussionNotificationService = new DiscussionNotificationService(
+            $discussions,
+            $teams,
+            $internalNotifications,
+            $notificationSettings,
+            $emailSender,
+            $telegramSender,
+            $translator,
+            $appUrl,
+        );
         $passwordRecovery = new PasswordRecoveryService(
             $users,
             $resetTokens,
@@ -281,7 +291,13 @@ final class ApplicationFactory
         $quickTaskController = new QuickTaskController($sessions, $tasks, $statuses, $projects, $projectStatuses, $descriptionSanitizer, $translator);
         $customerSearchController = new CustomerSearchController($sessions, $customers);
         $taskStatusController = new TaskStatusController($sessions, $tasks, $translator);
-        $discussionController = new DiscussionController($sessions, $discussions, $descriptionSanitizer, $translator);
+        $discussionController = new DiscussionController(
+            $sessions,
+            $discussions,
+            $discussionNotificationService,
+            $descriptionSanitizer,
+            $translator,
+        );
         $calendarController = new CalendarController($twig, $sessions, $tasks, $statuses, $taskTypes, $customers, $projects, $translator);
         $localeController = new LocaleController($translator);
         $metadataController = new MetadataController($twig, $sessions, $statuses, $taskTypes, $customers, $translator);
