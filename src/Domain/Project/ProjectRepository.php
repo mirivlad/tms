@@ -313,8 +313,23 @@ final class ProjectRepository
 
     public function deleteForUser(int $userId, int $projectId): bool
     {
-        if ($this->findForUser($userId, $projectId) === null) {
+        $project = $this->findManageableForUser($userId, $projectId);
+        if ($project === null) {
             return false;
+        }
+
+        if ($project->isTeamOwned()) {
+            $used = $this->db->prepare(
+                'SELECT 1 FROM tasks WHERE project_id = :project_id LIMIT 1'
+            );
+            $used->execute(['project_id' => $projectId]);
+            if ($used->fetchColumn() !== false) {
+                throw new DomainException('A team project with tasks cannot be deleted.');
+            }
+
+            $stmt = $this->db->prepare('DELETE FROM projects WHERE id = :id AND owner_team_id = :team_id');
+            $stmt->execute(['id' => $projectId, 'team_id' => $project->ownerTeamId]);
+            return $stmt->rowCount() === 1;
         }
 
         $this->db->beginTransaction();
