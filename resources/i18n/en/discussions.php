@@ -1,0 +1,29 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'discussions.title' => 'Discussion',
+    'discussions.help' => 'Keep project and task context here instead of losing it in external chats.',
+    'discussions.new' => 'New comment',
+    'discussions.body_placeholder' => 'Write a comment…',
+    'discussions.post' => 'Post comment',
+    'discussions.reply' => 'Reply',
+    'discussions.post_reply' => 'Post reply',
+    'discussions.edit' => 'Edit',
+    'discussions.save_edit' => 'Save comment',
+    'discussions.delete' => 'Delete',
+    'discussions.delete_confirm' => 'Delete this comment?',
+    'discussions.deleted_placeholder' => 'Comment deleted.',
+    'discussions.edited' => 'edited',
+    'discussions.empty' => 'No comments yet.',
+    'discussions.empty_help' => 'Start the discussion in the work context where it belongs.',
+    'discussions.saved' => 'Comment saved.',
+    'discussions.deleted' => 'Comment deleted.',
+    'discussions.unavailable' => 'This discussion comment is unavailable.',
+    'discussions.operation_failed' => 'Unable to update the discussion.',
+    'discussions.validation_body' => 'Comment must contain text and cannot exceed 20000 characters.',
+    'discussions.validation_reply_depth' => 'Replies are limited to one level.',
+    'discussions.toolbar_aria' => 'Comment formatting',
+    'discussions.link_prompt' => 'Enter an http, https or mailto link:',
+];
