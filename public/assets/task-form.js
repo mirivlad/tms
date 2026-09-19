@@ -67,15 +67,21 @@
     const projectSelect = taskForm.querySelector('[data-project-select]');
     const statusSelect = taskForm.querySelector('[data-status-select]');
     const fieldsContainer = taskForm.querySelector('[data-custom-fields-container]');
+    const assigneeField = taskForm.querySelector('[data-assignee-field]');
+    const assigneeSelect = taskForm.querySelector('[data-assignee-select]');
     const statusUrl = taskForm.dataset.statusOptionsUrl || '';
     const fieldsUrl = taskForm.dataset.customFieldsUrl || '';
+    const assigneeUrl = taskForm.dataset.assigneeOptionsUrl || '';
     const taskId = taskForm.dataset.taskId || '';
 
     if (!(projectSelect instanceof HTMLSelectElement)
         || !(statusSelect instanceof HTMLSelectElement)
         || !(fieldsContainer instanceof HTMLElement)
+        || !(assigneeField instanceof HTMLElement)
+        || !(assigneeSelect instanceof HTMLSelectElement)
         || !statusUrl
-        || !fieldsUrl) {
+        || !fieldsUrl
+        || !assigneeUrl) {
         return;
     }
 
@@ -111,9 +117,11 @@
         const serial = ++requestSerial;
         const statusEndpoint = new URL(statusUrl, window.location.origin);
         const fieldsEndpoint = new URL(fieldsUrl, window.location.origin);
+        const assigneeEndpoint = new URL(assigneeUrl, window.location.origin);
         if (projectSelect.value) {
             statusEndpoint.searchParams.set('project_id', projectSelect.value);
             fieldsEndpoint.searchParams.set('project_id', projectSelect.value);
+            assigneeEndpoint.searchParams.set('project_id', projectSelect.value);
         }
         if (taskId) {
             fieldsEndpoint.searchParams.set('task_id', taskId);
@@ -124,7 +132,7 @@
         fieldsContainer.setAttribute('aria-busy', 'true');
 
         try {
-            const [statusResponse, fieldsResponse] = await Promise.all([
+            const [statusResponse, fieldsResponse, assigneeResponse] = await Promise.all([
                 fetch(statusEndpoint.toString(), {
                     headers: {'Accept': 'application/json'},
                     credentials: 'same-origin',
@@ -133,16 +141,23 @@
                     headers: {'Accept': 'text/html'},
                     credentials: 'same-origin',
                 }),
+                fetch(assigneeEndpoint.toString(), {
+                    headers: {'Accept': 'application/json'},
+                    credentials: 'same-origin',
+                }),
             ]);
-            if (!statusResponse.ok || !fieldsResponse.ok) {
+            if (!statusResponse.ok || !fieldsResponse.ok || !assigneeResponse.ok) {
                 throw new Error('Unable to load project task settings.');
             }
 
-            const [payload, fieldsHtml] = await Promise.all([
+            const [payload, fieldsHtml, assigneePayload] = await Promise.all([
                 statusResponse.json(),
                 fieldsResponse.text(),
+                assigneeResponse.json(),
             ]);
-            if (serial !== requestSerial || !Array.isArray(payload.statuses)) return;
+            if (serial !== requestSerial
+                || !Array.isArray(payload.statuses)
+                || !Array.isArray(assigneePayload.assignees)) return;
 
             statusSelect.replaceChildren();
             payload.statuses.forEach((status) => {
@@ -152,6 +167,22 @@
                 if (payload.default_status_id === status.id) option.selected = true;
                 statusSelect.append(option);
             });
+
+            assigneeSelect.replaceChildren();
+            const emptyAssignee = document.createElement('option');
+            emptyAssignee.value = '';
+            emptyAssignee.textContent = assigneeSelect.dataset.unassignedLabel || 'Unassigned';
+            assigneeSelect.append(emptyAssignee);
+            assigneePayload.assignees.forEach((assignee) => {
+                const option = document.createElement('option');
+                option.value = String(assignee.id);
+                option.textContent = String(assignee.username || assignee.id);
+                assigneeSelect.append(option);
+            });
+            const teamOwned = assigneePayload.assignees.length > 0
+                || (projectSelect.selectedOptions[0]?.dataset.teamOwned === '1');
+            assigneeField.hidden = !teamOwned;
+            assigneeSelect.disabled = !teamOwned;
 
             fieldsContainer.innerHTML = fieldsHtml;
             initRequiredCheckboxLists(fieldsContainer);

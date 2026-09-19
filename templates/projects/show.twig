@@ -295,11 +295,12 @@
     {% else %}
         <div class="table-wrap">
             <table class="task-table">
-                <thead><tr><th>{{ t('tasks.table.task') }}</th><th>{{ t('tasks.table.status') }}</th><th>{{ t('tasks.table.deadline') }}</th></tr></thead>
+                <thead><tr><th>{{ t('tasks.table.task') }}</th>{% if project.ownerTeamId %}<th>{{ t('task_form.assignee') }}</th>{% endif %}<th>{{ t('tasks.table.status') }}</th><th>{{ t('tasks.table.deadline') }}</th></tr></thead>
                 <tbody>
                 {% for task in tasks %}
                     <tr>
                         <td><a class="task-title" href="/tasks/{{ task.id }}/edit" data-task-preview="{{ task.id }}">{{ task.title }}</a></td>
+                        {% if project.ownerTeamId %}<td>{{ assignee_map[task.assigneeUserId].username|default('—') }}</td>{% endif %}
                         <td>{{ status_map[task.statusId].name|default('—') }}</td>
                         <td class="nowrap">{{ task.deadline ? task.deadline|date('Y-m-d H:i') : '—' }}</td>
                     </tr>

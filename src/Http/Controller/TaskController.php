@@ -26,6 +26,8 @@ use Tms\Domain\Status\StatusRecord;
 use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRecord;
 use Tms\Domain\Task\TaskRepository;
+use Tms\Domain\Team\TeamMemberRecord;
+use Tms\Domain\Team\TeamRepository;
 use Tms\Domain\TaskType\TaskTypeRecord;
 use Tms\Domain\TaskType\TaskTypeRepository;
 use Tms\I18n\Translator;
@@ -52,6 +54,7 @@ final class TaskController
         private readonly ProjectRepository $projects,
         private readonly ProjectStatusRepository $projectStatuses,
         private readonly ProjectCustomFieldRepository $projectCustomFields,
+        private readonly TeamRepository $teams,
         private readonly CustomFieldRepository $customFields,
         private readonly TaskCustomFieldValueRepository $customValues,
         private readonly CustomFieldValueCodec $customValueCodec,
@@ -112,6 +115,7 @@ final class TaskController
         $typeMap = $this->typeMap($userId);
         $customerMap = $this->customerMap($userId);
         $projectMap = $this->projectMap($userId);
+        $assigneeMap = $this->assigneeMapForProjects($userId, array_values($projectMap));
         $statusNames = [];
         foreach ($statusMap as $id => $status) {
             $statusNames[$id] = $status->name;
@@ -183,6 +187,7 @@ final class TaskController
             'type_map' => $typeMap,
             'customer_map' => $customerMap,
             'project_map' => $projectMap,
+            'assignee_map' => $assigneeMap,
             'projects' => array_values($projectMap),
             'custom_fields' => $fields,
             'custom_values' => $valuesByTask,
@@ -224,6 +229,15 @@ final class TaskController
         $type = $task->typeId === null ? null : ($this->typeMap($userId)[$task->typeId] ?? null);
         $customer = $task->customerId === null ? null : ($this->customerMap($userId)[$task->customerId] ?? null);
         $project = $task->projectId === null ? null : ($this->projectMap($userId)[$task->projectId] ?? null);
+        $assignee = null;
+        if ($project?->ownerTeamId !== null && $task->assigneeUserId !== null) {
+            foreach ($this->teams->listMembers($userId, $project->ownerTeamId) as $member) {
+                if ($member->userId === $task->assigneeUserId) {
+                    $assignee = $member;
+                    break;
+                }
+            }
+        }
         $fields = $this->fieldsForScope($userId, $task->projectId);
         $values = $this->customValues->listForTasks($userId, [$task->id])[$task->id] ?? [];
         $custom = [];
@@ -270,6 +284,8 @@ final class TaskController
             'customer' => $customer?->name,
             'project' => $project?->name,
             'project_id' => $task->projectId,
+            'assignee' => $assignee?->username,
+            'assignee_id' => $task->assigneeUserId,
             'deadline' => $task->deadline,
             'deadline_input' => $this->deadlineForForm($task->deadline),
             'created_at' => $task->createdAt,
@@ -346,6 +362,32 @@ final class TaskController
         ]);
     }
 
+    public function assigneeOptionsJson(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        $userId = $this->userId();
+        $projectId = $this->queryInt($request->getQueryParams(), 'project_id');
+        if ($projectId === null) {
+            return $this->json($response, ['assignees' => []]);
+        }
+
+        $project = $this->projects->findForUser($userId, $projectId);
+        if ($project === null) {
+            return $this->json($response, ['error' => $this->translator->trans('validation.selected_project_unavailable')], 404);
+        }
+
+        $members = $this->assigneesForProject($userId, $projectId);
+        return $this->json($response, [
+            'assignees' => array_map(
+                static fn (TeamMemberRecord $member): array => [
+                    'id' => $member->userId,
+                    'username' => $member->username,
+                    'role' => $member->role,
+                ],
+                $members,
+            ),
+        ]);
+    }
+
     public function statusOptionsJson(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
     {
         $userId = $this->userId();
@@ -403,13 +445,15 @@ final class TaskController
             $tasksByStatus[$task->statusId][] = $task;
         }
 
+        $projects = $this->projects->listForUser($userId);
         return $this->view->render($response, 'tasks/board.twig', $this->commonViewData($request) + [
             'statuses' => $statuses,
             'tasks_by_status' => $tasksByStatus,
             'type_map' => $this->typeMap($userId),
             'customer_map' => $this->customerMap($userId),
             'project_map' => $this->projectMap($userId),
-            'projects' => $this->projects->listForUser($userId),
+            'projects' => $projects,
+            'assignee_map' => $this->assigneeMapForProjects($userId, $projects),
             'project_filter' => $projectFilter,
             'priority_labels' => $this->priorityLabels(),
         ]);
@@ -434,6 +478,7 @@ final class TaskController
             'priority' => 'medium',
             'customer' => '',
             'project_id' => $projectId,
+            'assignee_user_id' => null,
         ], null, null);
     }
 
@@ -463,6 +508,7 @@ final class TaskController
             'priority' => array_search($task->priority, self::PRIORITIES, true) ?: 'medium',
             'customer' => $customer,
             'project_id' => $task->projectId,
+            'assignee_user_id' => $task->assigneeUserId,
         ], null, $task);
     }
 
@@ -482,6 +528,7 @@ final class TaskController
                 throw new DomainException($this->translator->trans('validation.team_project_personal_metadata'));
             }
             $this->assertMetadataForUser($userId, $input['type_id']);
+            $this->assertAssigneeForProject($userId, $input['project_id'], $input['assignee_user_id']);
             $customInput = $this->customInput($body, $this->fieldsForScope($userId, $input['project_id']));
             $customerId = $teamProject ? null : $this->resolveCustomer($userId, $input['customer']);
 
@@ -495,6 +542,7 @@ final class TaskController
                 $input['priority'],
                 $customerId,
                 $input['project_id'],
+                $input['assignee_user_id'],
             );
             $this->customValues->replaceForTask($userId, $taskId, $customInput);
 
@@ -527,6 +575,7 @@ final class TaskController
                 throw new DomainException($this->translator->trans('validation.team_project_personal_metadata'));
             }
             $this->assertMetadataForUser($userId, $input['type_id']);
+            $this->assertAssigneeForProject($userId, $input['project_id'], $input['assignee_user_id']);
             $customInput = $this->customInput($body, $this->fieldsForScope($userId, $input['project_id']));
             $customerId = $teamProject ? null : $this->resolveCustomer($userId, $input['customer']);
 
@@ -541,6 +590,7 @@ final class TaskController
                 $input['priority'],
                 $customerId,
                 $input['project_id'],
+                $input['assignee_user_id'],
             );
             $this->customValues->replaceForTask($userId, $taskId, $customInput);
 
@@ -592,9 +642,11 @@ final class TaskController
             'statuses' => $this->statusesForScope($userId, $projectId),
             'status_options_url' => '/api/task-statuses',
             'custom_fields_url' => '/api/task-custom-fields',
+            'assignee_options_url' => '/api/task-assignees',
             'types' => $this->taskTypes->listForUser($userId),
             'projects' => $this->projects->listForUser($userId),
             'team_project' => $teamProject,
+            'assignees' => $this->assigneesForProject($userId, $projectId),
             'scope_locked' => $scopeLocked,
             'custom_fields' => $fields,
             'custom_form_values' => $this->customFormValues($formData, $task, $fields, $projectId),
@@ -603,7 +655,7 @@ final class TaskController
 
     /**
      * @param array<string, mixed> $body
-     * @return array{title:string,description:string,deadline:?string,status_id:int,type_id:?int,priority:int,customer:string,project_id:?int}
+     * @return array{title:string,description:string,deadline:?string,status_id:int,type_id:?int,priority:int,customer:string,project_id:?int,assignee_user_id:?int}
      */
     private function taskInput(array $body): array
     {
@@ -613,6 +665,7 @@ final class TaskController
         $statusId = $this->bodyInt($body, 'status_id');
         $typeId = $this->bodyInt($body, 'type_id');
         $projectId = $this->bodyInt($body, 'project_id');
+        $assigneeUserId = $this->bodyInt($body, 'assignee_user_id');
         $priorityName = is_string($body['priority'] ?? null) ? (string) $body['priority'] : 'medium';
 
         if (trim($title) === '') {
@@ -637,6 +690,7 @@ final class TaskController
             'priority' => self::PRIORITIES[$priorityName],
             'customer' => $customer,
             'project_id' => $projectId,
+            'assignee_user_id' => $assigneeUserId,
         ];
     }
 
@@ -871,6 +925,22 @@ final class TaskController
         return false;
     }
 
+    private function assertAssigneeForProject(
+        int $userId,
+        ?int $projectId,
+        ?int $assigneeUserId,
+    ): void {
+        if ($assigneeUserId === null) {
+            return;
+        }
+        foreach ($this->assigneesForProject($userId, $projectId) as $member) {
+            if ($member->userId === $assigneeUserId) {
+                return;
+            }
+        }
+        throw new DomainException($this->translator->trans('validation.selected_assignee_unavailable'));
+    }
+
     private function assertMetadataForUser(int $userId, ?int $typeId): void
     {
         if ($typeId !== null && $this->taskTypes->findForUser($userId, $typeId) === null) {
@@ -1079,6 +1149,39 @@ final class TaskController
         $map = [];
         foreach ($this->customers->listAllForUser($userId) as $customer) {
             $map[$customer->id] = $customer;
+        }
+        return $map;
+    }
+
+    /** @return list<TeamMemberRecord> */
+    private function assigneesForProject(int $userId, ?int $projectId): array
+    {
+        if ($projectId === null) {
+            return [];
+        }
+        $project = $this->projects->findForUser($userId, $projectId);
+        if ($project === null || $project->ownerTeamId === null) {
+            return [];
+        }
+        return $this->teams->listMembers($userId, $project->ownerTeamId);
+    }
+
+    /**
+     * @param list<ProjectRecord> $projects
+     * @return array<int, TeamMemberRecord>
+     */
+    private function assigneeMapForProjects(int $userId, array $projects): array
+    {
+        $map = [];
+        $seenTeams = [];
+        foreach ($projects as $project) {
+            if ($project->ownerTeamId === null || isset($seenTeams[$project->ownerTeamId])) {
+                continue;
+            }
+            $seenTeams[$project->ownerTeamId] = true;
+            foreach ($this->teams->listMembers($userId, $project->ownerTeamId) as $member) {
+                $map[$member->userId] = $member;
+            }
         }
         return $map;
     }

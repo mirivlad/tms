@@ -185,6 +185,7 @@ CREATE TABLE tasks (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     created_by INTEGER NOT NULL,
     project_id INTEGER NULL,
+    assignee_user_id INTEGER NULL,
     UNIQUE (id, created_by),
     FOREIGN KEY (created_by) REFERENCES users (id) ON DELETE CASCADE
 );

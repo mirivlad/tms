@@ -92,6 +92,12 @@ task_csrf=$(csrf_from /tmp/tp-member-task.html)
 test -n "$task_csrf"
 grep -q "data-team-owned=\"1\"" /tmp/tp-member-task.html
 grep -q 'data-personal-metadata hidden' /tmp/tp-member-task.html
+grep -q 'name="assignee_user_id"' /tmp/tp-member-task.html
+grep -q "value=\"$member_id\"" /tmp/tp-member-task.html
+
+curl --fail --silent --cookie "$MEMBER_COOKIES"   "$BASE_URL/api/task-assignees?project_id=$project_id" > /tmp/tp-assignees.json
+grep -q '"username":"ciadmin"' /tmp/tp-assignees.json
+grep -q '"username":"teamprojectmember"' /tmp/tp-assignees.json
 
 # Lead can edit a task created by another member; project scope is locked.
 curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/tasks/$task_id/edit" > /tmp/tp-admin-task.html
@@ -100,10 +106,11 @@ test -n "$admin_task_csrf"
 grep -q 'name="project_id" data-project-select disabled' /tmp/tp-admin-task.html
 grep -q "type=\"hidden\" name=\"project_id\" value=\"$project_id\"" /tmp/tp-admin-task.html
 
-code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$admin_task_csrf"   --data-urlencode 'title=Lead edited shared task'   --data-urlencode "project_id=$project_id"   --data-urlencode "status_id=$project_status"   --data-urlencode 'priority=high'   "$BASE_URL/tasks/$task_id")
+code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$admin_task_csrf"   --data-urlencode 'title=Lead edited shared task'   --data-urlencode "project_id=$project_id"   --data-urlencode "status_id=$project_status"   --data-urlencode "assignee_user_id=$member_id"   --data-urlencode 'priority=high'   "$BASE_URL/tasks/$task_id")
 test "$code" = "302"
 test "$(db "SELECT title FROM tasks WHERE id=$task_id")" = "Lead edited shared task"
 test "$(db "SELECT created_by FROM tasks WHERE id=$task_id")" = "$member_id"
+test "$(db "SELECT assignee_user_id FROM tasks WHERE id=$task_id")" = "$member_id"
 
 # Lead uploads an attachment to the member-authored task; DB keeps task author identity.
 printf 'shared attachment\n' > /tmp/tp-shared.txt
@@ -133,6 +140,7 @@ test "$(db "SELECT COUNT(*) FROM teams WHERE id=$team_id")" = "1"
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$team_csrf"   "$BASE_URL/teams/$team_id/members/$member_id/remove")
 test "$code" = "302"
 test "$(db "SELECT COUNT(*) FROM team_members WHERE team_id=$team_id AND user_id=$member_id")" = "0"
+test "$(db "SELECT assignee_user_id IS NULL FROM tasks WHERE id=$task_id")" = "1"
 
 code=$(curl --silent -o /tmp/tp-member-no-project.txt -w '%{http_code}'   --cookie "$MEMBER_COOKIES" "$BASE_URL/projects/$project_id")
 test "$code" = "404"

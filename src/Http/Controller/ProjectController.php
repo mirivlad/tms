@@ -72,6 +72,12 @@ final class ProjectController
         $team = $project->ownerTeamId === null
             ? null
             : $this->teams->findForMember($userId, $project->ownerTeamId);
+        $assigneeMap = [];
+        if ($project->ownerTeamId !== null) {
+            foreach ($this->teams->listMembers($userId, $project->ownerTeamId) as $member) {
+                $assigneeMap[$member->userId] = $member;
+            }
+        }
 
         return $this->view->render($response, 'projects/show.twig', [
             'csrf_token' => $this->csrfToken($request),
@@ -83,6 +89,7 @@ final class ProjectController
             'attachments' => $this->attachments->listForProject($userId, $project->id),
             'statuses' => array_values($statusMap),
             'status_map' => $statusMap,
+            'assignee_map' => $assigneeMap,
             'status_notice' => $statusNotice,
             'custom_fields' => $this->fields->listForProject($userId, $project->id),
             'custom_field_types' => CustomFieldRepository::TYPES,

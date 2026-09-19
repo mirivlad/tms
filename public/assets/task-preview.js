@@ -34,6 +34,7 @@
         priority: dialog.dataset.labelPriority,
         customer: dialog.dataset.labelCustomer,
         project: dialog.dataset.labelProject,
+        assignee: dialog.dataset.labelAssignee,
         deadline: dialog.dataset.labelDeadline,
         created: dialog.dataset.labelCreated,
         updated: dialog.dataset.labelUpdated,
@@ -150,6 +151,7 @@
             addFact(labels.priority || 'Priority', data.priority, 'priority', {priorityValue: data.priority_value});
             addFact(labels.customer || 'Customer', data.customer);
             addFact(labels.project || 'Project', data.project);
+            addFact(labels.assignee || 'Assignee', data.assignee);
 
             if (Array.isArray(data.custom_fields) && data.custom_fields.length) {
                 for (const field of data.custom_fields) addCustomRow(field.name, field.value);

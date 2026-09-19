@@ -46,6 +46,7 @@
                         {% if task.description %}<p class="task-card-description">{{ task.description|striptags }}</p>{% endif %}
                         <div class="task-card-meta">
                             {% if project_map[task.projectId] is defined %}<span>{{ project_map[task.projectId].name }}</span>{% endif %}
+                            {% if assignee_map[task.assigneeUserId] is defined %}<span>{{ t('task_form.assignee') }}: {{ assignee_map[task.assigneeUserId].username }}</span>{% endif %}
                             {% if type_map[task.typeId] is defined %}<span>{{ type_map[task.typeId].name }}</span>{% endif %}
                             {% if customer_map[task.customerId] is defined %}<span>{{ customer_map[task.customerId].name }}</span>{% endif %}
                         </div>

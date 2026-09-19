@@ -209,6 +209,13 @@ final class ApplicationFactory
         );
         $telegramSender = new TelegramBotSender(new Client(), $telegramConfiguration);
         $emailSender = new SmtpEmailSender($smtpSettings, $notificationSecret);
+        $teamInvitationDelivery = new TeamInvitationDeliveryService(
+            $notificationSettings,
+            $emailSender,
+            $telegramSender,
+            $appUrl,
+            $translator,
+        );
         $passwordRecovery = new PasswordRecoveryService(
             $users,
             $resetTokens,
@@ -254,10 +261,10 @@ final class ApplicationFactory
         $projectStatusController = new ProjectStatusController($sessions, $projects, $projectStatuses, $translator);
         $projectCustomFieldController = new ProjectCustomFieldController($sessions, $projects, $projectCustomFields, $translator);
         $projectAttachmentController = new ProjectAttachmentController($sessions, $projects, $projectAttachments, $attachmentPolicy, $attachmentStorage, $translator);
-        $teamController = new TeamController($twig, $sessions, $teams, $projects, $teamInvitations, $users, $translator);
+        $teamController = new TeamController($twig, $sessions, $teams, $projects, $teamInvitations, $teamInvitationDelivery, $users, $translator);
         $teamInvitationController = new TeamInvitationController($twig, $sessions, $teamInvitations, $translator);
         $dashboardController = new DashboardController($twig, $sessions, $tasks, $statuses, $dashboardTips, $translator);
-        $taskController = new TaskController($twig, $sessions, $tasks, $attachments, $statuses, $taskTypes, $customers, $projects, $projectStatuses, $projectCustomFields, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator, $descriptionSanitizer);
+        $taskController = new TaskController($twig, $sessions, $tasks, $attachments, $statuses, $taskTypes, $customers, $projects, $projectStatuses, $projectCustomFields, $teams, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator, $descriptionSanitizer);
         $taskDeleteController = new TaskDeleteController($sessions, $tasks, $attachments, $attachmentStorage);
         $taskBulkController = new TaskBulkController($sessions, $tasks, $attachments, $attachmentStorage, $translator);
         $attachmentController = new AttachmentController($sessions, $tasks, $attachments, $attachmentPolicy, $attachmentStorage, $translator);
@@ -385,6 +392,7 @@ final class ApplicationFactory
         $app->get('/api/tasks/{id:[0-9]+}', [$taskController, 'showJson'])->add($requireAuth);
         $app->get('/api/task-statuses', [$taskController, 'statusOptionsJson'])->add($requireAuth);
         $app->get('/api/task-custom-fields', [$taskController, 'customFieldsFragment'])->add($requireAuth);
+        $app->get('/api/task-assignees', [$taskController, 'assigneeOptionsJson'])->add($requireAuth);
         $app->post('/api/tasks/{id:[0-9]+}/quick-edit', [$taskController, 'quickUpdate'])->add($sanitizeTaskDescription)->add($requireAuth);
         $app->get('/tasks/{id:[0-9]+}/edit', [$taskController, 'edit'])->add($requireAuth);
         $app->post('/tasks/{id:[0-9]+}', [$taskController, 'update'])->add($sanitizeTaskDescription)->add($requireAuth);

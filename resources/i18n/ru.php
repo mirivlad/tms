@@ -281,6 +281,9 @@ return [
     'task_form.rich_clear' => 'Убрать форматирование',
     'task_form.rich_clear_short' => 'Очистить',
     'task_form.status' => 'Статус',
+    'task_form.assignee' => 'Ответственный',
+    'task_form.unassigned' => 'Не назначен',
+    'task_form.assignee_help' => 'Это только ответственность: доступ к проекту остаётся у всех участников команды.',
     'task_form.type' => 'Тип',
     'task_form.no_type' => 'Без типа',
     'task_form.priority' => 'Приоритет',
@@ -291,6 +294,7 @@ return [
     'task_form.team_project_metadata_help' => 'Задачи командного проекта используют поля проекта. Личный тип задачи и заказчик не передаются команде.',
     'task_form.project_locked_for_collaborator' => 'Переносить эту командную задачу между проектами может её автор.',
     'validation.team_project_personal_metadata' => 'У задачи командного проекта нельзя использовать личный тип задачи или заказчика.',
+    'validation.selected_assignee_unavailable' => 'Выбранный ответственный не состоит в команде этого проекта.',
     'task_form.save_changes' => 'Сохранить изменения',
     'task_form.create_task' => 'Создать задачу',
 

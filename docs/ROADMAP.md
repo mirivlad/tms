@@ -19,6 +19,8 @@ No schema migration is required.
 
 The 0.2 line is the transition from isolated personal task management to optional project-based collaboration. The stages are intentionally ordered so each layer has a clear authorization model before the next one depends on it.
 
+**Current implementation status:** Stages A, B and C are implemented on `main`. The next feature stage is D — Discussions, followed by hardening for the 0.2.0 stable release.
+
 ### Stage A — Projects Core
 
 1. Project model and CRUD:

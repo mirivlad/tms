@@ -32,7 +32,8 @@ final class AttachmentRepositoryTest extends TestCase
         $this->db->exec('CREATE TABLE tasks (
             id INTEGER PRIMARY KEY,
             created_by INTEGER NOT NULL,
-            project_id INTEGER NULL
+            project_id INTEGER NULL,
+            assignee_user_id INTEGER NULL
         )');
         $this->db->exec(
             'CREATE TABLE attachments (
