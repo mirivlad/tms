@@ -14,6 +14,7 @@ return [
     'notifications.settings_link' => 'Notification settings',
     'notifications.unread' => 'Unread',
     'notifications.inbox_not_found' => 'Notification not found.',
+    'notifications.context_unavailable' => 'That work context is no longer available to you.',
     'notifications.discussion_mention' => '{actor} mentioned you in {context}',
     'notifications.discussion_reply' => '{actor} replied to you in {context}',
     'notifications.collaboration_subject' => 'TMS: {context}',
