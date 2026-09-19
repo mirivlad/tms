@@ -9,7 +9,7 @@ final readonly class AttachmentRecord
     public function __construct(
         public int $id,
         public int $taskId,
-        public int $userId,
+        public ?int $userId,
         public string $storageName,
         public string $originalName,
         public string $mimeType,
