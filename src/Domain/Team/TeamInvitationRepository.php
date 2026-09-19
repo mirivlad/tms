@@ -94,6 +94,7 @@ final class TeamInvitationRepository
     /** @return list<TeamInvitationRecord> */
     public function listForTeam(int $actorUserId, int $teamId): array
     {
+        $this->expirePending(new DateTimeImmutable('now', new DateTimeZone('UTC')));
         $stmt = $this->db->prepare(
             $this->selectSql()
             . ' WHERE i.team_id = :team_id
