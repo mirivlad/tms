@@ -588,6 +588,7 @@ final class TaskController
                 $input['priority'],
                 $customerId,
                 $input['project_id'],
+                $input['assignee_user_id'],
             );
             $this->customValues->replaceForTask($userId, $taskId, $customInput);
 
