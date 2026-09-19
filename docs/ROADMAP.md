@@ -19,7 +19,7 @@ No schema migration is required.
 
 The 0.2 line is the transition from isolated personal task management to optional project-based collaboration. The stages are intentionally ordered so each layer has a clear authorization model before the next one depends on it.
 
-**Current implementation status:** Stages A-D are implemented on `main`. Stage E hardening is in progress for the `v0.2.0` stable release, covering collaboration authorization, membership/lead edge cases, upgrade-path verification, notification edge cases, documentation and full Docker smoke coverage.
+**Current implementation status:** Stages A-E are complete in `v0.2.0`. This release is the stable collaboration baseline for Projects, Teams and Discussions; the next product stage is intentionally left open until a concrete use case is agreed.
 
 ### Stage A — Projects Core
 
@@ -118,7 +118,7 @@ Discussions are added only after Teams because discussion visibility depends on 
 
 ### Stage E — Hardening and v0.2.0 stable
 
-Before the 0.2 stable release:
+Release hardening for 0.2 covers:
 
 - permission matrix and cross-user/cross-team negative tests;
 - behavior for member removal, lead changes, team/project archival and orphaned assignees;
