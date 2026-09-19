@@ -14,6 +14,7 @@ return [
     'notifications.settings_link' => 'Настройки уведомлений',
     'notifications.unread' => 'Не прочитано',
     'notifications.inbox_not_found' => 'Уведомление не найдено.',
+    'notifications.context_unavailable' => 'Этот рабочий контекст больше вам недоступен.',
     'notifications.discussion_mention' => '{actor} упомянул вас в {context}',
     'notifications.discussion_reply' => '{actor} ответил вам в {context}',
     'notifications.collaboration_subject' => 'TMS: {context}',
