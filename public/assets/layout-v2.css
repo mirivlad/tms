@@ -323,7 +323,7 @@ label { gap: 5px; }
 .team-member-list .metadata-actions form { gap: 6px; }
 
 /* Settings/forms should stop expanding to billboard proportions. */
-.form-card { width: min(100%, 1080px); }
+.form-card { width: min(100%, 1080px); max-width: 1080px; }
 .rich-source,
 .rich-surface { min-height: 160px; }
 .form-card + .attachment-card { width: min(100%, 1080px); margin-inline: auto; }
