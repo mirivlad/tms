@@ -73,7 +73,7 @@ final class TeamInvitationRepositoryTest extends TestCase
 
         self::assertTrue($this->invitations->accept(2, $id, $this->time('2026-09-20 10:00:00')));
         self::assertSame('member', $this->membershipRole(10, 2));
-        self::assertSame('accepted', $this->status($id));
+        self::assertSame('accepted', $this->invitationStatus($id));
         self::assertSame([], $this->invitations->listPendingForUser(2, $this->time('2026-09-20 10:00:01')));
     }
 
@@ -99,20 +99,20 @@ final class TeamInvitationRepositoryTest extends TestCase
     {
         $first = $this->invitations->invite(10, 2, 1, $this->time('2026-09-19 10:00:00'));
         self::assertTrue($this->invitations->decline(2, $first, $this->time('2026-09-19 11:00:00')));
-        self::assertSame('declined', $this->status($first));
+        self::assertSame('declined', $this->invitationStatus($first));
 
         $second = $this->invitations->invite(10, 2, 1, $this->time('2026-09-19 12:00:00'));
         self::assertFalse($this->invitations->revokeForLead(3, 10, $second, $this->time('2026-09-19 12:30:00')));
         self::assertTrue($this->invitations->revokeForLead(1, 10, $second, $this->time('2026-09-19 12:30:00')));
-        self::assertSame('revoked', $this->status($second));
+        self::assertSame('revoked', $this->invitationStatus($second));
 
         $third = $this->invitations->invite(10, 2, 1, $this->time('2026-09-20 10:00:00'));
         self::assertSame([], $this->invitations->listPendingForUser(2, $this->time('2026-09-28 10:00:01')));
-        self::assertSame('expired', $this->status($third));
+        self::assertSame('expired', $this->invitationStatus($third));
         self::assertFalse($this->invitations->accept(2, $third, $this->time('2026-09-28 10:00:02')));
     }
 
-    private function status(int $id): string
+    private function invitationStatus(int $id): string
     {
         $stmt = $this->db->prepare('SELECT status FROM team_invitations WHERE id = :id');
         $stmt->execute(['id' => $id]);
