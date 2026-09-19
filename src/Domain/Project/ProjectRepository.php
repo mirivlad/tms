@@ -21,21 +21,28 @@ final class ProjectRepository
     public function listForUser(int $userId): array
     {
         $stmt = $this->db->prepare(
-            'SELECT id, owner_user_id, owner_team_id, created_by, name, description,
-                    lifecycle_status, created_at, updated_at
-             FROM projects
-             WHERE owner_user_id = :user_id AND owner_team_id IS NULL
+            'SELECT DISTINCT p.id, p.owner_user_id, p.owner_team_id, p.created_by, p.name, p.description,
+                    p.lifecycle_status, p.created_at, p.updated_at
+             FROM projects p
+             LEFT JOIN team_members tm
+               ON tm.team_id = p.owner_team_id
+              AND tm.user_id = :team_user_id
+             WHERE (p.owner_user_id = :personal_user_id AND p.owner_team_id IS NULL)
+                OR (p.owner_user_id IS NULL AND p.owner_team_id IS NOT NULL AND tm.user_id IS NOT NULL)
              ORDER BY
-                CASE lifecycle_status
+                CASE p.lifecycle_status
                     WHEN \'active\' THEN 0
                     WHEN \'paused\' THEN 1
                     WHEN \'done\' THEN 2
                     ELSE 3
                 END,
-                updated_at DESC,
-                id DESC'
+                p.updated_at DESC,
+                p.id DESC'
         );
-        $stmt->execute(['user_id' => $userId]);
+        $stmt->execute([
+            'team_user_id' => $userId,
+            'personal_user_id' => $userId,
+        ]);
 
         $projects = [];
         while (($row = $stmt->fetch()) !== false) {
@@ -49,19 +56,83 @@ final class ProjectRepository
     public function findForUser(int $userId, int $projectId): ?ProjectRecord
     {
         $stmt = $this->db->prepare(
-            'SELECT id, owner_user_id, owner_team_id, created_by, name, description,
-                    lifecycle_status, created_at, updated_at
-             FROM projects
-             WHERE id = :id AND owner_user_id = :user_id AND owner_team_id IS NULL
+            'SELECT p.id, p.owner_user_id, p.owner_team_id, p.created_by, p.name, p.description,
+                    p.lifecycle_status, p.created_at, p.updated_at
+             FROM projects p
+             LEFT JOIN team_members tm
+               ON tm.team_id = p.owner_team_id
+              AND tm.user_id = :team_user_id
+             WHERE p.id = :id
+               AND (
+                    (p.owner_user_id = :personal_user_id AND p.owner_team_id IS NULL)
+                    OR
+                    (p.owner_user_id IS NULL AND p.owner_team_id IS NOT NULL AND tm.user_id IS NOT NULL)
+               )
              LIMIT 1'
         );
         $stmt->execute([
             'id' => $projectId,
-            'user_id' => $userId,
+            'team_user_id' => $userId,
+            'personal_user_id' => $userId,
         ]);
 
         $row = $stmt->fetch();
         return is_array($row) ? $this->hydrate($row) : null;
+    }
+
+    public function findManageableForUser(int $userId, int $projectId): ?ProjectRecord
+    {
+        $stmt = $this->db->prepare(
+            'SELECT p.id, p.owner_user_id, p.owner_team_id, p.created_by, p.name, p.description,
+                    p.lifecycle_status, p.created_at, p.updated_at
+             FROM projects p
+             LEFT JOIN team_members tm
+               ON tm.team_id = p.owner_team_id
+              AND tm.user_id = :team_user_id
+             WHERE p.id = :id
+               AND (
+                    (p.owner_user_id = :personal_user_id AND p.owner_team_id IS NULL)
+                    OR
+                    (p.owner_user_id IS NULL AND p.owner_team_id IS NOT NULL AND tm.role = \'lead\')
+               )
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'id' => $projectId,
+            'team_user_id' => $userId,
+            'personal_user_id' => $userId,
+        ]);
+        $row = $stmt->fetch();
+        return is_array($row) ? $this->hydrate($row) : null;
+    }
+
+    public function canManageForUser(int $userId, int $projectId): bool
+    {
+        return $this->findManageableForUser($userId, $projectId) !== null;
+    }
+
+    /** @return list<ProjectRecord> */
+    public function listForTeamForUser(int $userId, int $teamId): array
+    {
+        $stmt = $this->db->prepare(
+            'SELECT p.id, p.owner_user_id, p.owner_team_id, p.created_by, p.name, p.description,
+                    p.lifecycle_status, p.created_at, p.updated_at
+             FROM projects p
+             INNER JOIN team_members tm ON tm.team_id = p.owner_team_id
+             WHERE p.owner_team_id = :team_id
+               AND p.owner_user_id IS NULL
+               AND tm.user_id = :user_id
+             ORDER BY p.updated_at DESC, p.id DESC'
+        );
+        $stmt->execute(['team_id' => $teamId, 'user_id' => $userId]);
+
+        $projects = [];
+        while (($row = $stmt->fetch()) !== false) {
+            if (is_array($row)) {
+                $projects[] = $this->hydrate($row);
+            }
+        }
+        return $projects;
     }
 
     public function createForUser(
@@ -132,6 +203,85 @@ final class ProjectRepository
         }
     }
 
+    public function createForTeam(
+        int $userId,
+        int $teamId,
+        string $name,
+        string $description,
+        string $lifecycleStatus = 'active',
+    ): int {
+        $lead = $this->db->prepare(
+            "SELECT 1 FROM team_members
+             WHERE team_id = :team_id AND user_id = :user_id AND role = 'lead'
+             LIMIT 1"
+        );
+        $lead->execute(['team_id' => $teamId, 'user_id' => $userId]);
+        if ($lead->fetchColumn() === false) {
+            throw new DomainException('Only a Team Lead can create a team project.');
+        }
+
+        $name = $this->normalizeName($name);
+        $description = $this->normalizeDescription($description);
+        $lifecycleStatus = $this->normalizeLifecycleStatus($lifecycleStatus);
+
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare(
+                'INSERT INTO projects (
+                    owner_user_id, owner_team_id, created_by, name, description,
+                    lifecycle_status, created_at, updated_at
+                 ) VALUES (
+                    NULL, :team_id, :created_by, :name, :description,
+                    :lifecycle_status, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                 )'
+            );
+            $stmt->execute([
+                'team_id' => $teamId,
+                'created_by' => $userId,
+                'name' => $name,
+                'description' => $description,
+                'lifecycle_status' => $lifecycleStatus,
+            ]);
+            $projectId = (int) $this->db->lastInsertId();
+
+            $cloneStatuses = $this->db->prepare(
+                'INSERT INTO statuses (
+                    user_id, project_id, source_status_id, name, description, color, sort_order,
+                    is_default, is_completion, show_on_board, created_at, updated_at
+                 )
+                 SELECT
+                    NULL, :project_id, id, name, description, color, sort_order,
+                    is_default, is_completion, show_on_board, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                 FROM statuses
+                 WHERE user_id = :user_id AND project_id IS NULL
+                 ORDER BY sort_order ASC, id ASC'
+            );
+            $cloneStatuses->execute(['project_id' => $projectId, 'user_id' => $userId]);
+
+            $cloneFields = $this->db->prepare(
+                'INSERT INTO custom_fields (
+                    user_id, project_id, source_field_id, name, field_type, options_json,
+                    is_required, sort_order, created_at, updated_at
+                 )
+                 SELECT
+                    NULL, :project_id, id, name, field_type, options_json,
+                    is_required, sort_order, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                 FROM custom_fields
+                 WHERE user_id = :user_id AND project_id IS NULL
+                 ORDER BY sort_order ASC, id ASC'
+            );
+            $cloneFields->execute(['project_id' => $projectId, 'user_id' => $userId]);
+
+            $this->db->commit();
+            return $projectId;
+        } catch (Throwable $error) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $error;
+        }
+    }
+
     public function updateForUser(
         int $userId,
         int $projectId,
@@ -139,7 +289,7 @@ final class ProjectRepository
         string $description,
         string $lifecycleStatus,
     ): bool {
-        if ($this->findForUser($userId, $projectId) === null) {
+        if ($this->findManageableForUser($userId, $projectId) === null) {
             return false;
         }
 
@@ -149,14 +299,13 @@ final class ProjectRepository
                  description = :description,
                  lifecycle_status = :lifecycle_status,
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = :id AND owner_user_id = :user_id AND owner_team_id IS NULL'
+             WHERE id = :id'
         );
         $stmt->execute([
             'name' => $this->normalizeName($name),
             'description' => $this->normalizeDescription($description),
             'lifecycle_status' => $this->normalizeLifecycleStatus($lifecycleStatus),
             'id' => $projectId,
-            'user_id' => $userId,
         ]);
 
         return true;
@@ -164,8 +313,23 @@ final class ProjectRepository
 
     public function deleteForUser(int $userId, int $projectId): bool
     {
-        if ($this->findForUser($userId, $projectId) === null) {
+        $project = $this->findManageableForUser($userId, $projectId);
+        if ($project === null) {
             return false;
+        }
+
+        if ($project->isTeamOwned()) {
+            $used = $this->db->prepare(
+                'SELECT 1 FROM tasks WHERE project_id = :project_id LIMIT 1'
+            );
+            $used->execute(['project_id' => $projectId]);
+            if ($used->fetchColumn() !== false) {
+                throw new DomainException('A team project with tasks cannot be deleted.');
+            }
+
+            $stmt = $this->db->prepare('DELETE FROM projects WHERE id = :id AND owner_team_id = :team_id');
+            $stmt->execute(['id' => $projectId, 'team_id' => $project->ownerTeamId]);
+            return $stmt->rowCount() === 1;
         }
 
         $this->db->beginTransaction();

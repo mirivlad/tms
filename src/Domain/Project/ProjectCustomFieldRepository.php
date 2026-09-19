@@ -20,7 +20,7 @@ final class ProjectCustomFieldRepository
     /** @return list<CustomFieldRecord> */
     public function listForProject(int $userId, int $projectId): array
     {
-        if (!$this->projectOwned($userId, $projectId)) {
+        if (!$this->projectAccessible($userId, $projectId)) {
             return [];
         }
 
@@ -37,7 +37,7 @@ final class ProjectCustomFieldRepository
 
     public function findForProject(int $userId, int $projectId, int $fieldId): ?CustomFieldRecord
     {
-        if (!$this->projectOwned($userId, $projectId)) {
+        if (!$this->projectAccessible($userId, $projectId)) {
             return null;
         }
 
@@ -62,7 +62,7 @@ final class ProjectCustomFieldRepository
         array $options,
         bool $isRequired,
     ): int {
-        $this->assertProjectOwned($userId, $projectId);
+        $this->assertProjectManageable($userId, $projectId);
         $name = $this->normalizeName($name);
         $type = $this->normalizeType($type);
         $options = $this->normalizeOptions($type, $options);
@@ -97,6 +97,9 @@ final class ProjectCustomFieldRepository
         array $options,
         bool $isRequired,
     ): bool {
+        if (!$this->projectManageable($userId, $projectId)) {
+            return false;
+        }
         $existing = $this->findForProject($userId, $projectId, $fieldId);
         if ($existing === null) {
             return false;
@@ -148,7 +151,8 @@ final class ProjectCustomFieldRepository
 
     public function deleteForProject(int $userId, int $projectId, int $fieldId): bool
     {
-        if ($this->findForProject($userId, $projectId, $fieldId) === null) {
+        if (!$this->projectManageable($userId, $projectId)
+            || $this->findForProject($userId, $projectId, $fieldId) === null) {
             return false;
         }
         $stmt = $this->db->prepare(
@@ -162,6 +166,9 @@ final class ProjectCustomFieldRepository
     /** @param list<int> $fieldIds */
     public function reorderForProject(int $userId, int $projectId, array $fieldIds): bool
     {
+        if (!$this->projectManageable($userId, $projectId)) {
+            return false;
+        }
         $owned = array_map(
             static fn (CustomFieldRecord $field): int => $field->id,
             $this->listForProject($userId, $projectId),
@@ -279,22 +286,58 @@ final class ProjectCustomFieldRepository
         }
     }
 
-    private function assertProjectOwned(int $userId, int $projectId): void
+    private function assertProjectManageable(int $userId, int $projectId): void
     {
-        if (!$this->projectOwned($userId, $projectId)) {
+        if (!$this->projectManageable($userId, $projectId)) {
             throw new DomainException('Project is unavailable.');
         }
     }
 
-    private function projectOwned(int $userId, int $projectId): bool
+    private function projectAccessible(int $userId, int $projectId): bool
     {
         $stmt = $this->db->prepare(
             'SELECT 1
-             FROM projects
-             WHERE id = :id AND owner_user_id = :user_id AND owner_team_id IS NULL
+             FROM projects p
+             LEFT JOIN team_members tm
+               ON tm.team_id = p.owner_team_id
+              AND tm.user_id = :team_user_id
+             WHERE p.id = :id
+               AND (
+                    (p.owner_user_id = :personal_user_id AND p.owner_team_id IS NULL)
+                    OR
+                    (p.owner_user_id IS NULL AND p.owner_team_id IS NOT NULL AND tm.user_id IS NOT NULL)
+               )
              LIMIT 1'
         );
-        $stmt->execute(['id' => $projectId, 'user_id' => $userId]);
+        $stmt->execute([
+            'id' => $projectId,
+            'team_user_id' => $userId,
+            'personal_user_id' => $userId,
+        ]);
+        return $stmt->fetchColumn() !== false;
+    }
+
+    private function projectManageable(int $userId, int $projectId): bool
+    {
+        $stmt = $this->db->prepare(
+            'SELECT 1
+             FROM projects p
+             LEFT JOIN team_members tm
+               ON tm.team_id = p.owner_team_id
+              AND tm.user_id = :team_user_id
+             WHERE p.id = :id
+               AND (
+                    (p.owner_user_id = :personal_user_id AND p.owner_team_id IS NULL)
+                    OR
+                    (p.owner_user_id IS NULL AND p.owner_team_id IS NOT NULL AND tm.role = \'lead\')
+               )
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'id' => $projectId,
+            'team_user_id' => $userId,
+            'personal_user_id' => $userId,
+        ]);
         return $stmt->fetchColumn() !== false;
     }
 

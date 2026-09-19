@@ -18,11 +18,13 @@ final class TaskCustomFieldValueRepository
     public function listForTask(int $userId, int $taskId): array
     {
         $stmt = $this->db->prepare(
-            'SELECT field_id, value
-             FROM task_custom_field_values
-             WHERE task_id = :task_id AND user_id = :user_id'
+            'SELECT v.field_id, v.value
+             FROM task_custom_field_values v
+             INNER JOIN tasks t ON t.id = v.task_id
+             WHERE v.task_id = :task_id
+               AND ' . $this->taskAccessCondition('t', 'one_')
         );
-        $stmt->execute(['task_id' => $taskId, 'user_id' => $userId]);
+        $stmt->execute(['task_id' => $taskId] + $this->taskAccessParams($userId, 'one_'));
 
         $values = [];
         while (($row = $stmt->fetch()) !== false) {
@@ -47,13 +49,21 @@ final class TaskCustomFieldValueRepository
             return [];
         }
 
-        $placeholders = implode(',', array_fill(0, count($taskIds), '?'));
+        $params = $this->taskAccessParams($userId, 'many_');
+        $placeholders = [];
+        foreach ($taskIds as $index => $taskId) {
+            $key = 'task_' . $index;
+            $placeholders[] = ':' . $key;
+            $params[$key] = $taskId;
+        }
         $stmt = $this->db->prepare(
-            "SELECT task_id, field_id, value
-             FROM task_custom_field_values
-             WHERE user_id = ? AND task_id IN ({$placeholders})"
+            'SELECT v.task_id, v.field_id, v.value
+             FROM task_custom_field_values v
+             INNER JOIN tasks t ON t.id = v.task_id
+             WHERE v.task_id IN (' . implode(', ', $placeholders) . ')
+               AND ' . $this->taskAccessCondition('t', 'many_')
         );
-        $stmt->execute([$userId, ...$taskIds]);
+        $stmt->execute($params);
 
         $values = [];
         while (($row = $stmt->fetch()) !== false) {
@@ -81,9 +91,12 @@ final class TaskCustomFieldValueRepository
         try {
             $delete = $this->db->prepare(
                 'DELETE FROM task_custom_field_values
-                 WHERE task_id = :task_id AND user_id = :user_id'
+                 WHERE task_id = :task_id AND user_id = :owner_user_id'
             );
-            $delete->execute(['task_id' => $taskId, 'user_id' => $userId]);
+            $delete->execute([
+                'task_id' => $taskId,
+                'owner_user_id' => $taskScope['owner_id'],
+            ]);
 
             $insert = $this->db->prepare(
                 'INSERT INTO task_custom_field_values (
@@ -99,7 +112,7 @@ final class TaskCustomFieldValueRepository
                 $insert->execute([
                     'task_id' => $taskId,
                     'field_id' => $fieldId,
-                    'user_id' => $userId,
+                    'user_id' => $taskScope['owner_id'],
                     'value' => $value,
                 ]);
             }
@@ -113,22 +126,59 @@ final class TaskCustomFieldValueRepository
         }
     }
 
-    /** @return array{project_id:?int}|null */
+    /** @return array{project_id:?int,owner_id:int}|null */
     private function taskScopeForUser(int $userId, int $taskId): ?array
     {
         $stmt = $this->db->prepare(
-            'SELECT project_id
-             FROM tasks
-             WHERE id = :id AND created_by = :user_id
+            'SELECT t.project_id, t.created_by
+             FROM tasks t
+             WHERE t.id = :id
+               AND ' . $this->taskAccessCondition('t', 'scope_') . '
              LIMIT 1'
         );
-        $stmt->execute(['id' => $taskId, 'user_id' => $userId]);
+        $stmt->execute(['id' => $taskId] + $this->taskAccessParams($userId, 'scope_'));
         $row = $stmt->fetch();
         if (!is_array($row)) {
             return null;
         }
         return [
             'project_id' => $row['project_id'] !== null ? (int) $row['project_id'] : null,
+            'owner_id' => (int) $row['created_by'],
+        ];
+    }
+
+    private function taskAccessCondition(string $alias, string $prefix): string
+    {
+        return sprintf(
+            '((%1$s.project_id IS NULL AND %1$s.created_by = :%2$spersonal_task_user)
+              OR EXISTS (
+                  SELECT 1
+                  FROM projects access_project
+                  LEFT JOIN team_members access_member
+                    ON access_member.team_id = access_project.owner_team_id
+                   AND access_member.user_id = :%2$steam_user
+                  WHERE access_project.id = %1$s.project_id
+                    AND (
+                        (access_project.owner_user_id = :%2$spersonal_project_user
+                         AND access_project.owner_team_id IS NULL)
+                        OR
+                        (access_project.owner_user_id IS NULL
+                         AND access_project.owner_team_id IS NOT NULL
+                         AND access_member.user_id IS NOT NULL)
+                    )
+              ))',
+            $alias,
+            $prefix,
+        );
+    }
+
+    /** @return array<string, int> */
+    private function taskAccessParams(int $userId, string $prefix): array
+    {
+        return [
+            $prefix . 'personal_task_user' => $userId,
+            $prefix . 'team_user' => $userId,
+            $prefix . 'personal_project_user' => $userId,
         ];
     }
 
@@ -157,13 +207,19 @@ final class TaskCustomFieldValueRepository
                 "SELECT COUNT(*)
                  FROM custom_fields f
                  INNER JOIN projects p ON p.id = f.project_id
+                 LEFT JOIN team_members tm
+                   ON tm.team_id = p.owner_team_id
+                  AND tm.user_id = ?
                  WHERE f.user_id IS NULL
                    AND f.project_id = ?
-                   AND p.owner_user_id = ?
-                   AND p.owner_team_id IS NULL
+                   AND (
+                        (p.owner_user_id = ? AND p.owner_team_id IS NULL)
+                        OR
+                        (p.owner_user_id IS NULL AND p.owner_team_id IS NOT NULL AND tm.user_id IS NOT NULL)
+                   )
                    AND f.id IN ({$placeholders})"
             );
-            $stmt->execute([$projectId, $userId, ...$fieldIds]);
+            $stmt->execute([$userId, $projectId, $userId, ...$fieldIds]);
         }
 
         return (int) $stmt->fetchColumn() === count($fieldIds);

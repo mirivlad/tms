@@ -45,6 +45,34 @@
 <section class="content-card metadata-section">
     <div class="section-heading">
         <div>
+            <h2>{{ t('teams.projects') }}</h2>
+            <p class="muted">{{ t('teams.projects_help') }}</p>
+        </div>
+        {% if is_lead %}
+            <a class="button-link" href="/projects?owner=team:{{ team.id }}">{{ t('teams.create_project') }}</a>
+        {% endif %}
+    </div>
+
+    {% if projects is empty %}
+        <div class="empty-state"><strong>{{ t('teams.projects_empty') }}</strong></div>
+    {% else %}
+        <div class="metadata-list">
+            {% for project in projects %}
+                <article class="metadata-item">
+                    <div class="metadata-item-heading">
+                        <strong><a class="text-link" href="/projects/{{ project.id }}">{{ project.name }}</a></strong>
+                        <span class="metadata-badge">{{ t('projects.status.' ~ project.lifecycleStatus) }}</span>
+                    </div>
+                    {% if project.description %}<p class="muted">{{ project.description }}</p>{% endif %}
+                </article>
+            {% endfor %}
+        </div>
+    {% endif %}
+</section>
+
+<section class="content-card metadata-section">
+    <div class="section-heading">
+        <div>
             <h2>{{ t('teams.members') }}</h2>
             <p class="muted">{{ t('teams.members_help') }}</p>
         </div>

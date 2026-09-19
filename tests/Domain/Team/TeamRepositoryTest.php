@@ -45,6 +45,12 @@ final class TeamRepositoryTest extends TestCase
             FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
         )');
 
+        $this->db->exec('CREATE TABLE projects (
+            id INTEGER PRIMARY KEY,
+            owner_user_id INTEGER NULL,
+            owner_team_id INTEGER NULL
+        )');
+
         $this->db->exec("INSERT INTO users (id, username, email) VALUES
             (1, 'lead', 'lead@example.test'),
             (2, 'member', 'member@example.test'),

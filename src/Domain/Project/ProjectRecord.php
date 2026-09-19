@@ -23,4 +23,9 @@ final readonly class ProjectRecord
     {
         return $this->ownerUserId !== null && $this->ownerTeamId === null;
     }
+
+    public function isTeamOwned(): bool
+    {
+        return $this->ownerUserId === null && $this->ownerTeamId !== null;
+    }
 }

@@ -18,7 +18,7 @@ final class ProjectStatusRepository
     /** @return list<StatusRecord> */
     public function listForProject(int $userId, int $projectId, bool $boardOnly = false): array
     {
-        if (!$this->projectOwned($userId, $projectId)) {
+        if (!$this->projectAccessible($userId, $projectId)) {
             return [];
         }
 
@@ -38,7 +38,7 @@ final class ProjectStatusRepository
 
     public function findForProject(int $userId, int $projectId, int $statusId): ?StatusRecord
     {
-        if (!$this->projectOwned($userId, $projectId)) {
+        if (!$this->projectAccessible($userId, $projectId)) {
             return null;
         }
 
@@ -56,7 +56,7 @@ final class ProjectStatusRepository
 
     public function defaultForProject(int $userId, int $projectId): ?StatusRecord
     {
-        if (!$this->projectOwned($userId, $projectId)) {
+        if (!$this->projectAccessible($userId, $projectId)) {
             return null;
         }
 
@@ -83,7 +83,7 @@ final class ProjectStatusRepository
         bool $isCompletion = false,
         bool $showOnBoard = true,
     ): int {
-        $this->assertProjectOwned($userId, $projectId);
+        $this->assertProjectManageable($userId, $projectId);
         $name = $this->normalizeName($name);
 
         $this->db->beginTransaction();
@@ -134,7 +134,8 @@ final class ProjectStatusRepository
         string $color,
         bool $showOnBoard,
     ): bool {
-        if ($this->findForProject($userId, $projectId, $statusId) === null) {
+        if (!$this->projectManageable($userId, $projectId)
+            || $this->findForProject($userId, $projectId, $statusId) === null) {
             return false;
         }
 
@@ -170,6 +171,9 @@ final class ProjectStatusRepository
 
     public function deleteForProject(int $userId, int $projectId, int $statusId): bool
     {
+        if (!$this->projectManageable($userId, $projectId)) {
+            return false;
+        }
         $status = $this->findForProject($userId, $projectId, $statusId);
         if ($status === null || $status->isDefault || $status->isCompletion) {
             return false;
@@ -194,6 +198,9 @@ final class ProjectStatusRepository
     /** @param list<int> $statusIds */
     public function reorderForProject(int $userId, int $projectId, array $statusIds): bool
     {
+        if (!$this->projectManageable($userId, $projectId)) {
+            return false;
+        }
         $owned = array_map(
             static fn (StatusRecord $record): int => $record->id,
             $this->listForProject($userId, $projectId),
@@ -233,7 +240,8 @@ final class ProjectStatusRepository
         if (!in_array($column, ['is_default', 'is_completion'], true)) {
             throw new DomainException('Unsupported status role.');
         }
-        if ($this->findForProject($userId, $projectId, $statusId) === null) {
+        if (!$this->projectManageable($userId, $projectId)
+            || $this->findForProject($userId, $projectId, $statusId) === null) {
             return false;
         }
 
@@ -277,21 +285,58 @@ final class ProjectStatusRepository
         return (int) $stmt->fetchColumn() + 1;
     }
 
-    private function assertProjectOwned(int $userId, int $projectId): void
+    private function assertProjectManageable(int $userId, int $projectId): void
     {
-        if (!$this->projectOwned($userId, $projectId)) {
+        if (!$this->projectManageable($userId, $projectId)) {
             throw new DomainException('Project is unavailable.');
         }
     }
 
-    private function projectOwned(int $userId, int $projectId): bool
+    private function projectAccessible(int $userId, int $projectId): bool
     {
         $stmt = $this->db->prepare(
-            'SELECT 1 FROM projects
-             WHERE id = :id AND owner_user_id = :user_id AND owner_team_id IS NULL
+            'SELECT 1
+             FROM projects p
+             LEFT JOIN team_members tm
+               ON tm.team_id = p.owner_team_id
+              AND tm.user_id = :team_user_id
+             WHERE p.id = :id
+               AND (
+                    (p.owner_user_id = :personal_user_id AND p.owner_team_id IS NULL)
+                    OR
+                    (p.owner_user_id IS NULL AND p.owner_team_id IS NOT NULL AND tm.user_id IS NOT NULL)
+               )
              LIMIT 1'
         );
-        $stmt->execute(['id' => $projectId, 'user_id' => $userId]);
+        $stmt->execute([
+            'id' => $projectId,
+            'team_user_id' => $userId,
+            'personal_user_id' => $userId,
+        ]);
+        return $stmt->fetchColumn() !== false;
+    }
+
+    private function projectManageable(int $userId, int $projectId): bool
+    {
+        $stmt = $this->db->prepare(
+            'SELECT 1
+             FROM projects p
+             LEFT JOIN team_members tm
+               ON tm.team_id = p.owner_team_id
+              AND tm.user_id = :team_user_id
+             WHERE p.id = :id
+               AND (
+                    (p.owner_user_id = :personal_user_id AND p.owner_team_id IS NULL)
+                    OR
+                    (p.owner_user_id IS NULL AND p.owner_team_id IS NOT NULL AND tm.role = \'lead\')
+               )
+             LIMIT 1'
+        );
+        $stmt->execute([
+            'id' => $projectId,
+            'team_user_id' => $userId,
+            'personal_user_id' => $userId,
+        ]);
         return $stmt->fetchColumn() !== false;
     }
 

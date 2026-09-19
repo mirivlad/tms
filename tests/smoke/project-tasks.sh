@@ -29,7 +29,7 @@ test -n "$project_id"
 test "$(db "SELECT COUNT(*) FROM statuses WHERE project_id=$project_id")" -gt 0
 
 curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/tasks/new?project_id=$project_id" > /tmp/project-task-new.html
-grep -Eq "option value=\"$project_id\" selected" /tmp/project-task-new.html
+grep -A3 "value=\"$project_id\"" /tmp/project-task-new.html | grep -q 'selected'
 
 # Quick add can assign directly to an owned project.
 response=$(curl --fail --silent --header 'Accept: application/json'   --cookie "$COOKIE_JAR"   --data-urlencode "_csrf=$csrf"   --data-urlencode 'title=Project smoke task'   --data-urlencode 'description=Created in a project'   --data-urlencode "project_id=$project_id"   "$BASE_URL/tasks/quick-add")

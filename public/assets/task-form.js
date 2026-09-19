@@ -79,8 +79,35 @@
         return;
     }
 
+    const syncPersonalMetadata = () => {
+        const selected = projectSelect.selectedOptions[0];
+        const teamOwned = selected instanceof HTMLOptionElement && selected.dataset.teamOwned === '1';
+        taskForm.querySelectorAll('[data-personal-metadata]').forEach((container) => {
+            if (!(container instanceof HTMLElement)) return;
+            container.hidden = teamOwned;
+            container.querySelectorAll('input, select, textarea').forEach((control) => {
+                if (control instanceof HTMLInputElement
+                    || control instanceof HTMLSelectElement
+                    || control instanceof HTMLTextAreaElement) {
+                    control.disabled = teamOwned;
+                    if (teamOwned && control instanceof HTMLInputElement && control.type === 'text') {
+                        control.value = '';
+                    }
+                    if (teamOwned && control instanceof HTMLSelectElement) {
+                        control.value = '';
+                    }
+                }
+            });
+        });
+        const help = taskForm.querySelector('[data-team-metadata-help]');
+        if (help instanceof HTMLElement) help.hidden = !teamOwned;
+    };
+
+    syncPersonalMetadata();
+
     let requestSerial = 0;
     projectSelect.addEventListener('change', async () => {
+        syncPersonalMetadata();
         const serial = ++requestSerial;
         const statusEndpoint = new URL(statusUrl, window.location.origin);
         const fieldsEndpoint = new URL(fieldsUrl, window.location.origin);

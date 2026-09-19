@@ -32,6 +32,12 @@ final class ProjectRepositoryTest extends TestCase
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )');
 
+        $this->db->exec('CREATE TABLE team_members (
+            team_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL,
+            PRIMARY KEY (team_id, user_id)
+        )');
         $this->db->exec('CREATE TABLE statuses (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NULL,
