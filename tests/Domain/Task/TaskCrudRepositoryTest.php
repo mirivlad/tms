@@ -40,6 +40,12 @@ final class TaskCrudRepositoryTest extends TestCase
             owner_team_id INTEGER NULL,
             name TEXT NOT NULL
         )');
+        $this->db->exec('CREATE TABLE team_members (
+            team_id INTEGER NOT NULL,
+            user_id INTEGER NOT NULL,
+            role TEXT NOT NULL,
+            PRIMARY KEY (team_id, user_id)
+        )');
         $this->db->exec('CREATE TABLE tasks (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             created_by INTEGER NOT NULL,
