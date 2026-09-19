@@ -50,6 +50,12 @@ final class TeamRepositoryTest extends TestCase
             owner_user_id INTEGER NULL,
             owner_team_id INTEGER NULL
         )');
+        $this->db->exec('CREATE TABLE tasks (
+            id INTEGER PRIMARY KEY,
+            project_id INTEGER NULL,
+            assignee_user_id INTEGER NULL,
+            updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )');
 
         $this->db->exec("INSERT INTO users (id, username, email) VALUES
             (1, 'lead', 'lead@example.test'),
@@ -112,6 +118,21 @@ final class TeamRepositoryTest extends TestCase
 
         self::assertTrue($this->teams->removeMemberForLead(1, $teamId, 2));
         self::assertNull($this->teams->roleForUser(2, $teamId));
+    }
+
+    public function testRemovingMemberClearsAssignmentsInTeamProjects(): void
+    {
+        $teamId = $this->teams->createForUser(1, 'Core Team', '');
+        $this->teams->addMember($teamId, 2);
+        $this->db->exec(
+            'INSERT INTO projects (id, owner_user_id, owner_team_id) VALUES (50, NULL, ' . $teamId . ')'
+        );
+        $this->db->exec(
+            'INSERT INTO tasks (id, project_id, assignee_user_id) VALUES (70, 50, 2)'
+        );
+
+        self::assertTrue($this->teams->removeMemberForLead(1, $teamId, 2));
+        self::assertNull($this->db->query('SELECT assignee_user_id FROM tasks WHERE id = 70')?->fetchColumn() ?: null);
     }
 
     public function testLeadCanUpdateAndDeleteTeam(): void
