@@ -96,7 +96,7 @@ location / {
 
 Создайте Stack из `compose.portainer.yaml` либо вставьте его содержимое. В Environment задайте `APP_URL`, `APP_TIMEZONE`, `APP_LOCALE`, `DB_PASS`, `SESSION_SECURE` и при необходимости `TMS_PORT`.
 
-Файл по умолчанию закреплён на `ghcr.io/mirivlad/tms:v0.2.5`. `TMS_IMAGE` нужен только если вы сознательно выбираете другую версию, `latest`, `edge` или неизменяемый `sha-*`.
+Файл по умолчанию закреплён на `ghcr.io/mirivlad/tms:v0.2.6`. `TMS_IMAGE` нужен только если вы сознательно выбираете другую версию, `latest`, `edge` или неизменяемый `sha-*`.
 
 После запуска откройте Console контейнера `app` и выполните `php bin/create-admin.php ...`.
 
