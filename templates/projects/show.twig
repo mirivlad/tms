@@ -1,7 +1,7 @@
 {% extends 'app_layout.twig' %}
 
 {% block title %}{{ project.name }} · TMS{% endblock %}
-{% block styles %}<link rel="stylesheet" href="/assets/task-form.css"><link rel="stylesheet" href="/assets/metadata.css"><link rel="stylesheet" href="/assets/discussions.css">{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/assets/task-form.css"><link rel="stylesheet" href="/assets/metadata.css"><link rel="stylesheet" href="/assets/discussions.css"><link rel="stylesheet" href="/assets/collaboration.css">{% endblock %}
 {% block scripts %}<script src="/assets/custom-fields.js" defer></script><script src="/assets/discussions.js" defer></script>{% endblock %}
 
 {% block content %}
@@ -23,13 +23,14 @@
     </div>
 </header>
 
+<div class="project-detail-grid">
 {% if project.description %}
-<section class="content-card">
+<section class="content-card project-summary-card">
     <p class="project-description">{{ project.description|nl2br }}</p>
 </section>
 {% endif %}
 
-<section class="content-card attachment-card">
+<section class="content-card attachment-card project-files-card">
     <div class="attachment-heading">
         <div>
             <h2>{{ t('projects.files') }}</h2>
@@ -78,7 +79,7 @@
 {% endif %}
 
 {% if can_manage %}
-<section class="content-card metadata-section" id="project-statuses">
+<section class="content-card metadata-section project-workflow-card" id="project-statuses">
     <div class="section-heading">
         <div>
             <h2>{{ t('projects.workflow_title') }}</h2>
@@ -173,7 +174,7 @@
     </div>
 </section>
 
-<section class="content-card metadata-section" id="project-fields">
+<section class="content-card metadata-section project-fields-card" id="project-fields">
     <div class="section-heading">
         <div>
             <h2>{{ t('projects.fields_title') }}</h2>
@@ -276,13 +277,13 @@
     {% endif %}
 </section>
 {% elseif project.ownerTeamId %}
-<section class="content-card">
+<section class="content-card project-readonly-card">
     <p class="muted">{{ t('projects.team_member_readonly') }}</p>
 </section>
 {% endif %}
 
 
-<section class="content-card task-table-card">
+<section class="content-card task-table-card project-tasks-card">
     <div class="section-heading">
         <div>
             <h2>{{ t('projects.tasks') }}</h2>
@@ -314,4 +315,5 @@
         </div>
     {% endif %}
 </section>
+</div>
 {% endblock %}

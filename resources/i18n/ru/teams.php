@@ -27,7 +27,7 @@ return [
     'teams.about_lead_help' => 'Тимлиды могут менять настройки команды и состав.',
     'teams.about_member_help' => 'Настройки команды управляются тимлидами.',
     'teams.members' => 'Участники',
-    'teams.members_help' => 'Участие даст доступ к командным проектам на следующем этапе Teams.',
+    'teams.members_help' => 'Участие даёт доступ к проектам, задачам и обсуждениям команды.',
     'teams.role.lead' => 'Тимлид',
     'teams.role.member' => 'Участник',
     'teams.change_role' => 'Сменить роль',
