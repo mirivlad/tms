@@ -8,7 +8,9 @@ use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
+use Tms\Domain\CustomField\CustomFieldRepository;
 use Tms\Domain\Project\ProjectAttachmentRepository;
+use Tms\Domain\Project\ProjectCustomFieldRepository;
 use Tms\Domain\Project\ProjectRepository;
 use Tms\Domain\Project\ProjectStatusRepository;
 use Tms\Domain\Task\TaskRepository;
@@ -26,6 +28,7 @@ final class ProjectController
         private readonly AttachmentStorage $storage,
         private readonly TaskRepository $tasks,
         private readonly ProjectStatusRepository $statuses,
+        private readonly ProjectCustomFieldRepository $fields,
         private readonly Translator $translator,
     ) {
     }
@@ -58,6 +61,11 @@ final class ProjectController
         if (!is_array($statusNotice) || !is_string($statusNotice['message'] ?? null)) {
             $statusNotice = null;
         }
+        $fieldNotice = $_SESSION['project_field_notice'] ?? null;
+        unset($_SESSION['project_field_notice']);
+        if (!is_array($fieldNotice) || !is_string($fieldNotice['message'] ?? null)) {
+            $fieldNotice = null;
+        }
 
         return $this->view->render($response, 'projects/show.twig', [
             'csrf_token' => $this->csrfToken($request),
@@ -68,6 +76,9 @@ final class ProjectController
             'statuses' => array_values($statusMap),
             'status_map' => $statusMap,
             'status_notice' => $statusNotice,
+            'custom_fields' => $this->fields->listForProject($userId, $project->id),
+            'custom_field_types' => CustomFieldRepository::TYPES,
+            'field_notice' => $fieldNotice,
         ]);
     }
 
