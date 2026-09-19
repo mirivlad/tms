@@ -13,14 +13,17 @@ use Tms\Domain\CustomField\CustomFieldRepository;
 
 final class ProjectCustomFieldRepository
 {
-    public function __construct(private readonly PDO $db)
+    private readonly ProjectAccessRepository $access;
+
+    public function __construct(private readonly PDO $db, ?ProjectAccessRepository $access = null)
     {
+        $this->access = $access ?? new ProjectAccessRepository($db);
     }
 
     /** @return list<CustomFieldRecord> */
     public function listForProject(int $userId, int $projectId): array
     {
-        if (!$this->projectOwned($userId, $projectId)) {
+        if (!$this->access->canAccess($userId, $projectId)) {
             return [];
         }
 
@@ -37,7 +40,7 @@ final class ProjectCustomFieldRepository
 
     public function findForProject(int $userId, int $projectId, int $fieldId): ?CustomFieldRecord
     {
-        if (!$this->projectOwned($userId, $projectId)) {
+        if (!$this->access->canAccess($userId, $projectId)) {
             return null;
         }
 
@@ -62,7 +65,9 @@ final class ProjectCustomFieldRepository
         array $options,
         bool $isRequired,
     ): int {
-        $this->assertProjectOwned($userId, $projectId);
+        if (!$this->access->canManage($userId, $projectId)) {
+            throw new DomainException('Project is unavailable.');
+        }
         $name = $this->normalizeName($name);
         $type = $this->normalizeType($type);
         $options = $this->normalizeOptions($type, $options);
@@ -97,6 +102,9 @@ final class ProjectCustomFieldRepository
         array $options,
         bool $isRequired,
     ): bool {
+        if (!$this->access->canManage($userId, $projectId)) {
+            return false;
+        }
         $existing = $this->findForProject($userId, $projectId, $fieldId);
         if ($existing === null) {
             return false;
@@ -148,6 +156,9 @@ final class ProjectCustomFieldRepository
 
     public function deleteForProject(int $userId, int $projectId, int $fieldId): bool
     {
+        if (!$this->access->canManage($userId, $projectId)) {
+            return false;
+        }
         if ($this->findForProject($userId, $projectId, $fieldId) === null) {
             return false;
         }
@@ -162,6 +173,9 @@ final class ProjectCustomFieldRepository
     /** @param list<int> $fieldIds */
     public function reorderForProject(int $userId, int $projectId, array $fieldIds): bool
     {
+        if (!$this->access->canManage($userId, $projectId)) {
+            return false;
+        }
         $owned = array_map(
             static fn (CustomFieldRecord $field): int => $field->id,
             $this->listForProject($userId, $projectId),
@@ -277,25 +291,6 @@ final class ProjectCustomFieldRepository
                 ]);
             }
         }
-    }
-
-    private function assertProjectOwned(int $userId, int $projectId): void
-    {
-        if (!$this->projectOwned($userId, $projectId)) {
-            throw new DomainException('Project is unavailable.');
-        }
-    }
-
-    private function projectOwned(int $userId, int $projectId): bool
-    {
-        $stmt = $this->db->prepare(
-            'SELECT 1
-             FROM projects
-             WHERE id = :id AND owner_user_id = :user_id AND owner_team_id IS NULL
-             LIMIT 1'
-        );
-        $stmt->execute(['id' => $projectId, 'user_id' => $userId]);
-        return $stmt->fetchColumn() !== false;
     }
 
     private function normalizeName(string $name): string
