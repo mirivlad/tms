@@ -45,7 +45,6 @@ final class CalendarController
         $month = $this->month($query['month'] ?? null);
         $mode = $this->mode($query['mode'] ?? null);
         $statusIds = $this->queryInts($query, 'status_id');
-        $statusInvert = $statusIds !== [] && ($query['status_invert'] ?? null) === '1';
         $typeIds = $this->queryInts($query, 'type_id');
         $typeInvert = $typeIds !== [] && ($query['type_invert'] ?? null) === '1';
         $customerId = $this->queryInt($query, 'customer_id');
@@ -65,6 +64,16 @@ final class CalendarController
 
         $userId = $this->sessions->currentUserId() ?? 0;
         [$projectId, $withoutProject, $projectFilter] = $this->projectFilter($query, $userId);
+        $filterStatuses = $this->statusesForFilterScope($userId, $projectId, $projectFilter);
+        $filterStatusIds = array_fill_keys(
+            array_map(static fn (StatusRecord $status): int => $status->id, $filterStatuses),
+            true,
+        );
+        $statusIds = array_values(array_filter(
+            $statusIds,
+            static fn (int $statusId): bool => isset($filterStatusIds[$statusId]),
+        ));
+        $statusInvert = $statusIds !== [] && ($query['status_invert'] ?? null) === '1';
 
         $firstDay = DateTimeImmutable::createFromFormat('!Y-m-d', $month . '-01');
         if ($firstDay === false) {
@@ -137,7 +146,7 @@ final class CalendarController
             'today_query' => $this->monthQuery(new DateTimeImmutable('first day of this month'), $filters),
             'days' => $days,
             'filters' => $filters,
-            'statuses' => $this->statuses->listAccessibleForUser($userId),
+            'statuses' => $filterStatuses,
             'types' => $this->taskTypes->listForUser($userId),
             'customers' => $this->customers->listForUser($userId, 500),
             'projects' => $this->projects->listForUser($userId),
@@ -223,7 +232,7 @@ final class CalendarController
                 $params[$key] = $filters[$key];
             }
         }
-        if ($filters['project'] !== '') {
+        if ($filters['project'] !== 'none') {
             $params['project'] = $filters['project'];
         }
         foreach (['customer_id', 'customer'] as $key) {
@@ -244,7 +253,10 @@ final class CalendarController
     private function projectFilter(array $query, int $userId): array
     {
         $value = is_scalar($query['project'] ?? null) ? trim((string) $query['project']) : '';
-        if ($value === 'none') {
+        if ($value === 'all') {
+            return [null, false, 'all'];
+        }
+        if ($value === 'none' || $value === '') {
             return [null, true, 'none'];
         }
         if (ctype_digit($value) && (int) $value > 0) {
@@ -253,7 +265,21 @@ final class CalendarController
                 return [$projectId, false, (string) $projectId];
             }
         }
-        return [null, false, ''];
+        return [null, true, 'none'];
+    }
+
+    /** @return list<StatusRecord> */
+    private function statusesForFilterScope(int $userId, ?int $projectId, string $projectFilter): array
+    {
+        $statuses = $this->statuses->listAccessibleForUser($userId);
+        if ($projectFilter === 'all') {
+            return $statuses;
+        }
+
+        return array_values(array_filter(
+            $statuses,
+            static fn (StatusRecord $status): bool => $status->projectId === $projectId,
+        ));
     }
 
     /** @return array<int, StatusRecord> */
