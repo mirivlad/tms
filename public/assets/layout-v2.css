@@ -311,6 +311,11 @@ label { gap: 5px; }
 
 /* Settings/forms should stop expanding to billboard proportions. */
 .entity-management-page { margin-bottom: 12px; }
+.entity-management-page:has(.entity-settings-form),
+.attachment-card {
+    width: min(100%, 1180px);
+    margin-inline: auto;
+}
 .entity-settings-form { grid-template-columns: minmax(240px, 1fr) minmax(200px, .42fr); gap: 10px 12px; }
 .entity-settings-form .field-wide textarea { min-height: 140px; }
 .danger-zone { padding-block: 12px; }
