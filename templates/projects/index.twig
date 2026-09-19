@@ -1,7 +1,7 @@
 {% extends 'app_layout.twig' %}
 
 {% block title %}{{ t('projects.page_title') }} · TMS{% endblock %}
-{% block styles %}<link rel="stylesheet" href="/assets/metadata.css">{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/assets/metadata.css"><link rel="stylesheet" href="/assets/collaboration.css">{% endblock %}
 
 {% block content %}
 <header class="page-header compact-page-header">
@@ -11,7 +11,8 @@
     </div>
 </header>
 
-<section class="content-card metadata-section">
+<div class="collab-index-layout projects-index-layout">
+<section class="content-card metadata-section collab-create-panel">
     <div class="section-heading">
         <div>
             <h2>{{ t('projects.create_title') }}</h2>
@@ -55,7 +56,7 @@
     </form>
 </section>
 
-<section class="content-card metadata-section">
+<section class="content-card metadata-section collab-list-panel">
     <div class="section-heading">
         <div>
             <h2>{{ t('projects.yours') }}</h2>
@@ -69,12 +70,12 @@
             <span>{{ t('projects.empty_help') }}</span>
         </div>
     {% else %}
-        <div class="metadata-list">
+        <div class="metadata-list collab-project-list">
         {% for project in projects %}
             {% set editing = edit_project_id == project.id %}
             {% set values = editing ? edit_form : {} %}
             {% set lifecycle = values.lifecycle_status|default(project.lifecycleStatus) %}
-            <article class="metadata-item">
+            <article class="metadata-item collab-project-row">
                 <div class="metadata-item-heading">
                     <strong><a class="text-link" href="/projects/{{ project.id }}">{{ project.name }}</a></strong>
                     <div class="metadata-badges">
@@ -90,7 +91,7 @@
                 {% if editing and error and manageable_projects[project.id]|default(false) %}<p class="alert" role="alert">{{ error }}</p>{% endif %}
 
                 {% if manageable_projects[project.id]|default(false) %}
-                <form class="metadata-edit" method="post" action="/projects/{{ project.id }}">
+                <form class="metadata-edit collab-project-edit" method="post" action="/projects/{{ project.id }}">
                     <input type="hidden" name="_csrf" value="{{ csrf_token }}">
                     <label>
                         <span>{{ t('projects.name') }}</span>
@@ -125,4 +126,5 @@
         </div>
     {% endif %}
 </section>
+</div>
 {% endblock %}
