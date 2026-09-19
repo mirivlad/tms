@@ -41,7 +41,7 @@ Use `@username` to notify a current member of the owning team. Direct replies no
 
 ## Filters and bulk work
 
-The task table supports filters by status, type, priority, customer, overdue state, date ranges and custom-field values. Multiple status/type/priority values and status inversion are available where shown by the UI.
+The task table supports filters by status, type, priority, customer, overdue state, date ranges and custom-field values. Task list and Calendar default to **No project**. In that scope the status filter shows personal statuses only; choosing a project switches the status list to that project's workflow, while **All projects** exposes all accessible statuses. The status list refreshes immediately when the project selector changes. Multiple status/type/priority values and status inversion are available where shown by the UI.
 
 Select several tasks to apply supported bulk changes or delete them. Operations remain limited to tasks the signed-in user is authorized to access: personal tasks/projects plus projects owned by teams they currently belong to.
 
