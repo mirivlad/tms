@@ -51,6 +51,33 @@
 .dropdown-locale-label { color: var(--muted); font-size: .75rem; font-weight: 700; }
 .dropdown-locale-choices { display: flex; gap: 6px; }
 .dropdown-locale-choices .locale-choice { border: 1px solid var(--border-strong) !important; padding: 5px 8px !important; }
+.nav-invitations {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 38px;
+    padding: 8px 10px;
+    border-radius: 9px;
+    color: var(--nav-text);
+    font-weight: 700;
+    white-space: nowrap;
+}
+.nav-invitations:hover,
+.nav-invitations.active { background: var(--nav-hover-bg); color: var(--text-strong); }
+.nav-invitations.has-unread { color: var(--text-strong); }
+.nav-badge {
+    min-width: 20px;
+    height: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--primary);
+    color: var(--primary-contrast);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .75rem;
+    font-weight: 800;
+}
 .nav-create-task {
     display: inline-flex;
     align-items: center;
@@ -83,7 +110,8 @@
 .icon-action.danger:hover { background: var(--danger-bg); color: var(--danger-fg); }
 .icon-action:focus-visible,
 .nav-dropdown > summary:focus-visible,
-.nav-create-task:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.nav-create-task:focus-visible,
+.nav-invitations:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 @media (max-width: 1050px) {
     .topbar { grid-template-columns: auto 1fr; grid-template-rows: auto auto; padding-top: 8px; padding-bottom: 8px; }
     .topbar-actions { display: flex; grid-column: 2; grid-row: 1; justify-self: end; }
