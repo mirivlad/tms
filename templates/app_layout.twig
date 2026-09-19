@@ -16,8 +16,6 @@
     <nav class="main-nav" aria-label="{{ t('nav.main_aria') }}">
         <a href="/dashboard" data-nav-path="/dashboard">{{ t('nav.overview') }}</a>
         <a href="/tasks" data-nav-path="/tasks">{{ t('nav.tasks') }}</a>
-        <a href="/projects" data-nav-path="/projects">{{ t('nav.projects') }}</a>
-        <a href="/teams" data-nav-path="/teams">{{ t('nav.teams') }}</a>
         <a href="/board" data-nav-path="/board">{{ t('nav.board') }}</a>
         <a href="/calendar" data-nav-path="/calendar">{{ t('nav.calendar') }}</a>
         <details class="nav-dropdown nav-settings-menu" data-nav-menu>
@@ -44,6 +42,9 @@
         <details class="nav-dropdown user-menu" data-nav-menu>
             <summary title="{{ t('nav.user_menu') }}"><span class="user-menu-name">{{ username }}</span> <span class="nav-dropdown-chevron" aria-hidden="true">▾</span></summary>
             <div class="nav-dropdown-panel">
+                <a href="/projects" data-nav-path="/projects">{{ t('nav.projects') }}</a>
+                <a href="/teams" data-nav-path="/teams">{{ t('nav.teams') }}</a>
+                <div class="nav-dropdown-separator" aria-hidden="true"></div>
                 <a href="/settings/profile" data-nav-path="/settings/profile">{{ t('nav.profile') }}</a>
                 {% if current_role() == 'admin' %}<a href="/admin" data-nav-path="/admin">{{ t('admin.title') }}</a>{% endif %}
                 <div class="nav-dropdown-separator" aria-hidden="true"></div>
