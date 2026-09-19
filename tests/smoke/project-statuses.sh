@@ -9,7 +9,7 @@ db() {
 }
 
 curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/projects" > /tmp/ps-projects.html
-csrf=$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' /tmp/ps-projects.html | head -n1)
+csrf=$(grep -m1 -o 'name="_csrf" value="[^"]*"' /tmp/ps-projects.html | sed 's/.*value="//;s/"$//')
 test -n "$csrf"
 admin_id=$(db "SELECT id FROM users WHERE username='ciadmin' LIMIT 1")
 
@@ -74,7 +74,7 @@ code=$(curl --silent -o /tmp/ps-move.json -w '%{http_code}' -H 'Accept: applicat
   --data-urlencode "status_id=$project_completion" "$BASE_URL/tasks/$clone_task/status")
 test "$code" = "200"
 
-curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/projects/$project_id" > /tmp/ps-detail.html
+curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/projects/$project_id/statuses" > /tmp/ps-detail.html
 grep -q 'Project workflow' /tmp/ps-detail.html
 grep -q 'Review' /tmp/ps-detail.html
 
