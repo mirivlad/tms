@@ -283,7 +283,7 @@ final class ApplicationFactory
         $projectAttachmentController = new ProjectAttachmentController($sessions, $projects, $projectAttachments, $attachmentPolicy, $attachmentStorage, $translator);
         $teamController = new TeamController($twig, $sessions, $teams, $projects, $teamInvitations, $teamInvitationDelivery, $users, $translator);
         $teamInvitationController = new TeamInvitationController($twig, $sessions, $teamInvitations, $translator);
-        $dashboardController = new DashboardController($twig, $sessions, $tasks, $statuses, $dashboardTips, $translator);
+        $dashboardController = new DashboardController($twig, $sessions, $tasks, $statuses, $projects, $teams, $dashboardTips, $translator);
         $taskController = new TaskController($twig, $sessions, $tasks, $attachments, $statuses, $taskTypes, $customers, $projects, $projectStatuses, $projectCustomFields, $teams, $discussions, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator, $descriptionSanitizer);
         $taskDeleteController = new TaskDeleteController($sessions, $tasks, $attachments, $attachmentStorage);
         $taskBulkController = new TaskBulkController($sessions, $tasks, $attachments, $attachmentStorage, $translator);

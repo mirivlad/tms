@@ -31,67 +31,14 @@
     min-height: 120px;
 }
 
-.collab-project-list {
-    gap: 12px;
-}
-
-.collab-project-row {
-    display: grid;
-    grid-template-columns: minmax(190px, .42fr) minmax(0, 1fr);
-    grid-template-areas:
-        "heading edit"
-        "heading actions";
-    gap: 10px 20px;
-    align-items: start;
-    padding: 14px;
-}
-
-.collab-project-row > .metadata-item-heading {
-    grid-area: heading;
-    display: grid;
-    align-content: start;
-    gap: 9px;
-    margin: 0;
-}
-
-.collab-project-row .metadata-badges {
-    margin-left: 0;
-}
-
-.collab-project-edit {
-    grid-area: edit;
-    grid-template-columns: minmax(190px, 1fr) minmax(150px, .42fr);
-    gap: 10px 12px;
-}
-
-.collab-project-edit .field-wide {
-    grid-column: 1 / -1;
-}
-
-.collab-project-edit textarea {
-    min-height: 78px;
-}
-
-.collab-project-edit > button {
-    justify-self: start;
-}
-
-.collab-project-row > .metadata-actions {
-    grid-area: actions;
-    margin-top: 0;
-}
-
-.collab-project-row > .muted {
-    grid-column: 2;
-    margin: 0;
-}
-
+.collab-project-grid,
 .collab-team-grid,
 .team-project-grid {
     grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
     gap: 12px;
 }
 
+.collab-project-card,
 .collab-team-card,
 .team-project-grid .metadata-item {
     min-height: 112px;
@@ -99,6 +46,7 @@
     align-content: start;
 }
 
+.collab-project-card .metadata-item-heading,
 .collab-team-card .metadata-item-heading,
 .team-project-grid .metadata-item-heading {
     margin-bottom: 6px;
@@ -154,6 +102,7 @@
     display: grid;
     grid-template-columns: minmax(0, 1.45fr) minmax(340px, .75fr);
     grid-template-areas:
+        "settings settings"
         "summary summary"
         "tasks files"
         "discussion discussion"
@@ -162,6 +111,7 @@
     align-items: start;
 }
 
+.project-settings-card { grid-area: settings; }
 .project-summary-card { grid-area: summary; }
 .project-files-card { grid-area: files; }
 .project-tasks-card { grid-area: tasks; }
@@ -172,6 +122,31 @@
 
 .project-summary-card .project-description {
     margin: 0;
+}
+
+.project-settings-form {
+    display: grid;
+    grid-template-columns: minmax(220px, 1fr) minmax(180px, .4fr);
+    gap: 12px 14px;
+}
+
+.project-settings-form .field-wide {
+    grid-column: 1 / -1;
+}
+
+.project-settings-form textarea {
+    min-height: 90px;
+}
+
+.project-settings-actions {
+    display: flex;
+    justify-content: flex-start;
+}
+
+.project-danger-actions {
+    margin-top: 14px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
 }
 
 .project-tasks-card .section-heading {
@@ -189,18 +164,6 @@
 }
 
 @media (max-width: 1180px) {
-    .collab-project-row {
-        grid-template-columns: 1fr;
-        grid-template-areas:
-            "heading"
-            "edit"
-            "actions";
-    }
-
-    .collab-project-row > .muted {
-        grid-column: 1;
-    }
-
     .team-member-list .metadata-item {
         grid-template-columns: 1fr;
     }
@@ -232,6 +195,7 @@
 
     .project-detail-grid {
         grid-template-areas:
+            "settings"
             "summary"
             "tasks"
             "files"
@@ -246,15 +210,16 @@
 }
 
 @media (max-width: 680px) {
-    .collab-project-edit,
+    .project-settings-form,
     .project-files-card .attachment-upload {
         grid-template-columns: 1fr;
     }
 
-    .collab-project-edit .field-wide {
+    .project-settings-form .field-wide {
         grid-column: auto;
     }
 
+    .collab-project-grid,
     .collab-team-grid,
     .team-project-grid {
         grid-template-columns: 1fr;

@@ -70,6 +70,11 @@ final class ProjectController
         if (!is_array($fieldNotice) || !is_string($fieldNotice['message'] ?? null)) {
             $fieldNotice = null;
         }
+        $settingsNotice = $_SESSION['project_settings_notice'] ?? null;
+        unset($_SESSION['project_settings_notice']);
+        if (!is_array($settingsNotice) || !is_string($settingsNotice['message'] ?? null)) {
+            $settingsNotice = null;
+        }
 
         $team = $project->ownerTeamId === null
             ? null
@@ -105,6 +110,8 @@ final class ProjectController
             'custom_fields' => $this->fields->listForProject($userId, $project->id),
             'custom_field_types' => CustomFieldRepository::TYPES,
             'field_notice' => $fieldNotice,
+            'settings_notice' => $settingsNotice,
+            'lifecycle_statuses' => ProjectRepository::LIFECYCLE_STATUSES,
         ]);
     }
 
@@ -149,12 +156,8 @@ final class ProjectController
     ): ResponseInterface {
         $projectId = $this->routeId($args);
         if ($this->projects->findManageableForUser($this->userId(), $projectId) === null) {
-            return $this->render(
-                $request,
-                $response,
-                $this->translator->trans('validation.project_not_found'),
-                404,
-            );
+            $response->getBody()->write($this->translator->trans('validation.project_not_found'));
+            return $response->withStatus(404)->withHeader('Content-Type', 'text/plain; charset=utf-8');
         }
 
         $body = $this->body($request);
@@ -166,19 +169,18 @@ final class ProjectController
                 (string) ($body['description'] ?? ''),
                 (string) ($body['lifecycle_status'] ?? 'active'),
             );
+            $_SESSION['project_settings_notice'] = [
+                'kind' => 'success',
+                'message' => $this->translator->trans('projects.saved'),
+            ];
         } catch (DomainException $error) {
-            return $this->render(
-                $request,
-                $response,
-                $this->domainMessage($error),
-                422,
-                null,
-                $projectId,
-                $body,
-            );
+            $_SESSION['project_settings_notice'] = [
+                'kind' => 'error',
+                'message' => $this->domainMessage($error),
+            ];
         }
 
-        return $this->redirect($response);
+        return $this->redirectProject($response, $projectId);
     }
 
     /** @param array<string, string> $args */
@@ -292,6 +294,11 @@ final class ProjectController
     private function redirect(ResponseInterface $response): ResponseInterface
     {
         return $response->withHeader('Location', '/projects')->withStatus(302);
+    }
+
+    private function redirectProject(ResponseInterface $response, int $projectId): ResponseInterface
+    {
+        return $response->withHeader('Location', '/projects/' . $projectId)->withStatus(302);
     }
 
     /** @return array<string, mixed> */

@@ -117,4 +117,69 @@
         {% endif %}
     </section>
 </div>
+
+<div class="dashboard-context-grid">
+    <section class="content-card dashboard-context-card">
+        <div class="section-heading">
+            <div>
+                <h2>{{ t('dashboard.projects_title') }}</h2>
+                <p class="muted">{{ t('dashboard.projects_help') }}</p>
+            </div>
+            <a href="/projects">{{ t('common.view_all') }}</a>
+        </div>
+        <div class="dashboard-context-stats">
+            <span><strong>{{ projects_count }}</strong> {{ t('dashboard.projects_total') }}</span>
+            <span><strong>{{ open_project_tasks }}</strong> {{ t('dashboard.project_open_tasks') }}</span>
+            <span><strong>{{ open_unassigned_tasks }}</strong> {{ t('dashboard.unassigned_open_tasks') }}</span>
+        </div>
+        {% if project_summaries is empty %}
+            <div class="empty-state dashboard-empty"><span>{{ t('dashboard.no_projects_context') }}</span></div>
+        {% else %}
+            <div class="dashboard-context-list">
+                {% for project in project_summaries %}
+                    <a href="/projects/{{ project.id }}">
+                        <span class="dashboard-context-main">
+                            <strong>{{ project.name }}</strong>
+                            <span class="muted">
+                                {{ t('projects.status.' ~ project.lifecycle_status) }}
+                                · {{ project.team_name ? project.team_name : t('projects.personal') }}
+                            </span>
+                        </span>
+                        <span class="count-badge">{{ project.open_tasks }}</span>
+                    </a>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </section>
+
+    <section class="content-card dashboard-context-card">
+        <div class="section-heading">
+            <div>
+                <h2>{{ t('dashboard.teams_title') }}</h2>
+                <p class="muted">{{ t('dashboard.teams_help') }}</p>
+            </div>
+            <a href="/teams">{{ t('common.view_all') }}</a>
+        </div>
+        <div class="dashboard-context-stats">
+            <span><strong>{{ teams_count }}</strong> {{ t('dashboard.teams_total') }}</span>
+        </div>
+        {% if team_summaries is empty %}
+            <div class="empty-state dashboard-empty"><span>{{ t('dashboard.no_teams_context') }}</span></div>
+        {% else %}
+            <div class="dashboard-context-list">
+                {% for team in team_summaries %}
+                    <a href="/teams/{{ team.id }}">
+                        <span class="dashboard-context-main">
+                            <strong>{{ team.name }}</strong>
+                            <span class="muted">
+                                {{ t('dashboard.team_projects_count', {'count': team.projects}) }}
+                                · {{ t('dashboard.team_open_tasks_count', {'count': team.open_tasks}) }}
+                            </span>
+                        </span>
+                    </a>
+                {% endfor %}
+            </div>
+        {% endif %}
+    </section>
+</div>
 {% endblock %}

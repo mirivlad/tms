@@ -9,10 +9,12 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
 use Tms\Application\DashboardTipProvider;
+use Tms\Domain\Project\ProjectRepository;
 use Tms\Domain\Status\StatusRecord;
 use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRecord;
 use Tms\Domain\Task\TaskRepository;
+use Tms\Domain\Team\TeamRepository;
 use Tms\I18n\Translator;
 use Tms\Security\SessionManager;
 
@@ -23,6 +25,8 @@ final class DashboardController
         private readonly SessionManager $sessions,
         private readonly TaskRepository $tasks,
         private readonly StatusRepository $statuses,
+        private readonly ProjectRepository $projects,
+        private readonly TeamRepository $teams,
         private readonly DashboardTipProvider $tips,
         private readonly Translator $translator,
     ) {
@@ -33,6 +37,26 @@ final class DashboardController
         $userId = $this->sessions->currentUserId() ?? 0;
         $tasks = $this->tasks->listForUser($userId);
         $statuses = $this->statuses->listAccessibleForUser($userId);
+        $projects = $this->projects->listForUser($userId);
+        $teams = $this->teams->listForUser($userId);
+
+        $projectMap = [];
+        $projectOpenCounts = [];
+        $teamMap = [];
+        $teamProjectCounts = [];
+        $teamOpenCounts = [];
+        foreach ($teams as $team) {
+            $teamMap[$team->id] = $team;
+            $teamProjectCounts[$team->id] = 0;
+            $teamOpenCounts[$team->id] = 0;
+        }
+        foreach ($projects as $project) {
+            $projectMap[$project->id] = $project;
+            $projectOpenCounts[$project->id] = 0;
+            if ($project->ownerTeamId !== null && isset($teamProjectCounts[$project->ownerTeamId])) {
+                ++$teamProjectCounts[$project->ownerTeamId];
+            }
+        }
 
         $completionIds = [];
         $statusMap = [];
@@ -57,6 +81,8 @@ final class DashboardController
         $weekCount = 0;
         $overdue = 0;
         $stuckTasks = [];
+        $openProjectTasks = 0;
+        $openUnassignedTasks = 0;
 
         foreach ($tasks as $task) {
             if ($this->isCompleted($task, $completionIds)) {
@@ -64,6 +90,16 @@ final class DashboardController
             }
 
             $openTasks[] = $task;
+            if ($task->projectId !== null && isset($projectMap[$task->projectId])) {
+                ++$projectOpenCounts[$task->projectId];
+                ++$openProjectTasks;
+                $ownerTeamId = $projectMap[$task->projectId]->ownerTeamId;
+                if ($ownerTeamId !== null && isset($teamOpenCounts[$ownerTeamId])) {
+                    ++$teamOpenCounts[$ownerTeamId];
+                }
+            } else {
+                ++$openUnassignedTasks;
+            }
             if ($task->priority === 3) {
                 ++$urgent;
             }
@@ -91,6 +127,38 @@ final class DashboardController
         usort($stuckTasks, static fn (TaskRecord $a, TaskRecord $b): int => strcmp($a->updatedAt, $b->updatedAt));
         $statusBreakdown = $this->statusBreakdown($statuses, $statusCounts);
 
+        $projectSummaries = [];
+        foreach ($projects as $project) {
+            if ($project->lifecycleStatus === 'archived') {
+                continue;
+            }
+            $projectSummaries[] = [
+                'id' => $project->id,
+                'name' => $project->name,
+                'lifecycle_status' => $project->lifecycleStatus,
+                'open_tasks' => $projectOpenCounts[$project->id] ?? 0,
+                'team_name' => $project->ownerTeamId === null
+                    ? null
+                    : ($teamMap[$project->ownerTeamId]->name ?? null),
+            ];
+            if (count($projectSummaries) >= 6) {
+                break;
+            }
+        }
+
+        $teamSummaries = [];
+        foreach ($teams as $team) {
+            $teamSummaries[] = [
+                'id' => $team->id,
+                'name' => $team->name,
+                'projects' => $teamProjectCounts[$team->id] ?? 0,
+                'open_tasks' => $teamOpenCounts[$team->id] ?? 0,
+            ];
+            if (count($teamSummaries) >= 6) {
+                break;
+            }
+        }
+
         return $this->view->render($response, 'dashboard.twig', [
             'csrf_token' => $this->csrfToken($request),
             'username' => $this->sessions->currentUsername(),
@@ -108,6 +176,12 @@ final class DashboardController
             'status_chart_gradient' => $this->statusChartGradient($statusBreakdown),
             'status_map' => $statusMap,
             'priority_labels' => $this->priorityLabels(),
+            'projects_count' => count($projects),
+            'teams_count' => count($teams),
+            'open_project_tasks' => $openProjectTasks,
+            'open_unassigned_tasks' => $openUnassignedTasks,
+            'project_summaries' => $projectSummaries,
+            'team_summaries' => $teamSummaries,
             'tip' => $this->tips->forDay($this->translator->locale(), $userId, $now),
         ]);
     }
