@@ -4,10 +4,10 @@
 
 TMS is a lightweight, self-hosted task management system for people who want to keep tasks and data on infrastructure they control.
 
-> **Current stable release:** `v0.2.5`
+> **Current stable release:** `v0.2.6`
 
 ```text
-ghcr.io/mirivlad/tms:v0.2.5
+ghcr.io/mirivlad/tms:v0.2.6
 ```
 
 `latest` follows the newest stable release. For reproducible deployments, pin a versioned tag. CI-tested development builds from `main` are published as `edge` and immutable `sha-<commit>` tags.
@@ -16,6 +16,7 @@ ghcr.io/mirivlad/tms:v0.2.5
 
 - isolated multi-user task data;
 - list, Kanban board and calendar views;
+- dense responsive workbench layout for desktop, tablet and mobile;
 - quick task creation, rich descriptions and attachments;
 - statuses, task types, customers and typed custom fields;
 - personal and team-owned projects with project files, project-specific task statuses and custom fields;
