@@ -117,6 +117,14 @@ test "$code" = "302"
 reply_id=$(db "SELECT id FROM discussion_comments WHERE parent_comment_id=$root_id ORDER BY id DESC LIMIT 1")
 test -n "$reply_id"
 
+# Reply notification wins over duplicate mention to the same parent author.
+test "$(db "SELECT COUNT(*) FROM internal_notifications
+            WHERE user_id=$member_id AND comment_id=$reply_id")" = "1"
+test "$(db "SELECT notification_type FROM internal_notifications
+            WHERE user_id=$member_id AND comment_id=$reply_id LIMIT 1")" = "discussion_reply"
+curl --fail --silent --cookie "$MEMBER_COOKIES" "$BASE_URL/notifications" > /tmp/discussion-member-inbox.html
+grep -q 'ciadmin' /tmp/discussion-member-inbox.html
+
 before=$(db "SELECT COUNT(*) FROM discussion_comments WHERE project_id=$project_id")
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"   --data-urlencode "_csrf=$member_csrf"   --data-urlencode 'body=<p>Too deep</p>'   "$BASE_URL/projects/$project_id/discussion/$reply_id/reply")
 test "$code" = "302"
@@ -126,6 +134,9 @@ test "$(db "SELECT COUNT(*) FROM discussion_comments WHERE project_id=$project_i
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"   --data-urlencode "_csrf=$member_csrf"   --data-urlencode 'body=<p>Edited root @ciadmin</p>'   "$BASE_URL/projects/$project_id/discussion/$root_id")
 test "$code" = "302"
 grep -q 'Edited root' < <(db "SELECT body_html FROM discussion_comments WHERE id=$root_id")
+test "$(db "SELECT COUNT(*) FROM internal_notifications
+            WHERE user_id=$admin_id AND comment_id=$root_id
+              AND notification_type='discussion_mention'")" = "1"
 
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"   --data-urlencode "_csrf=$member_csrf"   "$BASE_URL/projects/$project_id/discussion/$reply_id/delete")
 test "$code" = "302"
