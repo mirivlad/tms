@@ -21,7 +21,11 @@ final class TaskCrudRepositoryTest extends TestCase
         $this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
 
         $this->db->exec('CREATE TABLE statuses (
-            id INTEGER PRIMARY KEY, user_id INTEGER NOT NULL, name TEXT NOT NULL,
+            id INTEGER PRIMARY KEY,
+            user_id INTEGER NULL,
+            project_id INTEGER NULL,
+            source_status_id INTEGER NULL,
+            name TEXT NOT NULL,
             is_completion INTEGER NOT NULL DEFAULT 0
         )');
         $this->db->exec('CREATE TABLE task_types (
@@ -51,8 +55,13 @@ final class TaskCrudRepositoryTest extends TestCase
             updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
         )');
 
-        $this->db->exec("INSERT INTO statuses (id,user_id,name,is_completion) VALUES
-            (10,1,'Inbox',0),(11,1,'Done',1),(20,2,'Foreign',0)");
+        $this->db->exec("INSERT INTO statuses (id,user_id,project_id,source_status_id,name,is_completion) VALUES
+            (10,1,NULL,NULL,'Inbox',0),
+            (11,1,NULL,NULL,'Done',1),
+            (12,NULL,70,10,'Inbox',0),
+            (13,NULL,70,11,'Done',1),
+            (20,2,NULL,NULL,'Foreign',0),
+            (21,NULL,80,20,'Foreign project',0)");
         $this->db->exec("INSERT INTO task_types (id,user_id,name) VALUES (30,1,'General'),(40,2,'Foreign')");
         $this->db->exec("INSERT INTO customers (id,user_id,name) VALUES (50,1,'Acme 100%'),(60,2,'Foreign')");
         $this->db->exec("INSERT INTO projects (id,owner_user_id,owner_team_id,name) VALUES
@@ -81,7 +90,7 @@ final class TaskCrudRepositoryTest extends TestCase
 
     public function testProjectAssignmentIsOwnedOptionalAndFilterable(): void
     {
-        $assigned = $this->tasks->createForUser(1, 'Assigned', '', null, 10, null, 1, null, 70);
+        $assigned = $this->tasks->createForUser(1, 'Assigned', '', null, 12, null, 1, null, 70);
         $unassigned = $this->tasks->createForUser(1, 'Loose', '', null, 10, null, 1, null);
 
         self::assertSame(70, $this->tasks->findForUser(1, $assigned)?->projectId);
@@ -96,7 +105,22 @@ final class TaskCrudRepositoryTest extends TestCase
         ));
 
         $this->expectException(DomainException::class);
-        $this->tasks->updateForUser(1, $assigned, 'Assigned', '', null, 10, null, 1, null, 80);
+        $this->tasks->updateForUser(1, $assigned, 'Assigned', '', null, 21, null, 1, null, 80);
+    }
+
+    public function testProjectTaskRejectsPersonalAndOtherProjectStatuses(): void
+    {
+        $task = $this->tasks->createForUser(1, 'Scoped', '', null, 12, null, 1, null, 70);
+
+        try {
+            $this->tasks->quickUpdateForUser(1, $task, '', null, 10);
+            self::fail('Personal status must not be accepted for a project task.');
+        } catch (DomainException) {
+            self::assertSame(12, $this->tasks->findForUser(1, $task)?->statusId);
+        }
+
+        $this->expectException(DomainException::class);
+        $this->tasks->updateStatusForUser(1, $task, 21);
     }
 
     public function testQuickUpdateChangesOnlyPreviewFieldsAndKeepsOwnerScope(): void
