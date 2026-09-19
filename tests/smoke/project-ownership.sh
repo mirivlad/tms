@@ -69,6 +69,9 @@ db "UPDATE tasks SET assignee_user_id=$admin_id WHERE id=$task_id"
 
 curl --fail --silent --cookie "$COOKIES" "$BASE_URL/projects/$project_id/discussion" > /tmp/transfer-discussion-a.html
 discussion_csrf=$(csrf_from /tmp/transfer-discussion-a.html)
+test "$(db "SELECT COUNT(*) FROM discussion_read_markers
+            WHERE user_id=$admin_id AND team_id=$team_a
+              AND context_type='project' AND context_id=$project_id")" = "1"
 code=$(curl --silent -o /dev/null -w '%{http_code}' --cookie "$COOKIES" \
   --data-urlencode "_csrf=$discussion_csrf" --data-urlencode 'body=<p>Team A secret history</p>' \
   "$BASE_URL/projects/$project_id/discussion")
@@ -88,6 +91,10 @@ test "$(db "SELECT owner_team_id FROM projects WHERE id=$project_id")" = "$team_
 test "$(db "SELECT assignee_user_id IS NULL FROM tasks WHERE id=$task_id")" = "1"
 
 curl --fail --silent --cookie "$COOKIES" "$BASE_URL/projects/$project_id/discussion" > /tmp/transfer-discussion-b.html
+test "$(db "SELECT COUNT(DISTINCT team_id) FROM discussion_read_markers
+            WHERE user_id=$admin_id
+              AND context_type='project' AND context_id=$project_id
+              AND team_id IN ($team_a,$team_b)")" = "2"
 if grep -q 'Team A secret history' /tmp/transfer-discussion-b.html; then
   echo 'Historical Team A discussion leaked after moving the project to Team B.' >&2
   exit 1
@@ -120,6 +127,12 @@ code=$(curl --silent -o /dev/null -w '%{http_code}' --cookie "$COOKIES" \
 test "$code" = "302"
 curl --fail --silent --cookie "$COOKIES" "$BASE_URL/projects/$project_id/discussion" > /tmp/transfer-discussion-a-return.html
 grep -q 'Team A secret history' /tmp/transfer-discussion-a-return.html
+test "$(db "SELECT last_read_comment_id >= $comment_a FROM discussion_read_markers
+            WHERE user_id=$admin_id AND team_id=$team_a
+              AND context_type='project' AND context_id=$project_id")" = "1"
+test "$(db "SELECT last_read_comment_id < $comment_b FROM discussion_read_markers
+            WHERE user_id=$admin_id AND team_id=$team_b
+              AND context_type='project' AND context_id=$project_id")" = "1"
 if grep -q 'Team B current history' /tmp/transfer-discussion-a-return.html; then
   echo 'Team B discussion leaked after returning the project to Team A.' >&2
   exit 1
