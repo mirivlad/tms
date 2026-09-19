@@ -14,6 +14,8 @@ use Tms\Domain\Project\ProjectCustomFieldRepository;
 use Tms\Domain\Project\ProjectRepository;
 use Tms\Domain\Project\ProjectStatusRepository;
 use Tms\Domain\Task\TaskRepository;
+use Tms\Domain\Team\TeamRecord;
+use Tms\Domain\Team\TeamRepository;
 use Tms\I18n\Translator;
 use Tms\Infrastructure\AttachmentStorage;
 use Tms\Security\SessionManager;
@@ -29,6 +31,7 @@ final class ProjectController
         private readonly TaskRepository $tasks,
         private readonly ProjectStatusRepository $statuses,
         private readonly ProjectCustomFieldRepository $fields,
+        private readonly TeamRepository $teams,
         private readonly Translator $translator,
     ) {
     }
@@ -45,7 +48,7 @@ final class ProjectController
         array $args,
     ): ResponseInterface {
         $userId = $this->userId();
-        $project = $this->projects->findForUser($userId, $this->routeId($args));
+        $project = $this->projects->findAccessibleForUser($userId, $this->routeId($args));
         if ($project === null) {
             $response->getBody()->write($this->translator->trans('validation.project_not_found'));
             return $response->withStatus(404)->withHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -71,6 +74,7 @@ final class ProjectController
             'csrf_token' => $this->csrfToken($request),
             'username' => $this->sessions->currentUsername() ?? '',
             'project' => $project,
+            'can_manage' => $project->canManage(),
             'tasks' => $this->tasks->listForProjectForUser($userId, $project->id),
             'attachments' => $this->attachments->listForProject($userId, $project->id),
             'statuses' => array_values($statusMap),
@@ -87,12 +91,23 @@ final class ProjectController
         $body = $this->body($request);
 
         try {
-            $this->projects->createForUser(
-                $this->userId(),
-                (string) ($body['name'] ?? ''),
-                (string) ($body['description'] ?? ''),
-                (string) ($body['lifecycle_status'] ?? 'active'),
-            );
+            $teamId = $this->bodyInt($body, 'owner_team_id');
+            if ($teamId === null) {
+                $this->projects->createForUser(
+                    $this->userId(),
+                    (string) ($body['name'] ?? ''),
+                    (string) ($body['description'] ?? ''),
+                    (string) ($body['lifecycle_status'] ?? 'active'),
+                );
+            } else {
+                $this->projects->createForTeam(
+                    $this->userId(),
+                    $teamId,
+                    (string) ($body['name'] ?? ''),
+                    (string) ($body['description'] ?? ''),
+                    (string) ($body['lifecycle_status'] ?? 'active'),
+                );
+            }
         } catch (DomainException $error) {
             return $this->render($request, $response, $this->domainMessage($error), 422, $body);
         }
@@ -107,7 +122,7 @@ final class ProjectController
         array $args,
     ): ResponseInterface {
         $projectId = $this->routeId($args);
-        if ($this->projects->findForUser($this->userId(), $projectId) === null) {
+        if ($this->projects->findManageableForUser($this->userId(), $projectId) === null) {
             return $this->render(
                 $request,
                 $response,
@@ -118,7 +133,7 @@ final class ProjectController
 
         $body = $this->body($request);
         try {
-            $this->projects->updateForUser(
+            $this->projects->updateForActor(
                 $this->userId(),
                 $projectId,
                 (string) ($body['name'] ?? ''),
@@ -191,7 +206,11 @@ final class ProjectController
         return $this->view->render($response, 'projects/index.twig', [
             'csrf_token' => $this->csrfToken($request),
             'username' => $this->sessions->currentUsername() ?? '',
-            'projects' => $this->projects->listForUser($this->userId()),
+            'projects' => $this->projects->listAccessibleForUser($this->userId()),
+            'lead_teams' => array_values(array_filter(
+                $this->teams->listForUser($this->userId()),
+                static fn (TeamRecord $team): bool => $team->currentUserIsLead(),
+            )),
             'lifecycle_statuses' => ProjectRepository::LIFECYCLE_STATUSES,
             'error' => $error,
             'create_form' => $createForm ?? [],
@@ -206,6 +225,7 @@ final class ProjectController
             'Project name must contain 1-160 characters.' => $this->translator->trans('validation.project_name'),
             'Project description cannot exceed 20000 characters.' => $this->translator->trans('validation.project_description'),
             'Unsupported project lifecycle status.' => $this->translator->trans('validation.project_status'),
+            'Only a Team Lead can create a team project.' => $this->translator->trans('validation.project_team_lead'),
             default => $this->translator->trans('validation.project_invalid'),
         };
     }
@@ -220,6 +240,18 @@ final class ProjectController
     {
         $body = $request->getParsedBody();
         return is_array($body) ? $body : [];
+    }
+
+    /** @param array<string, mixed> $body */
+    private function bodyInt(array $body, string $key): ?int
+    {
+        $value = $body[$key] ?? null;
+        if ($value === null || $value === '') {
+            return null;
+        }
+        return is_scalar($value) && ctype_digit((string) $value) && (int) $value > 0
+            ? (int) $value
+            : null;
     }
 
     /** @param array<string, string> $args */
