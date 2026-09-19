@@ -161,28 +161,63 @@ final class ProjectRepository
                 throw new DomainException('A personal default status is required before deleting a project.');
             }
 
-            $remap = $this->db->prepare(
-                'UPDATE tasks t
-                 INNER JOIN statuses ps
-                    ON ps.id = t.status_id
-                   AND ps.project_id = :project_id_status
-                   AND ps.user_id IS NULL
-                 LEFT JOIN statuses source
-                    ON source.id = ps.source_status_id
-                   AND source.user_id = :source_user_id
-                   AND source.project_id IS NULL
-                 SET t.status_id = COALESCE(source.id, :fallback_status),
-                     t.project_id = NULL,
-                     t.updated_at = CURRENT_TIMESTAMP
-                 WHERE t.project_id = :project_id_task
-                   AND t.created_by = :task_user_id'
+            $statusRows = $this->db->prepare(
+                'SELECT id, source_status_id
+                 FROM statuses
+                 WHERE user_id IS NULL AND project_id = :project_id
+                 ORDER BY id ASC'
             );
-            $remap->execute([
-                'project_id_status' => $projectId,
-                'source_user_id' => $userId,
+            $statusRows->execute(['project_id' => $projectId]);
+
+            $sourceOwned = $this->db->prepare(
+                'SELECT 1 FROM statuses
+                 WHERE id = :status_id AND user_id = :user_id AND project_id IS NULL
+                 LIMIT 1'
+            );
+            $remapOne = $this->db->prepare(
+                'UPDATE tasks
+                 SET status_id = :target_status,
+                     project_id = NULL,
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE project_id = :project_id
+                   AND created_by = :user_id
+                   AND status_id = :project_status'
+            );
+
+            while (($row = $statusRows->fetch()) !== false) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $target = $fallback;
+                if ($row['source_status_id'] !== null) {
+                    $sourceOwned->execute([
+                        'status_id' => (int) $row['source_status_id'],
+                        'user_id' => $userId,
+                    ]);
+                    if ($sourceOwned->fetchColumn() !== false) {
+                        $target = (int) $row['source_status_id'];
+                    }
+                }
+
+                $remapOne->execute([
+                    'target_status' => $target,
+                    'project_id' => $projectId,
+                    'user_id' => $userId,
+                    'project_status' => (int) $row['id'],
+                ]);
+            }
+
+            $remapRemaining = $this->db->prepare(
+                'UPDATE tasks
+                 SET status_id = :fallback_status,
+                     project_id = NULL,
+                     updated_at = CURRENT_TIMESTAMP
+                 WHERE project_id = :project_id AND created_by = :user_id'
+            );
+            $remapRemaining->execute([
                 'fallback_status' => $fallback,
-                'project_id_task' => $projectId,
-                'task_user_id' => $userId,
+                'project_id' => $projectId,
+                'user_id' => $userId,
             ]);
 
             $stmt = $this->db->prepare(
