@@ -163,7 +163,7 @@ final class ProjectCustomFieldController
 
     private function projectAvailable(int $projectId): bool
     {
-        return $this->projects->findForUser($this->userId(), $projectId) !== null;
+        return $this->projects->findManageableForUser($this->userId(), $projectId) !== null;
     }
 
     /** @return array<string, mixed> */
