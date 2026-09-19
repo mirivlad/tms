@@ -405,6 +405,19 @@ textarea { resize: vertical; min-height: 110px; }
 .task-preview-custom dd { margin: 0; overflow-wrap: anywhere; }
 .task-preview-actions { justify-content: space-between; }
 .task-preview-actions-main { margin-left: auto; display: flex; gap: 8px; }
+.task-preview-discussion { display: inline-flex; align-items: center; gap: 6px; }
+.task-preview-unread {
+    min-width: 20px;
+    min-height: 20px;
+    display: inline-grid;
+    place-items: center;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: var(--nav-active-bg);
+    color: var(--nav-active-fg);
+    font-size: .7rem;
+    font-weight: 800;
+}
 .task-preview-actions form { display: block; }
 .danger-button { background: var(--danger-bg); color: var(--danger-fg); border: 1px solid var(--danger-border); }
 .danger-button:hover { background: var(--danger-border); color: var(--text-strong); }
