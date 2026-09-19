@@ -112,6 +112,7 @@ jobs:
           - dashboard counters, status distribution, stale tasks and daily tips;
           - task list, Kanban board and calendar with advanced filtering;
           - dense responsive workbench layout across dashboard, tasks, projects, teams, discussions, notifications and administration, with mobile task cards and focused navigation;
+          - project-aware status filters in Tasks and Calendar: No project uses personal statuses, a selected project uses its workflow, and All projects exposes all accessible statuses;
           - global quick add, task quick view with inline status/description/deadline editing and bulk task operations;
           - rich-text descriptions, customers and owner-scoped custom fields;
           - type-aware custom-field editing, money formatting and typed task filters;
