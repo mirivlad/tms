@@ -17,12 +17,7 @@ final class RequireAuthMiddleware implements MiddlewareInterface
         private readonly SessionManager $sessions,
         private readonly UserRepository $users,
     ) {
-        private function loginRedirect(): ResponseInterface
-    {
-        $response = new \Slim\Psr7\Response();
-        return $response->withHeader('Location', '/login')->withStatus(302);
     }
-}
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
@@ -39,5 +34,11 @@ final class RequireAuthMiddleware implements MiddlewareInterface
 
         $this->sessions->refreshIdentity($user);
         return $handler->handle($request);
+    }
+
+    private function loginRedirect(): ResponseInterface
+    {
+        $response = new \Slim\Psr7\Response();
+        return $response->withHeader('Location', '/login')->withStatus(302);
     }
 }
