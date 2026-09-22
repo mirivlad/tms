@@ -111,6 +111,10 @@ jobs:
           - isolated multi-user task data, metadata and attachments;
           - dashboard counters, status distribution, stale tasks and daily tips;
           - task list, Kanban board and calendar with advanced filtering;
+          - append-only task and project activity history for meaningful changes;
+          - ordered task checklists with progress tracking and activity events;
+          - private saved task views for reusable filters, sorting, project scope and an optional default view;
+          - recurring task series with daily, weekly, monthly, every-N-days and N-days-after-completion schedules, generated idempotently as new task occurrences;
           - dense responsive workbench layout across dashboard, tasks, projects, teams, discussions, notifications and administration, with mobile task cards and focused navigation;
           - project-aware status filters in Tasks and Calendar: No project uses personal statuses, a selected project uses its workflow, and All projects exposes all accessible statuses;
           - global quick add, task quick view with inline status/description/deadline editing and bulk task operations;
@@ -135,7 +139,7 @@ jobs:
           - optional self-registration with visual CAPTCHA, email verification and administrator approval;
           - administrator user management, direct account creation, quick user details and impersonation;
           - SMTP/email and Telegram notification delivery with administrator-managed credentials, selectable Long polling/Webhook command delivery, independently saved HTTP/SOCKS proxy settings and per-user Telegram delivery testing;
-          - Russian and English interface catalogs;
+          - Russian and English interface catalogs with count-aware pluralization for natural numeric UI labels;
           - MariaDB migrations, first-admin CLI bootstrap, Docker Compose and Portainer deployment.
 
           $outro
