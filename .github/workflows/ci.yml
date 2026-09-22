@@ -238,6 +238,9 @@ jobs:
       - name: Exercise rich task form workflow
         run: bash tests/smoke/task-form.sh
 
+      - name: Exercise activity history workflow
+        run: bash tests/smoke/activity-history.sh
+
       - name: Exercise team project collaboration
         run: bash tests/smoke/team-projects.sh
 
