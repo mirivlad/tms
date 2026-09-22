@@ -102,14 +102,26 @@
     height: 20px;
     padding: 0 6px;
     border-radius: 999px;
-    background: var(--primary);
-    color: var(--primary-contrast);
     display: inline-flex;
     align-items: center;
     justify-content: center;
     font-size: .75rem;
     font-weight: 800;
+    line-height: 1;
+    flex: 0 0 auto;
 }
+.nav-badge-notifications {
+    border: 1px solid var(--info-border);
+    background: var(--info-bg);
+    color: var(--info-fg);
+}
+.nav-badge-invitations {
+    border: 1px solid var(--warning-border);
+    background: var(--warning-bg);
+    color: var(--warning-fg);
+}
+.user-menu-badges { display: inline-flex; align-items: center; gap: 4px; }
+.user-menu-alert-link { justify-content: space-between !important; gap: 14px; }
 .nav-create-task {
     display: inline-flex;
     align-items: center;
@@ -142,8 +154,7 @@
 .icon-action.danger:hover { background: var(--danger-bg); color: var(--danger-fg); }
 .icon-action:focus-visible,
 .nav-dropdown > summary:focus-visible,
-.nav-create-task:focus-visible,
-.nav-invitations:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
+.nav-create-task:focus-visible { outline: 3px solid var(--focus-ring); outline-offset: 2px; }
 @media (max-width: 1050px) {
     .topbar { grid-template-columns: auto 1fr; grid-template-rows: auto auto; padding-top: 8px; padding-bottom: 8px; }
     .topbar-actions { display: flex; grid-column: 2; grid-row: 1; justify-self: end; }
