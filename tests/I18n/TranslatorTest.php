@@ -65,6 +65,31 @@ final class TranslatorTest extends TestCase
         self::assertSame('ru', $translator->locale());
     }
 
+    public function testPluralTranslationUsesRussianIntegerRules(): void
+    {
+        $translator = new Translator($this->catalogDirectory, 'en');
+        self::assertTrue($translator->setLocale('ru'));
+
+        self::assertSame('1 проект', $translator->transPlural('dashboard.team_projects_count', 1));
+        self::assertSame('2 проекта', $translator->transPlural('dashboard.team_projects_count', 2));
+        self::assertSame('5 проектов', $translator->transPlural('dashboard.team_projects_count', 5));
+        self::assertSame('11 проектов', $translator->transPlural('dashboard.team_projects_count', 11));
+        self::assertSame('21 проект', $translator->transPlural('dashboard.team_projects_count', 21));
+        self::assertSame('22 проекта', $translator->transPlural('dashboard.team_projects_count', 22));
+        self::assertSame('25 проектов', $translator->transPlural('dashboard.team_projects_count', 25));
+        self::assertSame('111 проектов', $translator->transPlural('dashboard.team_projects_count', 111));
+        self::assertSame('112 проектов', $translator->transPlural('dashboard.team_projects_count', 112));
+    }
+
+    public function testPluralTranslationUsesEnglishSingularAndPlural(): void
+    {
+        $translator = new Translator($this->catalogDirectory, 'en');
+
+        self::assertSame('1 project', $translator->transPlural('dashboard.team_projects_count', 1));
+        self::assertSame('2 projects', $translator->transPlural('dashboard.team_projects_count', 2));
+        self::assertSame('0 projects', $translator->transPlural('dashboard.team_projects_count', 0));
+    }
+
     public function testInterpolationAndMissingKeyFallback(): void
     {
         $translator = new Translator($this->catalogDirectory, 'en');
