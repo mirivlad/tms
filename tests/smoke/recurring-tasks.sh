@@ -1,5 +1,19 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
+
+on_error() {
+  rc=$?
+  echo "Recurring smoke failed at line $1 (exit $rc)" >&2
+  docker compose exec -T db mariadb -N -utms -p"$DB_PASS" tms -e     "SELECT id,owner_user_id,current_task_id,mode,interval_value,spawn_status_id,timezone,next_deadline,next_run_at,sequence,is_active,last_error FROM task_recurrences ORDER BY id" >&2 || true
+  for file in /tmp/recurring-calendar.out /tmp/recurring-calendar-second.out /tmp/recurring-completion.out /tmp/recurring-completion-second.out; do
+    if [ -f "$file" ]; then
+      echo "--- $file ---" >&2
+      cat "$file" >&2 || true
+    fi
+  done
+  exit "$rc"
+}
+trap 'on_error $LINENO' ERR
 
 BASE_URL="${APP_URL:-http://127.0.0.1:18080}"
 COOKIE_JAR=/tmp/tms-cookies
@@ -49,6 +63,7 @@ recurrence_id=$(db "SELECT id FROM task_recurrences WHERE owner_user_id=$admin_i
 test -n "$recurrence_id"
 
 docker compose exec -T app php /var/www/html/bin/recurring.php > /tmp/recurring-calendar.out
+cat /tmp/recurring-calendar.out
 grep -q 'generated=1' /tmp/recurring-calendar.out
 
 generated_id=$(db "SELECT current_task_id FROM task_recurrences WHERE id=$recurrence_id")
@@ -84,6 +99,7 @@ completion_recurrence=$(db "SELECT id FROM task_recurrences WHERE current_task_i
 test -n "$completion_recurrence"
 
 docker compose exec -T app php /var/www/html/bin/recurring.php > /tmp/recurring-completion.out
+cat /tmp/recurring-completion.out
 grep -q 'generated=1' /tmp/recurring-completion.out
 completion_generated=$(db "SELECT current_task_id FROM task_recurrences WHERE id=$completion_recurrence")
 test "$completion_generated" != "$completion_seed"
