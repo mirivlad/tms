@@ -27,6 +27,12 @@ An existing task can contain a lightweight ordered checklist. Checklist items ar
 
 Checklist items can be added, renamed, marked complete/incomplete, reordered and deleted from the task edit page. The task list shows compact progress such as `2/5` when a checklist exists. Checklist changes are written to the task Activity history and use exactly the same personal/project/team authorization as the parent task.
 
+## Saved task views
+
+On **Tasks**, the current filter/sort/project scope can be saved as a private named view. Saved views appear above the filters and can be reopened with one click. One view may be marked as the personal default; it is applied only when opening a plain `/tasks` URL, so an explicitly requested filter always wins.
+
+A saved view stores only normalized task-list state that TMS understands. Page numbers and transient view identifiers are not stored. Changing filters or sorting after opening a saved view does not silently modify it; save a new view if the changed combination should be kept.
+
 ## Projects
 
 Create a project when several tasks need shared context. Tasks may stay unassigned (**No project**) or belong to a personal or team-owned project. Project filters are available in the task list, board and calendar, and a project page shows the tasks that belong to it.
