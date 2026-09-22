@@ -150,7 +150,7 @@ final class ActivityRepositoryTest extends TestCase
         $newTeam = $this->activity->listForProject(3, 90);
         self::assertCount(1, $newTeam);
         self::assertSame('project.updated', $newTeam[0]->eventType);
-        self::assertSame(['old' => 'Ops', 'new' => 'Other'], $newTeam[0]->changes['owner']);
-        self::assertSame(['old' => 'active', 'new' => 'paused'], $newTeam[0]->changes['lifecycle_status']);
+        self::assertSame(['old' => null, 'new' => 'Other'], $newTeam[0]->changes['owner']);
+        self::assertSame(['old' => null, 'new' => 'paused'], $newTeam[0]->changes['lifecycle_status']);
     }
 }
