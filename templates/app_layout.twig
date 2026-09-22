@@ -24,26 +24,33 @@
     </nav>
     <div class="topbar-actions">
         {% set notification_count = current_notification_count() %}
-        <a class="nav-invitations {{ notification_count > 0 ? 'has-unread' : '' }}" href="/notifications" data-nav-path="/notifications">
-            {{ t('nav.notifications') }}
-            {% if notification_count > 0 %}<span class="nav-badge" aria-label="{{ notification_count }}">{{ notification_count }}</span>{% endif %}
-        </a>
         {% set team_invitation_count = current_team_invitation_count() %}
-        <a class="nav-invitations {{ team_invitation_count > 0 ? 'has-unread' : '' }}" href="/invitations" data-nav-path="/invitations">
-            {{ t('nav.team_invitations') }}
-            {% if team_invitation_count > 0 %}<span class="nav-badge" aria-label="{{ team_invitation_count }}">{{ team_invitation_count }}</span>{% endif %}
-        </a>
         <a class="nav-create-task" href="/tasks/new" data-quick-add-trigger aria-label="{{ t('nav.new_task') }}"><span class="nav-create-task-icon" aria-hidden="true">+</span><span class="nav-create-task-label">{{ t('nav.new_task') }}</span></a>
         <details class="nav-dropdown user-menu" data-nav-menu>
-            <summary title="{{ t('nav.user_menu') }}"><span class="user-menu-name">{{ username }}</span> <span class="nav-dropdown-chevron" aria-hidden="true">▾</span></summary>
+            <summary title="{{ t('nav.user_menu') }}">
+                <span class="user-menu-name">{{ username }}</span>
+                {% if notification_count > 0 or team_invitation_count > 0 %}
+                    <span class="user-menu-badges" aria-hidden="true">
+                        {% if notification_count > 0 %}<span class="nav-badge nav-badge-notifications">{{ notification_count }}</span>{% endif %}
+                        {% if team_invitation_count > 0 %}<span class="nav-badge nav-badge-invitations">{{ team_invitation_count }}</span>{% endif %}
+                    </span>
+                {% endif %}
+                <span class="nav-dropdown-chevron" aria-hidden="true">▾</span>
+            </summary>
             <div class="nav-dropdown-panel">
-                <a class="mobile-menu-only" href="/notifications" data-nav-path="/notifications">{{ t('nav.notifications') }}{% if notification_count > 0 %}<span class="nav-badge">{{ notification_count }}</span>{% endif %}</a>
-                <a class="mobile-menu-only" href="/invitations" data-nav-path="/invitations">{{ t('nav.team_invitations') }}{% if team_invitation_count > 0 %}<span class="nav-badge">{{ team_invitation_count }}</span>{% endif %}</a>
-                <div class="nav-dropdown-separator mobile-menu-only" aria-hidden="true"></div>
                 <a class="mobile-menu-only" href="/calendar" data-nav-path="/calendar">{{ t('nav.calendar') }}</a>
                 <a class="mobile-menu-only" href="/projects" data-nav-path="/projects">{{ t('nav.projects') }}</a>
                 <a class="mobile-menu-only" href="/teams" data-nav-path="/teams">{{ t('nav.teams') }}</a>
                 <div class="nav-dropdown-separator mobile-menu-only" aria-hidden="true"></div>
+                <a class="user-menu-alert-link" href="/notifications" data-nav-path="/notifications">
+                    <span>{{ t('nav.notifications') }}</span>
+                    {% if notification_count > 0 %}<span class="nav-badge nav-badge-notifications" aria-label="{{ t('nav.notifications') }}: {{ notification_count }}">{{ notification_count }}</span>{% endif %}
+                </a>
+                <a class="user-menu-alert-link" href="/invitations" data-nav-path="/invitations">
+                    <span>{{ t('nav.team_invitations') }}</span>
+                    {% if team_invitation_count > 0 %}<span class="nav-badge nav-badge-invitations" aria-label="{{ t('nav.team_invitations') }}: {{ team_invitation_count }}">{{ team_invitation_count }}</span>{% endif %}
+                </a>
+                <div class="nav-dropdown-separator" aria-hidden="true"></div>
                 <details class="nav-submenu user-settings-menu">
                     <summary>{{ t('nav.settings') }} <span class="nav-dropdown-chevron" aria-hidden="true">▾</span></summary>
                     <div class="nav-submenu-panel">
