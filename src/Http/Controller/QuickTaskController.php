@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Tms\Domain\Activity\ActivityRepository;
 use Tms\Domain\Project\ProjectRepository;
 use Tms\Domain\Project\ProjectStatusRepository;
 use Tms\Domain\Status\StatusRepository;
@@ -21,6 +22,7 @@ final class QuickTaskController
     public function __construct(
         private readonly SessionManager $sessions,
         private readonly TaskRepository $tasks,
+        private readonly ActivityRepository $activity,
         private readonly StatusRepository $statuses,
         private readonly ProjectRepository $projects,
         private readonly ProjectStatusRepository $projectStatuses,
@@ -72,6 +74,10 @@ final class QuickTaskController
                 null,
                 $projectId,
             );
+            $created = $this->tasks->findForUser($userId, $taskId);
+            if ($created !== null) {
+                $this->activity->recordTaskCreated($userId, $created);
+            }
 
             $message = $this->translator->trans('quick_add.created');
             if ($this->wantsJson($request)) {
