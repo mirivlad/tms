@@ -24,6 +24,7 @@ use Tms\Domain\Discussion\DiscussionReadRepository;
 use Tms\Domain\Project\ProjectCustomFieldRepository;
 use Tms\Domain\Project\ProjectRecord;
 use Tms\Domain\Project\ProjectStatusRepository;
+use Tms\Domain\SavedView\SavedViewRepository;
 use Tms\Domain\Project\ProjectRepository;
 use Tms\Domain\Status\StatusRecord;
 use Tms\Domain\Status\StatusRepository;
@@ -52,6 +53,7 @@ final class TaskController
         private readonly TaskRepository $tasks,
         private readonly ActivityRepository $activity,
         private readonly ChecklistRepository $checklists,
+        private readonly SavedViewRepository $savedViews,
         private readonly AttachmentRepository $attachments,
         private readonly StatusRepository $statuses,
         private readonly TaskTypeRepository $taskTypes,
@@ -74,6 +76,18 @@ final class TaskController
     {
         $userId = $this->userId();
         $query = $request->getQueryParams();
+        if ($query === []) {
+            $defaultView = $this->savedViews->defaultForUser($userId);
+            if ($defaultView !== null) {
+                return $response
+                    ->withHeader('Location', '/tasks/views/' . $defaultView->id)
+                    ->withStatus(302);
+            }
+        }
+        $activeSavedViewId = $this->queryInt($query, 'view');
+        $activeSavedView = $activeSavedViewId === null
+            ? null
+            : $this->savedViews->findForUser($userId, $activeSavedViewId);
         [$projectId, $withoutProject, $projectFilter] = $this->projectFilter($query, $userId);
         $filterStatuses = $this->statusesForFilterScope($userId, $projectId, $projectFilter);
         $filterStatusIds = array_fill_keys(
@@ -192,6 +206,8 @@ final class TaskController
 
         $bulkNotice = $_SESSION['bulk_notice'] ?? null;
         unset($_SESSION['bulk_notice']);
+        $savedViewNotice = $_SESSION['_saved_view_notice'] ?? null;
+        unset($_SESSION['_saved_view_notice']);
         if (!is_array($bulkNotice) || !is_string($bulkNotice['message'] ?? null)) {
             $bulkNotice = null;
         }
@@ -229,6 +245,10 @@ final class TaskController
             'pagination' => $this->pagination($viewParams, $page, $totalPages),
             'per_page_links' => $this->perPageLinks($viewParams, $perPage),
             'bulk_notice' => $bulkNotice,
+            'saved_views' => $this->savedViews->listForUser($userId),
+            'active_saved_view_id' => $activeSavedView?->id,
+            'saved_view_query' => http_build_query($viewParams, '', '&', PHP_QUERY_RFC3986),
+            'saved_view_notice' => is_array($savedViewNotice) ? $savedViewNotice : null,
             'discussion_stats' => $discussionStats,
             'checklist_progress' => $checklistProgress,
         ]);

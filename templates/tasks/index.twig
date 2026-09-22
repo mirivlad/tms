@@ -10,6 +10,58 @@
 </div>
 
 <section class="content-card filters-card">
+    {% if saved_view_notice %}
+        <div class="{{ saved_view_notice.kind == 'error' ? 'alert' : 'success-notice' }}" role="status">{{ saved_view_notice.message }}</div>
+    {% endif %}
+
+    <div class="saved-views-bar">
+        <div class="saved-views-heading">
+            <strong>{{ t('saved_views.title') }}</strong>
+            {% if saved_views is empty %}<span class="muted">{{ t('saved_views.empty') }}</span>{% endif %}
+        </div>
+
+        {% if saved_views is not empty %}
+            <div class="saved-view-list">
+                {% for saved_view in saved_views %}
+                    <div class="saved-view-item {{ active_saved_view_id == saved_view.id ? 'is-active' : '' }}">
+                        <a class="saved-view-link" href="/tasks/views/{{ saved_view.id }}">
+                            {{ saved_view.name }}
+                            {% if saved_view.isDefault %}<span class="saved-view-default" title="{{ t('saved_views.default') }}">★</span>{% endif %}
+                        </a>
+                        {% if not saved_view.isDefault %}
+                            <form method="post" action="/tasks/views/{{ saved_view.id }}/default">
+                                <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                                <button type="submit" class="saved-view-icon" title="{{ t('saved_views.set_default') }}" aria-label="{{ t('saved_views.set_default') }}">☆</button>
+                            </form>
+                        {% endif %}
+                        <form method="post" action="/tasks/views/{{ saved_view.id }}/delete"
+                              onsubmit="return confirm('{{ t('saved_views.delete_confirm')|e('js') }}')">
+                            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                            <button type="submit" class="saved-view-icon danger-link" title="{{ t('saved_views.delete') }}" aria-label="{{ t('saved_views.delete') }}">×</button>
+                        </form>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+
+        <details class="saved-view-create">
+            <summary>{{ t('saved_views.save_current') }}</summary>
+            <form method="post" action="/tasks/views" class="saved-view-create-form">
+                <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                <input type="hidden" name="query" value="{{ saved_view_query }}">
+                <label>
+                    {{ t('saved_views.name') }}
+                    <input type="text" name="name" maxlength="96" required placeholder="{{ t('saved_views.name_placeholder') }}">
+                </label>
+                <label class="checkbox-inline">
+                    <input type="checkbox" name="is_default" value="1">
+                    {{ t('saved_views.make_default') }}
+                </label>
+                <button type="submit" class="compact">{{ t('saved_views.save') }}</button>
+            </form>
+        </details>
+    </div>
+
     <div class="filter-toolbar">
         <details class="filter-panel">
             <summary>
