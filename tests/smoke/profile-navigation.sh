@@ -24,8 +24,13 @@ for path in tasks board calendar; do
   grep -q 'class="nav-submenu user-settings-menu"' "/tmp/tms-nav-$path.html"
   grep -q 'href="/projects"' "/tmp/tms-nav-$path.html"
   grep -q 'href="/teams"' "/tmp/tms-nav-$path.html"
+  grep -q 'href="/notifications"' "/tmp/tms-nav-$path.html"
   grep -q 'href="/invitations"' "/tmp/tms-nav-$path.html"
-  grep -q 'class="nav-invitations' "/tmp/tms-nav-$path.html"
+  grep -q 'class="user-menu-alert-link"' "/tmp/tms-nav-$path.html"
+  if grep -q 'class="nav-invitations' "/tmp/tms-nav-$path.html"; then
+    echo 'Notifications and invitations must not remain as standalone topbar links.' >&2
+    exit 1
+  fi
   grep -q 'href="/settings/profile"' "/tmp/tms-nav-$path.html"
   grep -q 'href="/metadata"' "/tmp/tms-nav-$path.html"
   grep -q 'href="/custom-fields"' "/tmp/tms-nav-$path.html"
