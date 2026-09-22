@@ -186,7 +186,10 @@ textarea { resize: vertical; min-height: 110px; }
 .filter-panel { flex: 1; min-width: 0; }
 .filter-panel > summary,
 .custom-filter-panel > summary { cursor: pointer; color: var(--text-strong); font-weight: 700; user-select: none; }
-.filter-panel > summary { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; }
+.filter-panel > summary { display: inline-flex; align-items: center; gap: 8px; min-height: 34px; list-style: none; }
+.filter-panel > summary::-webkit-details-marker { display: none; }
+.filter-panel > summary::before { content: '›'; display: inline-block; opacity: .72; font-size: 1rem; line-height: 1; transform: rotate(0deg); transition: transform .15s ease; }
+.filter-panel[open] > summary::before { transform: rotate(90deg); }
 .filter-panel[open] > summary { margin-bottom: 16px; }
 .filter-count { min-width: 22px; height: 22px; display: inline-grid; place-items: center; border-radius: 999px; background: var(--chip-bg); color: var(--chip-fg); font-size: .72rem; }
 .filter-search { grid-column: span 2; }
