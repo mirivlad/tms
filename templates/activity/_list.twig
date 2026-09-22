@@ -1,0 +1,38 @@
+{% if events is empty %}
+    <p class="muted">{{ t('activity.empty') }}</p>
+{% else %}
+    <div class="activity-list">
+        {% for event in events %}
+            <article class="activity-event">
+                <div class="activity-event-heading">
+                    <div>
+                        <strong>{{ t('activity.event.' ~ event.eventType) }}</strong>
+                        {% if show_subject and event.taskId and event.subjectTitle %}
+                            · <a class="text-link" href="/tasks/{{ event.taskId }}/edit">{{ event.subjectTitle }}</a>
+                        {% endif %}
+                    </div>
+                    <span class="muted">{{ format_utc_datetime(event.createdAt) }}</span>
+                </div>
+                <div class="activity-meta muted">{{ t('activity.by', {'user': event.actorUsername}) }}</div>
+                {% if event.changes is not empty %}
+                    <dl class="activity-changes">
+                        {% for field, change in event.changes %}
+                            <div class="activity-change">
+                                <dt>{{ t('activity.field.' ~ field) }}</dt>
+                                <dd>
+                                    {% if change.old is null and change.new is null %}
+                                        {{ t('activity.value.changed') }}
+                                    {% else %}
+                                        <span>{{ change.old is null or change.old == '' ? '—' : change.old }}</span>
+                                        <span aria-hidden="true">→</span>
+                                        <span>{{ change.new is null or change.new == '' ? '—' : change.new }}</span>
+                                    {% endif %}
+                                </dd>
+                            </div>
+                        {% endfor %}
+                    </dl>
+                {% endif %}
+            </article>
+        {% endfor %}
+    </div>
+{% endif %}
