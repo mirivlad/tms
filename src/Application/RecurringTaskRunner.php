@@ -138,7 +138,7 @@ final class RecurringTaskRunner
         TaskRecord $task,
         DateTimeImmutable $nowUtc,
     ): ?DateTimeImmutable {
-        $timezone = new DateTimeZone($recurrence->timezone);
+        $timezone = $this->recurrenceTimezone($recurrence->timezone);
 
         if ($recurrence->mode === 'after_completion') {
             $status = $task->statusId === null
@@ -187,6 +187,15 @@ final class RecurringTaskRunner
             $next->format('Y-m-d H:i:s'),
             $next->setTimezone(new DateTimeZone('UTC'))->format('Y-m-d H:i:s'),
         ];
+    }
+
+    private function recurrenceTimezone(string $timezone): DateTimeZone
+    {
+        try {
+            return new DateTimeZone($timezone);
+        } catch (Throwable) {
+            throw new DomainException('Recurring task timezone is invalid.');
+        }
     }
 
     private function spawnStatus(TaskRecurrenceRecord $recurrence, TaskRecord $task): StatusRecord
