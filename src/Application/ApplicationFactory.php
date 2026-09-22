@@ -155,6 +155,7 @@ final class ApplicationFactory
         $customValueCodec = new CustomFieldValueCodec();
         $taskListSorter = new TaskListSorter($customValueCodec);
         $twig->getEnvironment()->addFunction(new TwigFunction('t', [$translator, 'trans']));
+        $twig->getEnvironment()->addFunction(new TwigFunction('tp', [$translator, 'transPlural']));
         $twig->getEnvironment()->addFunction(new TwigFunction('sanitize_task_html', [$descriptionSanitizer, 'sanitize']));
         $twig->getEnvironment()->addFunction(new TwigFunction('custom_field_display', [$customValueCodec, 'display']));
         $twig->getEnvironment()->addFunction(new TwigFunction('format_utc_datetime', static function (?string $value, string $format = 'Y-m-d H:i'): string {
