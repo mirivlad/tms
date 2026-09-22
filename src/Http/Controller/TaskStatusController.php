@@ -7,6 +7,7 @@ namespace Tms\Http\Controller;
 use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Tms\Domain\Activity\ActivityRepository;
 use Tms\Domain\Task\TaskRepository;
 use Tms\I18n\Translator;
 use Tms\Security\SessionManager;
@@ -16,6 +17,7 @@ final class TaskStatusController
     public function __construct(
         private readonly SessionManager $sessions,
         private readonly TaskRepository $tasks,
+        private readonly ActivityRepository $activity,
         private readonly Translator $translator,
     ) {
     }
@@ -36,8 +38,14 @@ final class TaskStatusController
         }
 
         try {
-            if ($task->statusId !== $statusId && !$this->tasks->updateStatusForUser($userId, $taskId, $statusId)) {
-                return $this->result($request, $response, 409, $this->translator->trans('validation.task_status_not_changed'));
+            if ($task->statusId !== $statusId) {
+                if (!$this->tasks->updateStatusForUser($userId, $taskId, $statusId)) {
+                    return $this->result($request, $response, 409, $this->translator->trans('validation.task_status_not_changed'));
+                }
+                $updated = $this->tasks->findForUser($userId, $taskId);
+                if ($updated !== null) {
+                    $this->activity->recordTaskChanged($userId, $task, $updated);
+                }
             }
         } catch (DomainException) {
             return $this->result($request, $response, 422, $this->translator->trans('validation.selected_status_unavailable'));
