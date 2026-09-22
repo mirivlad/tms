@@ -19,14 +19,8 @@
         <a href="/tasks" data-nav-path="/tasks">{{ t('nav.tasks') }}</a>
         <a href="/board" data-nav-path="/board">{{ t('nav.board') }}</a>
         <a class="nav-mobile-secondary" href="/calendar" data-nav-path="/calendar">{{ t('nav.calendar') }}</a>
-        <details class="nav-dropdown nav-settings-menu" data-nav-menu>
-            <summary>{{ t('nav.settings') }} <span class="nav-dropdown-chevron" aria-hidden="true">▾</span></summary>
-            <div class="nav-dropdown-panel">
-                <a href="/metadata" data-nav-path="/metadata">{{ t('nav.metadata') }}</a>
-                <a href="/custom-fields" data-nav-path="/custom-fields">{{ t('nav.custom_fields') }}</a>
-                <a href="/settings/notifications" data-nav-path="/settings/notifications">{{ t('nav.notification_settings') }}</a>
-            </div>
-        </details>
+        <a class="nav-mobile-secondary" href="/projects" data-nav-path="/projects">{{ t('nav.projects') }}</a>
+        <a class="nav-mobile-secondary" href="/teams" data-nav-path="/teams">{{ t('nav.teams') }}</a>
     </nav>
     <div class="topbar-actions">
         {% set notification_count = current_notification_count() %}
@@ -47,12 +41,17 @@
                 <a class="mobile-menu-only" href="/invitations" data-nav-path="/invitations">{{ t('nav.team_invitations') }}{% if team_invitation_count > 0 %}<span class="nav-badge">{{ team_invitation_count }}</span>{% endif %}</a>
                 <div class="nav-dropdown-separator mobile-menu-only" aria-hidden="true"></div>
                 <a class="mobile-menu-only" href="/calendar" data-nav-path="/calendar">{{ t('nav.calendar') }}</a>
-                <a class="mobile-menu-only" href="/metadata" data-nav-path="/metadata">{{ t('nav.metadata') }}</a>
-                <a class="mobile-menu-only" href="/custom-fields" data-nav-path="/custom-fields">{{ t('nav.custom_fields') }}</a>
-                <a class="mobile-menu-only" href="/settings/notifications" data-nav-path="/settings/notifications">{{ t('nav.notification_settings') }}</a>
+                <a class="mobile-menu-only" href="/projects" data-nav-path="/projects">{{ t('nav.projects') }}</a>
+                <a class="mobile-menu-only" href="/teams" data-nav-path="/teams">{{ t('nav.teams') }}</a>
                 <div class="nav-dropdown-separator mobile-menu-only" aria-hidden="true"></div>
-                <a href="/projects" data-nav-path="/projects">{{ t('nav.projects') }}</a>
-                <a href="/teams" data-nav-path="/teams">{{ t('nav.teams') }}</a>
+                <details class="nav-submenu user-settings-menu">
+                    <summary>{{ t('nav.settings') }} <span class="nav-dropdown-chevron" aria-hidden="true">▾</span></summary>
+                    <div class="nav-submenu-panel">
+                        <a href="/metadata" data-nav-path="/metadata">{{ t('nav.metadata') }}</a>
+                        <a href="/custom-fields" data-nav-path="/custom-fields">{{ t('nav.custom_fields') }}</a>
+                        <a href="/settings/notifications" data-nav-path="/settings/notifications">{{ t('nav.notification_settings') }}</a>
+                    </div>
+                </details>
                 <div class="nav-dropdown-separator" aria-hidden="true"></div>
                 <a href="/settings/profile" data-nav-path="/settings/profile">{{ t('nav.profile') }}</a>
                 {% if current_role() == 'admin' %}<a href="/admin" data-nav-path="/admin">{{ t('admin.title') }}</a>{% endif %}
