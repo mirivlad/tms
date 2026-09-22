@@ -36,6 +36,16 @@
     desktopBoard.addEventListener?.('change', scheduleBoardViewportSync);
     document.fonts?.ready.then(scheduleBoardViewportSync).catch(() => {});
 
+    const canScrollVertically = (container, delta) => {
+        if (!(container instanceof HTMLElement) || container.scrollHeight <= container.clientHeight + 1) {
+            return false;
+        }
+        if (delta > 0) {
+            return container.scrollTop + container.clientHeight < container.scrollHeight - 1;
+        }
+        return delta < 0 && container.scrollTop > 1;
+    };
+
     const canScrollHorizontally = (delta) => {
         if (board.scrollWidth <= board.clientWidth + 1) {
             return false;
@@ -55,8 +65,13 @@
             return;
         }
 
+        const cards = target instanceof Element ? target.closest('.board-cards') : null;
         const verticalDelta = event.deltaY;
         const horizontalDelta = Math.abs(event.deltaX) > Math.abs(verticalDelta) ? event.deltaX : verticalDelta;
+
+        if (!event.shiftKey && Math.abs(event.deltaX) <= Math.abs(verticalDelta) && canScrollVertically(cards, verticalDelta)) {
+            return;
+        }
 
         if (canScrollHorizontally(horizontalDelta)) {
             event.preventDefault();

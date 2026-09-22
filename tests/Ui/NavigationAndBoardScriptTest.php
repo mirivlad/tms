@@ -28,7 +28,11 @@ final class NavigationAndBoardScriptTest extends TestCase
             'const horizontalDelta = Math.abs(event.deltaX) > Math.abs(verticalDelta) ? event.deltaX : verticalDelta;',
             $script
         );
+        self::assertStringContainsString('const canScrollVertically = (container, delta) => {', $script);
+        self::assertStringContainsString(
+            'if (!event.shiftKey && Math.abs(event.deltaX) <= Math.abs(verticalDelta) && canScrollVertically(cards, verticalDelta)) {',
+            $script
+        );
         self::assertStringContainsString('board.scrollLeft += horizontalDelta;', $script);
-        self::assertStringNotContainsString('canScrollVertically', $script);
     }
 }
