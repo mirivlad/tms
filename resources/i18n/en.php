@@ -338,6 +338,7 @@ return [
     'task_form.customer_help' => 'Start typing to search your customers. If the name does not exist yet, TMS creates it automatically when the task is saved.',
     'task_form.team_project_metadata_help' => 'Team project tasks use project custom fields. Personal task type and customer are not shared with the team.',
     'task_form.project_locked_for_collaborator' => 'The task author controls moving this collaborative task between projects.',
+    'task_form.dynamic_load_error' => 'Unable to load the project settings. The previous project was restored; please try again.',
     'validation.team_project_personal_metadata' => 'Team project tasks cannot use personal task type or customer.',
     'validation.selected_assignee_unavailable' => 'Selected assignee is not a member of this project team.',
     'task_form.save_changes' => 'Save changes',

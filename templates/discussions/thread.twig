@@ -35,7 +35,7 @@
                         <div class="discussion-comment-content">
                             <header class="discussion-comment-meta">
                                 <strong>{{ comment.authorUsername|default(t('discussions.deleted_user')) }}</strong>
-                                <span class="muted">{{ comment.createdAt|date('Y-m-d H:i') }}</span>
+                                <span class="muted">{{ format_database_datetime(comment.createdAt) }}</span>
                                 {% if not comment.isDeleted and comment.updatedAt != comment.createdAt %}
                                     <span class="muted">· {{ t('discussions.edited') }}</span>
                                 {% endif %}
@@ -99,7 +99,7 @@
                                             <div class="discussion-comment-content">
                                                 <header class="discussion-comment-meta">
                                                     <strong>{{ reply.authorUsername|default(t('discussions.deleted_user')) }}</strong>
-                                                    <span class="muted">{{ reply.createdAt|date('Y-m-d H:i') }}</span>
+                                                    <span class="muted">{{ format_database_datetime(reply.createdAt) }}</span>
                                                     {% if not reply.isDeleted and reply.updatedAt != reply.createdAt %}
                                                         <span class="muted">· {{ t('discussions.edited') }}</span>
                                                     {% endif %}

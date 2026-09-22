@@ -19,7 +19,7 @@
             <div class="attachment-row">
                 <div class="attachment-details">
                     <a class="text-link attachment-name" href="/projects/{{ project.id }}/attachments/{{ attachment.id }}">{{ attachment.originalName }}</a>
-                    <span class="muted attachment-meta">{% if attachment.fileSize >= 1048576 %}{{ (attachment.fileSize / 1048576)|number_format(1, '.', ' ') }} MiB{% else %}{{ (attachment.fileSize / 1024)|number_format(1, '.', ' ') }} KiB{% endif %} · {{ attachment.createdAt }}</span>
+                    <span class="muted attachment-meta">{% if attachment.fileSize >= 1048576 %}{{ (attachment.fileSize / 1048576)|number_format(1, '.', ' ') }} MiB{% else %}{{ (attachment.fileSize / 1024)|number_format(1, '.', ' ') }} KiB{% endif %} · {{ format_database_datetime(attachment.createdAt) }}</span>
                 </div>
                 <form method="post" action="/projects/{{ project.id }}/attachments/{{ attachment.id }}/delete" onsubmit="return confirm('{{ t('attachments.delete_confirm')|e('js') }}')"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button type="submit" class="secondary compact">{{ t('attachments.delete') }}</button></form>
             </div>

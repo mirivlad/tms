@@ -46,7 +46,7 @@
                             {% if notification.isUnread %}<span class="notification-unread-dot" aria-label="{{ t('notifications.unread') }}"></span>{% endif %}
                         </div>
                         {% if notification.bodyPreview %}<p>{{ notification.bodyPreview }}</p>{% endif %}
-                        <span class="muted">{{ notification.createdAt|date('Y-m-d H:i') }}</span>
+                        <span class="muted">{{ format_database_datetime(notification.createdAt) }}</span>
                     </a>
                 </article>
             {% endfor %}

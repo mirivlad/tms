@@ -79,7 +79,7 @@
                             <strong>{{ task.title }}</strong>
                             <span class="muted">{{ status_map[task.statusId].name|default(t('task.no_status')) }}</span>
                         </span>
-                        <span class="task-deadline">{{ t('dashboard.updated') }} {{ task.updatedAt|date('Y-m-d') }}</span>
+                        <span class="task-deadline">{{ t('dashboard.updated') }} {{ format_database_datetime(task.updatedAt, 'Y-m-d') }}</span>
                     </a>
                 {% endfor %}
             </div>

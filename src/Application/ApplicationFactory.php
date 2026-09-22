@@ -154,17 +154,13 @@ final class ApplicationFactory
         $descriptionSanitizer = new TaskDescriptionSanitizer();
         $customValueCodec = new CustomFieldValueCodec();
         $taskListSorter = new TaskListSorter($customValueCodec);
+        $dateTimeFormatter = new DateTimeFormatter($appTimezone);
         $twig->getEnvironment()->addFunction(new TwigFunction('t', [$translator, 'trans']));
         $twig->getEnvironment()->addFunction(new TwigFunction('tp', [$translator, 'transPlural']));
         $twig->getEnvironment()->addFunction(new TwigFunction('sanitize_task_html', [$descriptionSanitizer, 'sanitize']));
         $twig->getEnvironment()->addFunction(new TwigFunction('custom_field_display', [$customValueCodec, 'display']));
-        $twig->getEnvironment()->addFunction(new TwigFunction('format_utc_datetime', static function (?string $value, string $format = 'Y-m-d H:i'): string {
-            if ($value === null || $value === '') {
-                return '';
-            }
-            $utc = new DateTimeImmutable($value, new DateTimeZone('UTC'));
-            return $utc->setTimezone(new DateTimeZone(date_default_timezone_get()))->format($format);
-        }));
+        $twig->getEnvironment()->addFunction(new TwigFunction('format_database_datetime', [$dateTimeFormatter, 'database']));
+        $twig->getEnvironment()->addFunction(new TwigFunction('format_utc_datetime', [$dateTimeFormatter, 'utc']));
         $twig->getEnvironment()->addGlobal('locale', $translator->locale());
         $versionPath = dirname(__DIR__, 2) . '/VERSION';
         $appVersion = is_file($versionPath) ? trim((string) file_get_contents($versionPath)) : 'dev';

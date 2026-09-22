@@ -69,6 +69,8 @@
     const fieldsContainer = taskForm.querySelector('[data-custom-fields-container]');
     const assigneeField = taskForm.querySelector('[data-assignee-field]');
     const assigneeSelect = taskForm.querySelector('[data-assignee-select]');
+    const loadError = taskForm.querySelector('[data-task-load-error]');
+    const submitButtons = Array.from(taskForm.querySelectorAll('button[type="submit"], input[type="submit"]'));
     const statusUrl = taskForm.dataset.statusOptionsUrl || '';
     const fieldsUrl = taskForm.dataset.customFieldsUrl || '';
     const assigneeUrl = taskForm.dataset.assigneeOptionsUrl || '';
@@ -79,6 +81,7 @@
         || !(fieldsContainer instanceof HTMLElement)
         || !(assigneeField instanceof HTMLElement)
         || !(assigneeSelect instanceof HTMLSelectElement)
+        || !(loadError instanceof HTMLElement)
         || !statusUrl
         || !fieldsUrl
         || !assigneeUrl) {
@@ -112,9 +115,31 @@
     syncPersonalMetadata();
 
     let requestSerial = 0;
+    let isLoading = false;
+    let appliedProjectValue = projectSelect.value;
+
+    const setLoading = (loading) => {
+        isLoading = loading;
+        statusSelect.disabled = loading;
+        taskForm.toggleAttribute('aria-busy', loading);
+        fieldsContainer.toggleAttribute('aria-busy', loading);
+        submitButtons.forEach((button) => {
+            if (button instanceof HTMLButtonElement || button instanceof HTMLInputElement) {
+                button.disabled = loading;
+            }
+        });
+    };
+
+    taskForm.addEventListener('submit', (event) => {
+        if (isLoading) event.preventDefault();
+    });
+
     projectSelect.addEventListener('change', async () => {
+        loadError.hidden = true;
+        loadError.textContent = '';
         syncPersonalMetadata();
         const serial = ++requestSerial;
+        const requestedProjectValue = projectSelect.value;
         const statusEndpoint = new URL(statusUrl, window.location.origin);
         const fieldsEndpoint = new URL(fieldsUrl, window.location.origin);
         const assigneeEndpoint = new URL(assigneeUrl, window.location.origin);
@@ -127,9 +152,7 @@
             fieldsEndpoint.searchParams.set('task_id', taskId);
         }
 
-        projectSelect.disabled = true;
-        statusSelect.disabled = true;
-        fieldsContainer.setAttribute('aria-busy', 'true');
+        setLoading(true);
 
         try {
             const [statusResponse, fieldsResponse, assigneeResponse] = await Promise.all([
@@ -187,13 +210,18 @@
             fieldsContainer.innerHTML = fieldsHtml;
             initRequiredCheckboxLists(fieldsContainer);
             document.dispatchEvent(new CustomEvent('tms:dynamic-fields', {detail: {root: fieldsContainer}}));
+            appliedProjectValue = requestedProjectValue;
         } catch (error) {
             console.error(error);
+            if (serial === requestSerial) {
+                projectSelect.value = appliedProjectValue;
+                syncPersonalMetadata();
+                loadError.textContent = taskForm.dataset.loadErrorMessage || 'Unable to load project task settings.';
+                loadError.hidden = false;
+            }
         } finally {
             if (serial === requestSerial) {
-                projectSelect.disabled = false;
-                statusSelect.disabled = false;
-                fieldsContainer.removeAttribute('aria-busy');
+                setLoading(false);
             }
         }
     });

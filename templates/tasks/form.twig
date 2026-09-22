@@ -31,8 +31,10 @@
       data-status-options-url="{{ status_options_url }}"
       data-custom-fields-url="{{ custom_fields_url }}"
       data-assignee-options-url="{{ assignee_options_url }}"
+      data-load-error-message="{{ t('task_form.dynamic_load_error') }}"
       data-task-id="{{ task ? task.id : '' }}">
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <div class="alert field-wide" role="alert" data-task-load-error hidden></div>
 
         <label class="field-wide">
             {{ t('task_form.title') }}
@@ -327,7 +329,7 @@
                                 {% else %}
                                     {{ (attachment.fileSize / 1024)|number_format(1, '.', ' ') }} KiB
                                 {% endif %}
-                                · {{ attachment.createdAt }}
+                                · {{ format_database_datetime(attachment.createdAt) }}
                             </span>
                         </div>
                         <form method="post" action="/tasks/{{ task.id }}/attachments/{{ attachment.id }}/delete" onsubmit="return confirm('{{ t('attachments.delete_confirm')|e('js') }}')">
