@@ -266,6 +266,13 @@
                         <td class="task-title-cell" data-label="{{ t('tasks.table.task') }}">
                             <a class="task-title" href="/tasks/{{ task.id }}/edit">{{ task.title }}</a>
                             {% if task.description %}<div class="muted task-preview">{{ task.description|striptags }}</div>{% endif %}
+                            {% set checklist_stat = checklist_progress[task.id]|default(null) %}
+                            {% if checklist_stat %}
+                                <div class="task-checklist-progress">
+                                    <span aria-hidden="true">☑</span>
+                                    {{ checklist_stat.completed }}/{{ checklist_stat.total }}
+                                </div>
+                            {% endif %}
                         </td>
                         <td data-label="{{ t('projects.task_project') }}">{{ project_map[task.projectId].name|default(t('projects.no_project')) }}</td>
                         <td data-label="{{ t('task_form.assignee') }}">{{ assignee_map[task.assigneeUserId].username|default('—') }}</td>
