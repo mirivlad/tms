@@ -9,7 +9,6 @@ use DateTimeZone;
 use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Tms\Domain\Project\ProjectStatusRepository;
 use Tms\Domain\Recurrence\RecurrenceSchedule;
 use Tms\Domain\Recurrence\TaskRecurrenceRepository;
 use Tms\Domain\Status\StatusRecord;
@@ -28,7 +27,6 @@ final class RecurrenceController
         private readonly TaskRecurrenceRepository $recurrences,
         private readonly RecurrenceSchedule $schedule,
         private readonly StatusRepository $statuses,
-        private readonly ProjectStatusRepository $projectStatuses,
         private readonly UserPreferenceRepository $preferences,
         private readonly Translator $translator,
     ) {
