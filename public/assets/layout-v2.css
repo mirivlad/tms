@@ -133,8 +133,8 @@ label { gap: 5px; }
 .board {
     grid-auto-columns: 300px;
     gap: 10px;
-    height: calc(100dvh - 138px);
-    min-height: 500px;
+    height: var(--board-available-height, calc(100dvh - 138px));
+    min-height: min(500px, var(--board-available-height, 500px));
     scroll-snap-type: x proximity;
 }
 .board-column { border-radius: 10px; scroll-snap-align: start; }
