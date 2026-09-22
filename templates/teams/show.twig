@@ -11,10 +11,10 @@
         <div class="section-heading"><div><h2>{{ t('teams.overview_about') }}</h2></div></div>
         {% if team.description %}<p>{{ team.description|nl2br }}</p>{% else %}<p class="muted">{{ t('teams.overview_no_description') }}</p>{% endif %}
         <div class="overview-facts">
-            <div><span>{{ t('teams.overview_projects') }}</span><strong>{{ project_count }}</strong></div>
-            <div><span>{{ t('teams.overview_members') }}</span><strong>{{ member_count }}</strong></div>
-            <div><span>{{ t('teams.overview_leads') }}</span><strong>{{ lead_count }}</strong></div>
-            <div><span>{{ t('teams.overview_tasks') }}</span><strong>{{ task_count }}</strong></div>
+            <div><span>{{ tp('teams.overview_projects', project_count) }}</span><strong>{{ project_count }}</strong></div>
+            <div><span>{{ tp('teams.overview_members', member_count) }}</span><strong>{{ member_count }}</strong></div>
+            <div><span>{{ tp('teams.overview_leads', lead_count) }}</span><strong>{{ lead_count }}</strong></div>
+            <div><span>{{ tp('teams.overview_tasks', task_count) }}</span><strong>{{ task_count }}</strong></div>
         </div>
     </section>
 
@@ -24,8 +24,8 @@
             {% if is_lead %}<a href="/projects?owner=team:{{ team.id }}">{{ t('teams.create_project') }}</a>{% endif %}
         </div>
         <div class="overview-metrics">
-            <div><strong>{{ project_count }}</strong><span>{{ t('teams.overview_projects') }}</span></div>
-            <div><strong>{{ open_task_count }}</strong><span>{{ t('teams.overview_open_tasks') }}</span></div>
+            <div><strong>{{ project_count }}</strong><span>{{ tp('teams.overview_projects', project_count) }}</span></div>
+            <div><strong>{{ open_task_count }}</strong><span>{{ tp('teams.overview_open_tasks', open_task_count) }}</span></div>
         </div>
         {% if project_summaries is empty %}
             <p class="muted">{{ t('teams.projects_empty') }}</p>
