@@ -81,3 +81,8 @@ test "$(db "SELECT COUNT(*) FROM task_saved_views WHERE id=$foreign_id")" = "1"
 code=$(curl --silent --output /dev/null --write-out '%{http_code}'   --cookie "$COOKIE_JAR"   --data-urlencode "_csrf=$csrf"   "$BASE_URL/tasks/views/$view_id/delete")
 test "$code" = "302"
 test "$(db "SELECT COUNT(*) FROM task_saved_views WHERE id=$view_id")" = "0"
+
+code=$(curl --silent --output /dev/null --write-out '%{http_code}'   --cookie "$COOKIE_JAR"   --data-urlencode "_csrf=$csrf"   "$BASE_URL/tasks/views/$second_id/delete")
+test "$code" = "302"
+test "$(db "SELECT COUNT(*) FROM task_saved_views WHERE id=$second_id")" = "0"
+test "$(db "SELECT COUNT(*) FROM task_saved_views WHERE user_id=(SELECT id FROM users WHERE username='ciadmin') AND is_default=1")" = "0"
