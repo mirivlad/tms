@@ -41,7 +41,10 @@ final class SavedViewController
             return $response->withHeader('Location', '/tasks/views/' . $id)->withStatus(302);
         } catch (DomainException $error) {
             $this->noticeRaw('error', $this->domainMessage($error));
-        } catch (PDOException) {
+        } catch (PDOException $error) {
+            if ((string) $error->getCode() !== '23000') {
+                throw $error;
+            }
             $this->notice('error', 'saved_views.name_exists');
         }
 
