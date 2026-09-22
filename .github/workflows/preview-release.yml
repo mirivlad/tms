@@ -135,7 +135,8 @@ jobs:
           - focused Team workspaces with separate Overview, Settings and Members pages, plus modal creation and invitations;
           - secure project ownership transfer between personal and team scopes, including team-scoped discussion history and cleanup of stale assignees/personal task metadata;
           - Overview summaries for projects, teams and unassigned work;
-          - calendar day quick-add, customer autocomplete and mouse-wheel horizontal navigation across wide Kanban boards;
+          - calendar day quick-add and customer autocomplete;
+          - pre-v0.2.7 Kanban wheel handoff: scroll the active column vertically while possible, then continue across the board horizontally at the column boundary, with Shift-wheel available for immediate horizontal movement;
           - conditional, color-distinct notification and invitation badges beside the username, rendered only when their counters are non-zero;
           - viewport-aware Kanban sizing that keeps the horizontal board scroller reachable when filters or selectors appear above it;
           - explicit expand/collapse state indication for the task-list Filters accordion;
