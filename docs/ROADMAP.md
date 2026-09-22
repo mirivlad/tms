@@ -6,6 +6,8 @@ This file records the near-term product direction for TMS. Shipped behavior belo
 
 The 0.3 line focuses on making TMS faster and more useful in day-to-day work without adding a new hierarchy layer. Each stage must remain useful for personal tasks as well as team projects.
 
+**Implementation status:** complete and shipped as stable `v0.3.0`.
+
 ### v0.3.0 — Activity history
 
 - append-only task and project activity events;
@@ -41,7 +43,7 @@ The 0.3 line focuses on making TMS faster and more useful in day-to-day work wit
 
 ### 0.3 hardening
 
-Before the stable 0.3 release:
+Completed before the stable 0.3 release:
 
 - cross-user/cross-team negative coverage for all new data;
 - migration/update-path and scheduler idempotency tests;
