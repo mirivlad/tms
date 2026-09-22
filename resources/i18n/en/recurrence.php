@@ -1,0 +1,36 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'recurrence.title' => 'Recurrence',
+    'recurrence.help' => 'Create a fresh task occurrence on a calendar schedule or after the current one is completed.',
+    'recurrence.active' => 'Active',
+    'recurrence.paused' => 'Paused',
+    'recurrence.paused_reason' => 'The series was paused: {reason}',
+    'recurrence.mode' => 'Repeat',
+    'recurrence.mode.daily' => 'Daily',
+    'recurrence.mode.weekly' => 'Weekly',
+    'recurrence.mode.monthly' => 'Monthly',
+    'recurrence.mode.interval' => 'Every N days',
+    'recurrence.mode.after_completion' => 'N days after completion',
+    'recurrence.interval' => 'Interval, days',
+    'recurrence.interval_help' => 'Used for “Every N days” and “N days after completion”.',
+    'recurrence.spawn_status' => 'Status for new occurrences',
+    'recurrence.spawn_status_help' => 'Completion statuses cannot be used for a newly generated task.',
+    'recurrence.enable' => 'Enable recurrence',
+    'recurrence.save' => 'Save recurrence',
+    'recurrence.disable' => 'Disable recurrence',
+    'recurrence.delete_confirm' => 'Disable this recurring series? Existing tasks will remain.',
+    'recurrence.next' => 'Next deadline',
+    'recurrence.generated' => 'Generated occurrences',
+    'recurrence.after_completion_waiting' => 'Waiting for the current task to be completed',
+    'recurrence.saved' => 'Recurrence settings saved.',
+    'recurrence.deleted' => 'Recurrence disabled. Existing tasks were kept.',
+    'recurrence.not_found' => 'Recurring task is unavailable.',
+    'recurrence.invalid_mode' => 'Choose a supported recurrence mode.',
+    'recurrence.invalid_interval' => 'The interval must be between 1 and 3650 days.',
+    'recurrence.invalid_status' => 'Choose a non-completion status from this task scope.',
+    'recurrence.deadline_required' => 'Calendar recurrence requires a deadline on the current task.',
+    'recurrence.invalid' => 'Unable to save recurrence settings.',
+];
