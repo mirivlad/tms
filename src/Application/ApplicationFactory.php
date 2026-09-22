@@ -35,6 +35,8 @@ use Tms\Domain\Project\ProjectAttachmentRepository;
 use Tms\Domain\Project\ProjectCustomFieldRepository;
 use Tms\Domain\Project\ProjectRepository;
 use Tms\Domain\Project\ProjectStatusRepository;
+use Tms\Domain\Recurrence\RecurrenceSchedule;
+use Tms\Domain\Recurrence\TaskRecurrenceRepository;
 use Tms\Domain\SavedView\SavedViewQuery;
 use Tms\Domain\SavedView\SavedViewRepository;
 use Tms\Domain\Status\StatusRepository;
@@ -69,6 +71,7 @@ use Tms\Http\Controller\ProjectController;
 use Tms\Http\Controller\ProjectStatusController;
 use Tms\Http\Controller\QuickTaskController;
 use Tms\Http\Controller\RegistrationController;
+use Tms\Http\Controller\RecurrenceController;
 use Tms\Http\Controller\SavedViewController;
 use Tms\Http\Controller\StatusDefaultsController;
 use Tms\Http\Controller\TaskController;
@@ -184,6 +187,8 @@ final class ApplicationFactory
         $checklists = new ChecklistRepository($db);
         $savedViews = new SavedViewRepository($db);
         $savedViewQuery = new SavedViewQuery();
+        $recurrences = new TaskRecurrenceRepository($db);
+        $recurrenceSchedule = new RecurrenceSchedule();
         $teams = new TeamRepository($db);
         $teamInvitations = new TeamInvitationRepository($db);
         $attachments = new AttachmentRepository($db);
@@ -298,7 +303,7 @@ final class ApplicationFactory
         $teamController = new TeamController($twig, $sessions, $teams, $projects, $tasks, $projectStatuses, $teamInvitations, $teamInvitationDelivery, $users, $translator);
         $teamInvitationController = new TeamInvitationController($twig, $sessions, $teamInvitations, $translator);
         $dashboardController = new DashboardController($twig, $sessions, $tasks, $statuses, $projects, $teams, $dashboardTips, $translator);
-        $taskController = new TaskController($twig, $sessions, $tasks, $activity, $checklists, $savedViews, $attachments, $statuses, $taskTypes, $customers, $projects, $projectStatuses, $projectCustomFields, $teams, $discussionReads, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator, $descriptionSanitizer);
+        $taskController = new TaskController($twig, $sessions, $tasks, $activity, $checklists, $savedViews, $recurrences, $attachments, $statuses, $taskTypes, $customers, $projects, $projectStatuses, $projectCustomFields, $teams, $discussionReads, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator, $descriptionSanitizer);
         $taskDeleteController = new TaskDeleteController($sessions, $tasks, $attachments, $attachmentStorage);
         $taskBulkController = new TaskBulkController($sessions, $tasks, $activity, $attachments, $attachmentStorage, $translator);
         $attachmentController = new AttachmentController($sessions, $tasks, $attachments, $attachmentPolicy, $attachmentStorage, $translator);
@@ -307,6 +312,7 @@ final class ApplicationFactory
         $taskStatusController = new TaskStatusController($sessions, $tasks, $activity, $translator);
         $checklistController = new ChecklistController($sessions, $tasks, $checklists, $activity, $translator);
         $savedViewController = new SavedViewController($sessions, $savedViews, $savedViewQuery, $translator);
+        $recurrenceController = new RecurrenceController($sessions, $tasks, $recurrences, $recurrenceSchedule, $statuses, $preferences, $translator);
         $activityController = new ActivityController($twig, $sessions, $activity, $tasks, $projects, $teams, $translator);
         $discussionController = new DiscussionController(
             $sessions,
@@ -474,6 +480,8 @@ final class ApplicationFactory
         $app->post('/api/tasks/{id:[0-9]+}/quick-edit', [$taskController, 'quickUpdate'])->add($sanitizeTaskDescription)->add($requireAuth);
         $app->get('/tasks/{id:[0-9]+}/edit', [$taskController, 'edit'])->add($requireAuth);
         $app->get('/tasks/{id:[0-9]+}/history', [$activityController, 'task'])->add($requireAuth);
+        $app->post('/tasks/{id:[0-9]+}/recurrence', [$recurrenceController, 'save'])->add($requireAuth);
+        $app->post('/tasks/{id:[0-9]+}/recurrence/delete', [$recurrenceController, 'delete'])->add($requireAuth);
         $app->post('/tasks/{taskId:[0-9]+}/checklist', [$checklistController, 'create'])->add($requireAuth);
         $app->post('/tasks/{taskId:[0-9]+}/checklist/{itemId:[0-9]+}', [$checklistController, 'update'])->add($requireAuth);
         $app->post('/tasks/{taskId:[0-9]+}/checklist/{itemId:[0-9]+}/toggle', [$checklistController, 'toggle'])->add($requireAuth);
