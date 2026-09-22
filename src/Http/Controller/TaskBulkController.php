@@ -8,6 +8,7 @@ use DateTimeImmutable;
 use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Tms\Domain\Activity\ActivityRepository;
 use Tms\Domain\Attachment\AttachmentRepository;
 use Tms\Domain\Task\TaskRecord;
 use Tms\Domain\Task\TaskRepository;
@@ -27,6 +28,7 @@ final class TaskBulkController
     public function __construct(
         private readonly SessionManager $sessions,
         private readonly TaskRepository $tasks,
+        private readonly ActivityRepository $activity,
         private readonly AttachmentRepository $attachments,
         private readonly AttachmentStorage $storage,
         private readonly Translator $translator,
@@ -55,6 +57,14 @@ final class TaskBulkController
                 'update_deadline' => $this->updateDeadline($userId, $tasks, $body),
                 default => throw new DomainException($this->translator->trans('bulk.action_required')),
             };
+            if ($action !== 'delete') {
+                foreach ($tasks as $before) {
+                    $after = $this->tasks->findForUser($userId, $before->id);
+                    if ($after !== null) {
+                        $this->activity->recordTaskChanged($userId, $before, $after);
+                    }
+                }
+            }
 
             $_SESSION['bulk_notice'] = [
                 'kind' => 'success',
