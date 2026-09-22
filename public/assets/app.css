@@ -593,3 +593,57 @@ textarea { resize: vertical; min-height: 110px; }
 .autocomplete-option.active {
     background: var(--surface-3);
 }
+
+
+/* v0.3 activity history */
+.activity-list {
+    display: grid;
+    gap: .75rem;
+}
+.activity-event {
+    padding: .85rem 0;
+    border-top: 1px solid var(--border);
+}
+.activity-event:first-child {
+    border-top: 0;
+    padding-top: 0;
+}
+.activity-event-heading {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.activity-meta {
+    margin-top: .2rem;
+}
+.activity-changes {
+    display: grid;
+    gap: .4rem;
+    margin: .7rem 0 0;
+}
+.activity-change {
+    display: grid;
+    grid-template-columns: minmax(8rem, 12rem) 1fr;
+    gap: .75rem;
+}
+.activity-change dt {
+    font-weight: 600;
+}
+.activity-change dd {
+    display: flex;
+    flex-wrap: wrap;
+    gap: .45rem;
+    margin: 0;
+}
+@media (max-width: 640px) {
+    .activity-event-heading {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: .2rem;
+    }
+    .activity-change {
+        grid-template-columns: 1fr;
+        gap: .15rem;
+    }
+}

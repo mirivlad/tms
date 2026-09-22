@@ -8,6 +8,7 @@ use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
+use Tms\Domain\Activity\ActivityRepository;
 use Tms\Domain\CustomField\CustomFieldRepository;
 use Tms\Domain\Discussion\DiscussionReadRepository;
 use Tms\Domain\Discussion\DiscussionRepository;
@@ -29,6 +30,7 @@ final class ProjectController
         private readonly Twig $view,
         private readonly SessionManager $sessions,
         private readonly ProjectRepository $projects,
+        private readonly ActivityRepository $activity,
         private readonly ProjectAttachmentRepository $attachments,
         private readonly AttachmentStorage $storage,
         private readonly TaskRepository $tasks,
@@ -57,7 +59,7 @@ final class ProjectController
                 : 'personal';
 
             if (preg_match('/^team:([0-9]+)$/D', $ownerScope, $matches) === 1) {
-                $this->projects->createForTeam(
+                $projectId = $this->projects->createForTeam(
                     $userId,
                     (int) $matches[1],
                     (string) ($body['name'] ?? ''),
@@ -65,12 +67,16 @@ final class ProjectController
                     (string) ($body['lifecycle_status'] ?? 'active'),
                 );
             } else {
-                $this->projects->createForUser(
+                $projectId = $this->projects->createForUser(
                     $userId,
                     (string) ($body['name'] ?? ''),
                     (string) ($body['description'] ?? ''),
                     (string) ($body['lifecycle_status'] ?? 'active'),
                 );
+            }
+            $created = $this->projects->findForUser($userId, $projectId);
+            if ($created !== null) {
+                $this->activity->recordProjectCreated($userId, $created);
             }
         } catch (DomainException $error) {
             return $this->renderIndex(
@@ -328,6 +334,10 @@ final class ProjectController
                 (string) ($body['lifecycle_status'] ?? 'active'),
             );
             $this->projects->changeOwnershipForUser($this->userId(), $projectId, $targetTeamId);
+            $updated = $this->projects->findForUser($this->userId(), $projectId);
+            if ($updated !== null) {
+                $this->activity->recordProjectChanged($this->userId(), $project, $updated);
+            }
             $this->sessionNotice('project_settings_notice', 'success', $this->translator->trans('projects.saved'));
         } catch (DomainException $error) {
             $this->sessionNotice('project_settings_notice', 'error', $this->domainMessage($error));

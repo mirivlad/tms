@@ -15,6 +15,12 @@ Use **New task** or the global quick-add action. The quick-add dialog is also av
 
 A task can contain title, description, priority, status, type, customer, deadline and custom fields. In a team-owned project it can also have an optional assignee; assignment expresses responsibility and does not change who can access the project. Open the quick-view dialog from a task card or row to change status, description and deadline without opening the full edit page. Rich descriptions are sanitized server-side. Attachments are stored separately from the public web root and are available only through authorized application routes.
 
+## Activity history
+
+Existing tasks expose an **Activity** link from the task edit header, and projects expose **Activity** in the project navigation. The history records task/project creation and meaningful field changes such as status, deadline, priority, assignee, project state and ownership.
+
+History stores human-readable snapshots of changed metadata so later renaming a status does not rewrite old events. Rich-text descriptions are not copied into the activity log; the event records only that the description changed. Visibility is snapshotted in the personal/team context that existed when the event was written, so transferring a project between teams does not expose the previous team's history.
+
 ## Projects
 
 Create a project when several tasks need shared context. Tasks may stay unassigned (**No project**) or belong to a personal or team-owned project. Project filters are available in the task list, board and calendar, and a project page shows the tasks that belong to it.

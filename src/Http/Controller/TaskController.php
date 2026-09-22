@@ -9,6 +9,7 @@ use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
+use Tms\Domain\Activity\ActivityRepository;
 use Tms\Application\TaskListSorter;
 use Tms\Domain\Attachment\AttachmentRecord;
 use Tms\Domain\Attachment\AttachmentRepository;
@@ -48,6 +49,7 @@ final class TaskController
         private readonly Twig $view,
         private readonly SessionManager $sessions,
         private readonly TaskRepository $tasks,
+        private readonly ActivityRepository $activity,
         private readonly AttachmentRepository $attachments,
         private readonly StatusRepository $statuses,
         private readonly TaskTypeRepository $taskTypes,
@@ -316,6 +318,7 @@ final class TaskController
             'discussion_unread' => $discussionStat['unread'],
             'discussion_url' => $discussionEnabled ? '/tasks/' . $task->id . '/discussion' : null,
             'edit_url' => '/tasks/' . $task->id . '/edit',
+            'history_url' => '/tasks/' . $task->id . '/history',
             'quick_update_url' => '/api/tasks/' . $task->id . '/quick-edit',
             'delete_url' => '/tasks/' . $task->id . '/delete',
         ]);
@@ -343,6 +346,10 @@ final class TaskController
 
             if (!$this->tasks->quickUpdateForUser($userId, $taskId, $description, $deadline, $statusId)) {
                 return $this->json($response, ['error' => $this->translator->trans('task_preview.not_found')], 404);
+            }
+            $updated = $this->tasks->findForUser($userId, $taskId);
+            if ($updated !== null) {
+                $this->activity->recordTaskChanged($userId, $task, $updated);
             }
 
             return $this->json($response, [
@@ -580,6 +587,10 @@ final class TaskController
                 $input['assignee_user_id'],
             );
             $this->customValues->replaceForTask($userId, $taskId, $customInput);
+            $created = $this->tasks->findForUser($userId, $taskId);
+            if ($created !== null) {
+                $this->activity->recordTaskCreated($userId, $created);
+            }
 
             return $response->withHeader('Location', '/tasks/' . $taskId . '/edit')->withStatus(302);
         } catch (DomainException $error) {
@@ -628,6 +639,10 @@ final class TaskController
                 $input['assignee_user_id'],
             );
             $this->customValues->replaceForTask($userId, $taskId, $customInput);
+            $updated = $this->tasks->findForUser($userId, $taskId);
+            if ($updated !== null) {
+                $this->activity->recordTaskChanged($userId, $task, $updated);
+            }
 
             return $response->withHeader('Location', '/tasks')->withStatus(302);
         } catch (DomainException $error) {

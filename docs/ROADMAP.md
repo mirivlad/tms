@@ -2,6 +2,52 @@
 
 This file records the near-term product direction for TMS. Shipped behavior belongs in the user documentation; this file only describes the next agreed product steps.
 
+## v0.3 — Daily workflow
+
+The 0.3 line focuses on making TMS faster and more useful in day-to-day work without adding a new hierarchy layer. Each stage must remain useful for personal tasks as well as team projects.
+
+### v0.3.0 — Activity history
+
+- append-only task and project activity events;
+- record task creation and meaningful field changes from full edit, quick edit, Kanban and bulk actions;
+- record project creation, lifecycle/settings changes and ownership transfers;
+- snapshot human-readable values so later metadata renames do not rewrite history;
+- never duplicate full rich-text descriptions in the event log: record only that the description changed;
+- snapshot personal/team visibility at event time so project ownership transfers cannot leak old team history;
+- expose dedicated task and project history views.
+
+### v0.3.1 — Checklists
+
+- ordered checklist items inside a task;
+- add, rename, complete, reorder and delete items without creating full task records;
+- show checklist progress in task preview/list where it stays compact;
+- record checklist changes in activity history;
+- keep checklist authorization identical to the parent task.
+
+### v0.3.2 — Saved views
+
+- save a named set of task filters/sort/project scope;
+- optionally choose a default personal view;
+- make saved views available from Tasks and compatible with project-aware status filtering;
+- keep views private to the user in 0.3; shared team views are intentionally deferred.
+
+### v0.3.3 — Recurring tasks
+
+- daily, weekly, monthly and interval recurrence;
+- support both calendar recurrence and "N days after completion";
+- create a new task occurrence instead of mutating one eternal task;
+- preserve project/status/priority/metadata/checklist template where valid;
+- make generation idempotent so scheduler retries cannot create duplicate occurrences.
+
+### 0.3 hardening
+
+Before the stable 0.3 release:
+
+- cross-user/cross-team negative coverage for all new data;
+- migration/update-path and scheduler idempotency tests;
+- responsive UI pass for history, checklists and saved views;
+- user/admin documentation updated to match shipped behavior.
+
 ## v0.1.4 — task preview quick edit
 
 Scope:

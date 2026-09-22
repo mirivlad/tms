@@ -1,0 +1,20 @@
+{% extends "app_layout.twig" %}
+
+{% block title %}{{ t('activity.title') }} · {{ task.title }} · TMS{% endblock %}
+
+{% block content %}
+<header class="page-header compact-page-header">
+    <div>
+        <h1>{{ t('activity.task_title', {'task': task.title}) }}</h1>
+        <p class="muted">{{ t('activity.help') }}</p>
+    </div>
+    <div class="page-header-actions">
+        <a class="button-link secondary-link compact" href="/tasks/{{ task.id }}/edit">{{ t('activity.back_to_task') }}</a>
+        <a class="text-link" href="/tasks">{{ t('task_form.back') }}</a>
+    </div>
+</header>
+
+<section class="content-card">
+    {% include 'activity/_list.twig' with {'events': events, 'show_subject': false} %}
+</section>
+{% endblock %}
