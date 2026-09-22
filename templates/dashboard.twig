@@ -128,9 +128,9 @@
             <a href="/projects">{{ t('common.view_all') }}</a>
         </div>
         <div class="dashboard-context-stats">
-            <span><strong>{{ projects_count }}</strong> {{ t('dashboard.projects_total') }}</span>
-            <span><strong>{{ open_project_tasks }}</strong> {{ t('dashboard.project_open_tasks') }}</span>
-            <span><strong>{{ open_unassigned_tasks }}</strong> {{ t('dashboard.unassigned_open_tasks') }}</span>
+            <span><strong>{{ projects_count }}</strong> {{ tp('dashboard.projects_total', projects_count) }}</span>
+            <span><strong>{{ open_project_tasks }}</strong> {{ tp('dashboard.project_open_tasks', open_project_tasks) }}</span>
+            <span><strong>{{ open_unassigned_tasks }}</strong> {{ tp('dashboard.unassigned_open_tasks', open_unassigned_tasks) }}</span>
         </div>
         {% if project_summaries is empty %}
             <div class="empty-state dashboard-empty"><span>{{ t('dashboard.no_projects_context') }}</span></div>
@@ -161,7 +161,7 @@
             <a href="/teams">{{ t('common.view_all') }}</a>
         </div>
         <div class="dashboard-context-stats">
-            <span><strong>{{ teams_count }}</strong> {{ t('dashboard.teams_total') }}</span>
+            <span><strong>{{ teams_count }}</strong> {{ tp('dashboard.teams_total', teams_count) }}</span>
         </div>
         {% if team_summaries is empty %}
             <div class="empty-state dashboard-empty"><span>{{ t('dashboard.no_teams_context') }}</span></div>
@@ -172,8 +172,8 @@
                         <span class="dashboard-context-main">
                             <strong>{{ team.name }}</strong>
                             <span class="muted">
-                                {{ t('dashboard.team_projects_count', {'count': team.projects}) }}
-                                · {{ t('dashboard.team_open_tasks_count', {'count': team.open_tasks}) }}
+                                {{ tp('dashboard.team_projects_count', team.projects) }}
+                                · {{ tp('dashboard.team_open_tasks_count', team.open_tasks) }}
                             </span>
                         </span>
                     </a>
