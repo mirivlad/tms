@@ -206,9 +206,6 @@ final class TaskController
             'assignee_map' => $assigneeMap,
             'projects' => array_values($projectMap),
             'custom_fields' => $fields,
-            'checklist_items' => $checklistItems,
-            'checklist_progress' => ['total' => count($checklistItems), 'completed' => $checklistCompleted],
-            'checklist_notice' => is_array($checklistNotice) ? $checklistNotice : null,
             'custom_values' => $valuesByTask,
             'custom_filters' => $customFilters,
             'filters' => $filters,
@@ -726,6 +723,9 @@ final class TaskController
             'discussion_stat' => $discussionStat,
             'scope_locked' => $scopeLocked,
             'custom_fields' => $fields,
+            'checklist_items' => $checklistItems,
+            'checklist_progress' => ['total' => count($checklistItems), 'completed' => $checklistCompleted],
+            'checklist_notice' => is_array($checklistNotice) ? $checklistNotice : null,
             'custom_form_values' => $this->customFormValues($formData, $task, $fields, $projectId),
         ]);
     }
