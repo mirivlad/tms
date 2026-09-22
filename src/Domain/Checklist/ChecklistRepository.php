@@ -138,7 +138,7 @@ final class ChecklistRepository
 
         $target = $direction === 'up' ? $index - 1 : $index + 1;
         if (!isset($items[$target])) {
-            return true;
+            return false;
         }
 
         $current = $items[$index];
