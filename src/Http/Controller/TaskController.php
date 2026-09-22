@@ -13,6 +13,7 @@ use Tms\Domain\Activity\ActivityRepository;
 use Tms\Application\TaskListSorter;
 use Tms\Domain\Attachment\AttachmentRecord;
 use Tms\Domain\Attachment\AttachmentRepository;
+use Tms\Domain\Checklist\ChecklistRepository;
 use Tms\Domain\Customer\CustomerRecord;
 use Tms\Domain\Customer\CustomerRepository;
 use Tms\Domain\CustomField\CustomFieldRecord;
@@ -50,6 +51,7 @@ final class TaskController
         private readonly SessionManager $sessions,
         private readonly TaskRepository $tasks,
         private readonly ActivityRepository $activity,
+        private readonly ChecklistRepository $checklists,
         private readonly AttachmentRepository $attachments,
         private readonly StatusRepository $statuses,
         private readonly TaskTypeRepository $taskTypes,
@@ -163,10 +165,9 @@ final class TaskController
         $totalPages = max(1, (int) ceil($totalTasks / $perPage));
         $page = min($this->page($query), $totalPages);
         $tasks = array_slice($tasks, ($page - 1) * $perPage, $perPage);
-        $discussionStats = $this->discussionReads->statsForTasks(
-            $userId,
-            array_map(static fn (TaskRecord $task): int => $task->id, $tasks),
-        );
+        $visibleTaskIds = array_map(static fn (TaskRecord $task): int => $task->id, $tasks);
+        $discussionStats = $this->discussionReads->statsForTasks($userId, $visibleTaskIds);
+        $checklistProgress = $this->checklists->progressForTasks($userId, $visibleTaskIds);
 
         $filters = [
             'status_id' => $statusId,
@@ -229,6 +230,7 @@ final class TaskController
             'per_page_links' => $this->perPageLinks($viewParams, $perPage),
             'bulk_notice' => $bulkNotice,
             'discussion_stats' => $discussionStats,
+            'checklist_progress' => $checklistProgress,
         ]);
     }
 
@@ -272,6 +274,9 @@ final class TaskController
             ? ($this->discussionReads->statsForTasks($userId, [$task->id])[$task->id] ?? ['count' => 0, 'unread' => 0])
             : ['count' => 0, 'unread' => 0];
 
+        $checklistItems = $this->checklists->listForTask($userId, $task->id);
+        $checklistCompleted = count(array_filter($checklistItems, static fn ($item): bool => $item->isCompleted));
+
         $attachments = array_map(
             static fn (AttachmentRecord $attachment): array => [
                 'id' => $attachment->id,
@@ -312,6 +317,12 @@ final class TaskController
             'created_at' => $task->createdAt,
             'updated_at' => $task->updatedAt,
             'custom_fields' => $custom,
+            'checklist' => array_map(static fn ($item): array => [
+                'id' => $item->id,
+                'text' => $item->text,
+                'completed' => $item->isCompleted,
+            ], $checklistItems),
+            'checklist_progress' => ['total' => count($checklistItems), 'completed' => $checklistCompleted],
             'attachments' => $attachments,
             'discussion_enabled' => $discussionEnabled,
             'discussion_count' => $discussionStat['count'],
@@ -690,6 +701,10 @@ final class TaskController
             ? ($this->discussionReads->statsForTasks($userId, [$task->id])[$task->id] ?? ['count' => 0, 'unread' => 0])
             : ['count' => 0, 'unread' => 0];
         $fields = $this->fieldsForScope($userId, $projectId);
+        $checklistItems = $task === null ? [] : $this->checklists->listForTask($userId, $task->id);
+        $checklistCompleted = count(array_filter($checklistItems, static fn ($item): bool => $item->isCompleted));
+        $checklistNotice = $_SESSION['_checklist_notice'] ?? null;
+        unset($_SESSION['_checklist_notice']);
         $response = $response->withStatus($status);
 
         return $this->view->render($response, 'tasks/form.twig', $this->commonViewData($request) + [
@@ -708,6 +723,9 @@ final class TaskController
             'discussion_stat' => $discussionStat,
             'scope_locked' => $scopeLocked,
             'custom_fields' => $fields,
+            'checklist_items' => $checklistItems,
+            'checklist_progress' => ['total' => count($checklistItems), 'completed' => $checklistCompleted],
+            'checklist_notice' => is_array($checklistNotice) ? $checklistNotice : null,
             'custom_form_values' => $this->customFormValues($formData, $task, $fields, $projectId),
         ]);
     }

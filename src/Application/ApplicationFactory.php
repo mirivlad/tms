@@ -19,6 +19,7 @@ use Throwable;
 use Tms\Domain\Activity\ActivityRepository;
 use Tms\Domain\Attachment\AttachmentPolicy;
 use Tms\Domain\Attachment\AttachmentRepository;
+use Tms\Domain\Checklist\ChecklistRepository;
 use Tms\Domain\Customer\CustomerRepository;
 use Tms\Domain\CustomField\CustomFieldRepository;
 use Tms\Domain\CustomField\CustomFieldValueCodec;
@@ -47,6 +48,7 @@ use Tms\Http\Controller\AdminController;
 use Tms\Http\Controller\AttachmentController;
 use Tms\Http\Controller\AuthController;
 use Tms\Http\Controller\CalendarController;
+use Tms\Http\Controller\ChecklistController;
 use Tms\Http\Controller\CustomerSearchController;
 use Tms\Http\Controller\CustomFieldController;
 use Tms\Http\Controller\DashboardController;
@@ -176,6 +178,7 @@ final class ApplicationFactory
         $projectAttachments = new ProjectAttachmentRepository($db);
         $tasks = new TaskRepository($db);
         $activity = new ActivityRepository($db);
+        $checklists = new ChecklistRepository($db);
         $teams = new TeamRepository($db);
         $teamInvitations = new TeamInvitationRepository($db);
         $attachments = new AttachmentRepository($db);
@@ -290,13 +293,14 @@ final class ApplicationFactory
         $teamController = new TeamController($twig, $sessions, $teams, $projects, $tasks, $projectStatuses, $teamInvitations, $teamInvitationDelivery, $users, $translator);
         $teamInvitationController = new TeamInvitationController($twig, $sessions, $teamInvitations, $translator);
         $dashboardController = new DashboardController($twig, $sessions, $tasks, $statuses, $projects, $teams, $dashboardTips, $translator);
-        $taskController = new TaskController($twig, $sessions, $tasks, $activity, $attachments, $statuses, $taskTypes, $customers, $projects, $projectStatuses, $projectCustomFields, $teams, $discussionReads, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator, $descriptionSanitizer);
+        $taskController = new TaskController($twig, $sessions, $tasks, $activity, $checklists, $attachments, $statuses, $taskTypes, $customers, $projects, $projectStatuses, $projectCustomFields, $teams, $discussionReads, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator, $descriptionSanitizer);
         $taskDeleteController = new TaskDeleteController($sessions, $tasks, $attachments, $attachmentStorage);
         $taskBulkController = new TaskBulkController($sessions, $tasks, $activity, $attachments, $attachmentStorage, $translator);
         $attachmentController = new AttachmentController($sessions, $tasks, $attachments, $attachmentPolicy, $attachmentStorage, $translator);
         $quickTaskController = new QuickTaskController($sessions, $tasks, $activity, $statuses, $projects, $projectStatuses, $descriptionSanitizer, $translator);
         $customerSearchController = new CustomerSearchController($sessions, $customers);
         $taskStatusController = new TaskStatusController($sessions, $tasks, $activity, $translator);
+        $checklistController = new ChecklistController($sessions, $tasks, $checklists, $activity, $translator);
         $activityController = new ActivityController($twig, $sessions, $activity, $tasks, $projects, $teams, $translator);
         $discussionController = new DiscussionController(
             $sessions,
@@ -460,6 +464,11 @@ final class ApplicationFactory
         $app->post('/api/tasks/{id:[0-9]+}/quick-edit', [$taskController, 'quickUpdate'])->add($sanitizeTaskDescription)->add($requireAuth);
         $app->get('/tasks/{id:[0-9]+}/edit', [$taskController, 'edit'])->add($requireAuth);
         $app->get('/tasks/{id:[0-9]+}/history', [$activityController, 'task'])->add($requireAuth);
+        $app->post('/tasks/{taskId:[0-9]+}/checklist', [$checklistController, 'create'])->add($requireAuth);
+        $app->post('/tasks/{taskId:[0-9]+}/checklist/{itemId:[0-9]+}', [$checklistController, 'update'])->add($requireAuth);
+        $app->post('/tasks/{taskId:[0-9]+}/checklist/{itemId:[0-9]+}/toggle', [$checklistController, 'toggle'])->add($requireAuth);
+        $app->post('/tasks/{taskId:[0-9]+}/checklist/{itemId:[0-9]+}/move', [$checklistController, 'move'])->add($requireAuth);
+        $app->post('/tasks/{taskId:[0-9]+}/checklist/{itemId:[0-9]+}/delete', [$checklistController, 'delete'])->add($requireAuth);
         $app->get('/tasks/{id:[0-9]+}/discussion', [$taskDiscussionController, 'show'])->add($requireAuth);
         $app->post('/tasks/{id:[0-9]+}', [$taskController, 'update'])->add($sanitizeTaskDescription)->add($requireAuth);
         $app->post('/tasks/{id:[0-9]+}/delete', [$taskDeleteController, 'delete'])->add($requireAuth);

@@ -21,6 +21,12 @@ Existing tasks expose an **Activity** link from the task edit header, and projec
 
 History stores human-readable snapshots of changed metadata so later renaming a status does not rewrite old events. Rich-text descriptions are not copied into the activity log; the event records only that the description changed. Visibility is snapshotted in the personal/team context that existed when the event was written, so transferring a project between teams does not expose the previous team's history.
 
+## Checklists
+
+An existing task can contain a lightweight ordered checklist. Checklist items are deliberately smaller than tasks: each item has only text, completion state and position. Use a separate task when a step needs its own deadline, status, assignee or discussion.
+
+Checklist items can be added, renamed, marked complete/incomplete, reordered and deleted from the task edit page. The task list shows compact progress such as `2/5` when a checklist exists. Checklist changes are written to the task Activity history and use exactly the same personal/project/team authorization as the parent task.
+
 ## Projects
 
 Create a project when several tasks need shared context. Tasks may stay unassigned (**No project**) or belong to a personal or team-owned project. Project filters are available in the task list, board and calendar, and a project page shows the tasks that belong to it.
