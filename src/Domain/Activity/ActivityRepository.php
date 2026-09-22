@@ -38,6 +38,8 @@ final class ActivityRepository
 
     public function recordTaskChanged(int $actorUserId, TaskRecord $before, TaskRecord $after): void
     {
+        $beforeVisibility = $this->taskVisibility($before);
+        $afterVisibility = $this->taskVisibility($after);
         $changes = $this->diff($this->taskSnapshot($before), $this->taskSnapshot($after));
         if ($before->description !== $after->description) {
             $changes['description'] = ['old' => null, 'new' => null];
@@ -45,8 +47,11 @@ final class ActivityRepository
         if ($changes === []) {
             return;
         }
+        if ($beforeVisibility !== $afterVisibility) {
+            $changes = $this->redactPreviousContext($changes);
+        }
 
-        [$visibilityUserId, $visibilityTeamId] = $this->taskVisibility($after);
+        [$visibilityUserId, $visibilityTeamId] = $afterVisibility;
         $this->insert(
             actorUserId: $actorUserId,
             eventType: 'task.updated',
@@ -74,6 +79,8 @@ final class ActivityRepository
 
     public function recordProjectChanged(int $actorUserId, ProjectRecord $before, ProjectRecord $after): void
     {
+        $beforeVisibility = $this->projectVisibility($before);
+        $afterVisibility = $this->projectVisibility($after);
         $changes = $this->diff($this->projectSnapshot($before), $this->projectSnapshot($after));
         if ($before->description !== $after->description) {
             $changes['description'] = ['old' => null, 'new' => null];
@@ -81,8 +88,11 @@ final class ActivityRepository
         if ($changes === []) {
             return;
         }
+        if ($beforeVisibility !== $afterVisibility) {
+            $changes = $this->redactPreviousContext($changes);
+        }
 
-        [$visibilityUserId, $visibilityTeamId] = $this->projectVisibility($after);
+        [$visibilityUserId, $visibilityTeamId] = $afterVisibility;
         $this->insert(
             actorUserId: $actorUserId,
             eventType: 'project.updated',
@@ -129,6 +139,18 @@ final class ActivityRepository
             if ($oldValue !== $newValue) {
                 $changes[$field] = ['old' => $oldValue, 'new' => $newValue];
             }
+        }
+        return $changes;
+    }
+
+    /**
+     * @param array<string, array{old:?string,new:?string}> $changes
+     * @return array<string, array{old:?string,new:?string}>
+     */
+    private function redactPreviousContext(array $changes): array
+    {
+        foreach ($changes as $field => $change) {
+            $changes[$field] = ['old' => null, 'new' => $change['new']];
         }
         return $changes;
     }
