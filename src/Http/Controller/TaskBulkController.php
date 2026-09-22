@@ -68,7 +68,7 @@ final class TaskBulkController
 
             $_SESSION['bulk_notice'] = [
                 'kind' => 'success',
-                'message' => $this->translator->trans('bulk.updated', ['count' => $changed]),
+                'message' => $this->translator->transPlural('bulk.updated', $changed),
             ];
         } catch (DomainException $error) {
             $_SESSION['bulk_notice'] = ['kind' => 'error', 'message' => $error->getMessage()];

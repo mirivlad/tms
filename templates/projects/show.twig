@@ -15,8 +15,8 @@
         <div class="overview-facts">
             <div><span>{{ t('projects.status') }}</span><strong>{{ t('projects.status.' ~ project.lifecycleStatus) }}</strong></div>
             <div><span>{{ t('projects.owner') }}</span><strong>{{ project_team ? project_team.name : t('projects.personal') }}</strong></div>
-            <div><span>{{ t('projects.overview_tasks') }}</span><strong>{{ task_count }}</strong></div>
-            <div><span>{{ t('projects.overview_files') }}</span><strong>{{ attachment_count }}</strong></div>
+            <div><span>{{ tp('projects.overview_tasks', task_count) }}</span><strong>{{ task_count }}</strong></div>
+            <div><span>{{ tp('projects.overview_files', attachment_count) }}</span><strong>{{ attachment_count }}</strong></div>
         </div>
     </section>
 
@@ -26,8 +26,8 @@
             <a href="/tasks?project={{ project.id }}">{{ t('projects.open_task_list') }}</a>
         </div>
         <div class="overview-metrics">
-            <div><strong>{{ open_task_count }}</strong><span>{{ t('projects.overview_open_tasks') }}</span></div>
-            <div><strong>{{ completed_task_count }}</strong><span>{{ t('projects.overview_completed_tasks') }}</span></div>
+            <div><strong>{{ open_task_count }}</strong><span>{{ tp('projects.overview_open_tasks', open_task_count) }}</span></div>
+            <div><strong>{{ completed_task_count }}</strong><span>{{ tp('projects.overview_completed_tasks', completed_task_count) }}</span></div>
         </div>
         <div class="overview-status-list">
             {% for item in status_summary %}
@@ -76,7 +76,7 @@
         <div class="section-heading">
             <div>
                 <h2>{{ t('projects.discussion_title') }}</h2>
-                <p class="muted">{{ t('projects.overview_discussion_help', {'count': discussion_count}) }}</p>
+                <p class="muted">{{ tp('projects.overview_discussion_help', discussion_count) }}</p>
             </div>
             <a class="discussion-link" href="/projects/{{ project.id }}/discussion">
                 {{ t('projects.action_discussion') }}

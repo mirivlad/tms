@@ -65,12 +65,45 @@ final class Translator
      */
     public function trans(string $key, array $parameters = []): string
     {
-        $locale = $this->locale();
-        $message = $this->catalog($locale)[$key]
-            ?? $this->catalog($this->defaultLocale)[$key]
-            ?? ($this->isSupported('en') ? ($this->catalog('en')[$key] ?? null) : null)
-            ?? $key;
+        return $this->interpolate($this->message($key) ?? $key, $parameters);
+    }
 
+    /**
+     * Translate a count-dependent message.
+     *
+     * Catalogs may provide `.one`, `.few` and `.many` variants. Russian
+     * uses all three CLDR-style integer forms; other supported locales use
+     * `.one` for 1 and `.many` otherwise.
+     *
+     * @param array<string, scalar|null> $parameters
+     */
+    public function transPlural(string $key, int $count, array $parameters = []): string
+    {
+        $form = $this->pluralForm($count, $this->locale());
+        $candidateKeys = [$key . '.' . $form];
+
+        if ($form === 'few') {
+            $candidateKeys[] = $key . '.many';
+        }
+        $candidateKeys[] = $key;
+
+        $message = null;
+        foreach ($candidateKeys as $candidateKey) {
+            $message = $this->message($candidateKey);
+            if ($message !== null) {
+                break;
+            }
+        }
+
+        $parameters = ['count' => $count] + $parameters;
+        return $this->interpolate($message ?? $key, $parameters);
+    }
+
+    /**
+     * @param array<string, scalar|null> $parameters
+     */
+    private function interpolate(string $message, array $parameters): string
+    {
         if ($parameters === []) {
             return $message;
         }
@@ -81,6 +114,33 @@ final class Translator
         }
 
         return strtr($message, $replacements);
+    }
+
+    private function message(string $key): ?string
+    {
+        $locale = $this->locale();
+        return $this->catalog($locale)[$key]
+            ?? $this->catalog($this->defaultLocale)[$key]
+            ?? ($this->isSupported('en') ? ($this->catalog('en')[$key] ?? null) : null);
+    }
+
+    private function pluralForm(int $count, string $locale): string
+    {
+        $number = abs($count);
+        if ($locale === 'ru') {
+            $mod100 = $number % 100;
+            if ($mod100 >= 11 && $mod100 <= 14) {
+                return 'many';
+            }
+
+            return match ($number % 10) {
+                1 => 'one',
+                2, 3, 4 => 'few',
+                default => 'many',
+            };
+        }
+
+        return $number === 1 ? 'one' : 'many';
     }
 
     /** @return array<string, string> */
