@@ -63,6 +63,26 @@ final class ActivityRepository
         );
     }
 
+    /**
+     * @param array<string, array{old:?string,new:?string}> $changes
+     */
+    public function recordTaskEvent(int $actorUserId, TaskRecord $task, string $eventType, array $changes = []): void
+    {
+        if (!str_starts_with($eventType, 'task.')) {
+            return;
+        }
+        [$visibilityUserId, $visibilityTeamId] = $this->taskVisibility($task);
+        $this->insert(
+            actorUserId: $actorUserId,
+            eventType: $eventType,
+            taskId: $task->id,
+            projectId: $task->projectId,
+            visibilityUserId: $visibilityUserId,
+            visibilityTeamId: $visibilityTeamId,
+            payload: ['subject_title' => $task->title, 'changes' => $changes],
+        );
+    }
+
     public function recordProjectCreated(int $actorUserId, ProjectRecord $project): void
     {
         [$visibilityUserId, $visibilityTeamId] = $this->projectVisibility($project);
