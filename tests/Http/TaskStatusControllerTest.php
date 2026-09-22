@@ -8,6 +8,7 @@ use PDO;
 use PHPUnit\Framework\TestCase;
 use Slim\Psr7\Factory\ResponseFactory;
 use Slim\Psr7\Factory\ServerRequestFactory;
+use Tms\Domain\Activity\ActivityRepository;
 use Tms\Domain\Task\TaskRepository;
 use Tms\Http\Controller\TaskStatusController;
 use Tms\I18n\Translator;
@@ -24,6 +25,22 @@ final class TaskStatusControllerTest extends TestCase
         $this->db = new PDO('sqlite::memory:');
         $this->db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
         $this->db->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+        $this->db->exec('CREATE TABLE users (
+            id INTEGER PRIMARY KEY,
+            username TEXT NOT NULL
+        )');
+        $this->db->exec('CREATE TABLE activity_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            actor_user_id INTEGER NULL,
+            actor_username TEXT NOT NULL,
+            event_type TEXT NOT NULL,
+            task_id INTEGER NULL,
+            project_id INTEGER NULL,
+            visibility_user_id INTEGER NULL,
+            visibility_team_id INTEGER NULL,
+            payload_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )');
         $this->db->exec('CREATE TABLE statuses (
             id INTEGER PRIMARY KEY,
             user_id INTEGER NULL,
@@ -63,6 +80,7 @@ final class TaskStatusControllerTest extends TestCase
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL
         )');
+        $this->db->exec("INSERT INTO users (id,username) VALUES (1,'tester'),(2,'foreign')");
         $this->db->exec("INSERT INTO statuses (id,user_id,name) VALUES (10,1,'Inbox'),(11,1,'Doing'),(20,2,'Foreign')");
         $this->db->exec("INSERT INTO tasks (id,created_by,title,status_id,created_at,updated_at) VALUES
             (100,1,'Owned',10,'2026-09-01 00:00:00','2026-09-01 00:00:00'),
@@ -84,6 +102,7 @@ final class TaskStatusControllerTest extends TestCase
         $this->controller = new TaskStatusController(
             $sessions,
             new TaskRepository($this->db),
+            new ActivityRepository($this->db),
             new Translator(dirname(__DIR__, 2) . '/resources/i18n', 'en'),
         );
     }
