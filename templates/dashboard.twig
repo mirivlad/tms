@@ -6,7 +6,7 @@
 <section class="stats-grid dashboard-stats" aria-label="{{ t('dashboard.stats_aria') }}">
     <a class="stat-card stat-card-current" href="/tasks">
         <span class="stat-value">{{ open_tasks }}</span>
-        <span class="stat-label">{{ t('dashboard.current') }}</span>
+        <span class="stat-label">{{ tp('dashboard.current', open_tasks) }}</span>
     </a>
     <a class="stat-card stat-card-today" href="/tasks?deadline_from={{ today_date }}&deadline_to={{ today_date }}">
         <span class="stat-value">{{ today_tasks }}</span>
@@ -18,11 +18,11 @@
     </a>
     <a class="stat-card stat-card-overdue" href="/tasks?overdue=1">
         <span class="stat-value">{{ overdue_tasks }}</span>
-        <span class="stat-label">{{ t('dashboard.overdue') }}</span>
+        <span class="stat-label">{{ tp('dashboard.overdue', overdue_tasks) }}</span>
     </a>
     <a class="stat-card stat-card-urgent" href="/tasks?priority=urgent">
         <span class="stat-value">{{ urgent_tasks }}</span>
-        <span class="stat-label">{{ t('dashboard.urgent') }}</span>
+        <span class="stat-label">{{ tp('dashboard.urgent', urgent_tasks) }}</span>
     </a>
 </section>
 
