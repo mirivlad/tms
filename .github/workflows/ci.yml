@@ -244,6 +244,9 @@ jobs:
       - name: Exercise checklist workflow
         run: bash tests/smoke/checklists.sh
 
+      - name: Exercise saved task views
+        run: bash tests/smoke/saved-views.sh
+
       - name: Exercise team project collaboration
         run: bash tests/smoke/team-projects.sh
 
