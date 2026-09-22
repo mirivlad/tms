@@ -34,7 +34,7 @@ test -n "$spawn_status"
 test -n "$completion_status"
 test -n "$other_status"
 
-seed_deadline=$(TZ="$APP_TIMEZONE" date -d '1 day 1 hour ago' '+%Y-%m-%d %H:%M:00')
+seed_deadline=$(TZ="$APP_TIMEZONE" date -d '25 hours ago' '+%Y-%m-%d %H:%M:00')
 expected_next=$(TZ="$APP_TIMEZONE" date -d '1 hour ago' '+%Y-%m-%d %H:%M:00')
 
 db "INSERT INTO tasks (created_by,title,description,deadline,status_id,priority,created_at,updated_at)
