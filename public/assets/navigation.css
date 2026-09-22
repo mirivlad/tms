@@ -111,9 +111,9 @@
     flex: 0 0 auto;
 }
 .nav-badge-notifications {
-    border: 1px solid var(--info-border);
-    background: var(--info-bg);
-    color: var(--info-fg);
+    border: 1px solid var(--primary);
+    background: var(--primary);
+    color: var(--primary-contrast);
 }
 .nav-badge-invitations {
     border: 1px solid var(--warning-border);
