@@ -3,8 +3,6 @@
 
 declare(strict_types=1);
 
-use DateTimeImmutable;
-use DateTimeZone;
 use Dotenv\Dotenv;
 use Tms\Application\RecurringTaskRunner;
 use Tms\Domain\Activity\ActivityRepository;
