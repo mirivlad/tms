@@ -50,7 +50,7 @@
                                 </a>
                             {% endfor %}
                             {% if day.tasks|length > 3 %}
-                                <a class="calendar-more" href="/tasks?deadline_from={{ day.date }}&deadline_to={{ day.date }}{% if filters.project != 'none' %}&amp;project={{ filters.project }}{% endif %}">{{ t('calendar.more_tasks', {'count': day.tasks|length - 3}) }}</a>
+                                <a class="calendar-more" href="/tasks?deadline_from={{ day.date }}&deadline_to={{ day.date }}{% if filters.project != 'none' %}&amp;project={{ filters.project }}{% endif %}">{{ tp('calendar.more_tasks', day.tasks|length - 3) }}</a>
                             {% endif %}
                         </div>
                     </article>
