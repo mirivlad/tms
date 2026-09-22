@@ -9,9 +9,9 @@
             <a class="discussion-kicker" href="/projects/{{ project.id }}/discussion">{{ project.name }}</a>
             <h1>{{ task.title }}</h1>
             <div class="discussion-context-summary">
-                <span>{{ t('discussions.message_count', {'count': discussion_stat.count}) }}</span>
+                <span>{{ tp('discussions.message_count', discussion_stat.count) }}</span>
                 {% if discussion_stat.unread > 0 %}
-                    <span class="discussion-unread-badge">{{ t('discussions.unread_count', {'count': discussion_stat.unread}) }}</span>
+                    <span class="discussion-unread-badge">{{ tp('discussions.unread_count', discussion_stat.unread) }}</span>
                 {% endif %}
             </div>
         </div>
