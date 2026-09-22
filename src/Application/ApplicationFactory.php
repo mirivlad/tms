@@ -35,6 +35,8 @@ use Tms\Domain\Project\ProjectAttachmentRepository;
 use Tms\Domain\Project\ProjectCustomFieldRepository;
 use Tms\Domain\Project\ProjectRepository;
 use Tms\Domain\Project\ProjectStatusRepository;
+use Tms\Domain\SavedView\SavedViewQuery;
+use Tms\Domain\SavedView\SavedViewRepository;
 use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRepository;
 use Tms\Domain\Team\TeamInvitationRepository;
@@ -67,6 +69,7 @@ use Tms\Http\Controller\ProjectController;
 use Tms\Http\Controller\ProjectStatusController;
 use Tms\Http\Controller\QuickTaskController;
 use Tms\Http\Controller\RegistrationController;
+use Tms\Http\Controller\SavedViewController;
 use Tms\Http\Controller\StatusDefaultsController;
 use Tms\Http\Controller\TaskController;
 use Tms\Http\Controller\TaskDiscussionController;
@@ -179,6 +182,8 @@ final class ApplicationFactory
         $tasks = new TaskRepository($db);
         $activity = new ActivityRepository($db);
         $checklists = new ChecklistRepository($db);
+        $savedViews = new SavedViewRepository($db);
+        $savedViewQuery = new SavedViewQuery();
         $teams = new TeamRepository($db);
         $teamInvitations = new TeamInvitationRepository($db);
         $attachments = new AttachmentRepository($db);
@@ -293,7 +298,7 @@ final class ApplicationFactory
         $teamController = new TeamController($twig, $sessions, $teams, $projects, $tasks, $projectStatuses, $teamInvitations, $teamInvitationDelivery, $users, $translator);
         $teamInvitationController = new TeamInvitationController($twig, $sessions, $teamInvitations, $translator);
         $dashboardController = new DashboardController($twig, $sessions, $tasks, $statuses, $projects, $teams, $dashboardTips, $translator);
-        $taskController = new TaskController($twig, $sessions, $tasks, $activity, $checklists, $attachments, $statuses, $taskTypes, $customers, $projects, $projectStatuses, $projectCustomFields, $teams, $discussionReads, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator, $descriptionSanitizer);
+        $taskController = new TaskController($twig, $sessions, $tasks, $activity, $checklists, $savedViews, $attachments, $statuses, $taskTypes, $customers, $projects, $projectStatuses, $projectCustomFields, $teams, $discussionReads, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator, $descriptionSanitizer);
         $taskDeleteController = new TaskDeleteController($sessions, $tasks, $attachments, $attachmentStorage);
         $taskBulkController = new TaskBulkController($sessions, $tasks, $activity, $attachments, $attachmentStorage, $translator);
         $attachmentController = new AttachmentController($sessions, $tasks, $attachments, $attachmentPolicy, $attachmentStorage, $translator);
@@ -301,6 +306,7 @@ final class ApplicationFactory
         $customerSearchController = new CustomerSearchController($sessions, $customers);
         $taskStatusController = new TaskStatusController($sessions, $tasks, $activity, $translator);
         $checklistController = new ChecklistController($sessions, $tasks, $checklists, $activity, $translator);
+        $savedViewController = new SavedViewController($sessions, $savedViews, $savedViewQuery, $translator);
         $activityController = new ActivityController($twig, $sessions, $activity, $tasks, $projects, $teams, $translator);
         $discussionController = new DiscussionController(
             $sessions,
@@ -454,6 +460,10 @@ final class ApplicationFactory
         $app->post('/projects/{projectId:[0-9]+}/discussion/{commentId:[0-9]+}', [$discussionController, 'updateProject'])->add($requireAuth);
         $app->post('/projects/{projectId:[0-9]+}/discussion/{commentId:[0-9]+}/delete', [$discussionController, 'deleteProject'])->add($requireAuth);
         $app->get('/tasks', [$taskController, 'index'])->add($requireAuth);
+        $app->post('/tasks/views', [$savedViewController, 'create'])->add($requireAuth);
+        $app->get('/tasks/views/{id:[0-9]+}', [$savedViewController, 'apply'])->add($requireAuth);
+        $app->post('/tasks/views/{id:[0-9]+}/default', [$savedViewController, 'setDefault'])->add($requireAuth);
+        $app->post('/tasks/views/{id:[0-9]+}/delete', [$savedViewController, 'delete'])->add($requireAuth);
         $app->get('/tasks/new', [$taskController, 'new'])->add($requireAuth);
         $app->post('/tasks', [$taskController, 'create'])->add($sanitizeTaskDescription)->add($requireAuth);
         $app->post('/tasks/quick-add', [$quickTaskController, 'create'])->add($requireAuth);
