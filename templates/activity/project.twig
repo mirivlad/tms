@@ -1,0 +1,16 @@
+{% extends "app_layout.twig" %}
+
+{% block title %}{{ t('activity.title') }} · {{ project.name }} · TMS{% endblock %}
+
+{% block content %}
+{% include 'projects/_nav.twig' %}
+<section class="content-card">
+    <div class="section-heading">
+        <div>
+            <h2>{{ t('activity.project_title') }}</h2>
+            <p class="muted">{{ t('activity.help') }}</p>
+        </div>
+    </div>
+    {% include 'activity/_list.twig' with {'events': events, 'show_subject': true} %}
+</section>
+{% endblock %}
