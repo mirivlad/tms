@@ -147,8 +147,9 @@ final class RecurringTaskRunner
             if ($status === null || !$status->isCompletion) {
                 return null;
             }
+            $completionTimestamp = $this->activity->latestTaskStatusChangeAt($task->id) ?? $task->updatedAt;
             $completedAt = new DateTimeImmutable(
-                $task->updatedAt,
+                $completionTimestamp,
                 new DateTimeZone($this->applicationTimezone),
             );
             return $this->schedule->afterCompletionDeadline(
