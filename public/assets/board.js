@@ -6,6 +6,36 @@
 
     let dragged = null;
 
+    const desktopBoard = window.matchMedia('(min-width: 721px)');
+    let resizeFrame = 0;
+
+    const syncBoardViewportHeight = () => {
+        if (!desktopBoard.matches) {
+            board.style.removeProperty('--board-available-height');
+            return;
+        }
+
+        const page = board.closest('.page');
+        const footer = document.querySelector('.page-footer');
+        const pageStyle = page instanceof HTMLElement ? window.getComputedStyle(page) : null;
+        const pageBottomPadding = pageStyle ? Number.parseFloat(pageStyle.paddingBottom) || 0 : 0;
+        const footerHeight = footer instanceof HTMLElement ? footer.getBoundingClientRect().height : 0;
+        const boardTop = board.getBoundingClientRect().top;
+        const available = Math.floor(window.innerHeight - boardTop - pageBottomPadding - footerHeight);
+
+        board.style.setProperty('--board-available-height', `${Math.max(320, available)}px`);
+    };
+
+    const scheduleBoardViewportSync = () => {
+        window.cancelAnimationFrame(resizeFrame);
+        resizeFrame = window.requestAnimationFrame(syncBoardViewportHeight);
+    };
+
+    scheduleBoardViewportSync();
+    window.addEventListener('resize', scheduleBoardViewportSync, {passive: true});
+    desktopBoard.addEventListener?.('change', scheduleBoardViewportSync);
+    document.fonts?.ready.then(scheduleBoardViewportSync).catch(() => {});
+
     const canScrollVertically = (container, delta) => {
         if (!(container instanceof HTMLElement) || container.scrollHeight <= container.clientHeight + 1) {
             return false;

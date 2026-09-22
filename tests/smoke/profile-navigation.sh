@@ -16,8 +16,12 @@ for path in tasks board calendar; do
   curl --fail --silent --cookie "$cookies" "$base_url/$path" > "/tmp/tms-nav-$path.html"
   grep -q 'class="nav-create-task"' "/tmp/tms-nav-$path.html"
   grep -q 'data-quick-add-trigger' "/tmp/tms-nav-$path.html"
-  grep -q 'class="nav-dropdown nav-settings-menu"' "/tmp/tms-nav-$path.html"
+  if grep -q 'class="nav-dropdown nav-settings-menu"' "/tmp/tms-nav-$path.html"; then
+    echo 'Settings menu must not remain in the primary navigation.' >&2
+    exit 1
+  fi
   grep -q 'class="nav-dropdown user-menu"' "/tmp/tms-nav-$path.html"
+  grep -q 'class="nav-submenu user-settings-menu"' "/tmp/tms-nav-$path.html"
   grep -q 'href="/projects"' "/tmp/tms-nav-$path.html"
   grep -q 'href="/teams"' "/tmp/tms-nav-$path.html"
   grep -q 'href="/invitations"' "/tmp/tms-nav-$path.html"
