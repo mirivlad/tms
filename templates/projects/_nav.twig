@@ -11,6 +11,7 @@
 
 <nav class="entity-subnav" aria-label="{{ t('projects.project_navigation') }}">
     <a href="/projects/{{ project.id }}" {{ project_section == 'overview' ? 'class="active"' : '' }}>{{ t('projects.action_overview') }}</a>
+    <a href="/projects/{{ project.id }}/activity" {{ project_section == 'activity' ? 'class="active"' : '' }}>{{ t('activity.title') }}</a>
     {% if can_manage %}
         <a href="/projects/{{ project.id }}/settings" {{ project_section == 'settings' ? 'class="active"' : '' }}>{{ t('projects.action_settings') }}</a>
         <a href="/projects/{{ project.id }}/statuses" {{ project_section == 'statuses' ? 'class="active"' : '' }}>{{ t('projects.action_statuses') }}</a>
