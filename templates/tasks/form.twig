@@ -218,6 +218,82 @@
     </section>
 {% endif %}
 
+{% if task and can_manage_recurrence %}
+    <section id="recurrence" class="content-card form-card">
+        <div class="section-heading">
+            <div>
+                <h2>{{ t('recurrence.title') }}</h2>
+                <p class="muted">{{ t('recurrence.help') }}</p>
+            </div>
+            {% if recurrence %}
+                <span class="status-badge">{{ recurrence.isActive ? t('recurrence.active') : t('recurrence.paused') }}</span>
+            {% endif %}
+        </div>
+
+        {% if recurrence_notice %}
+            <div class="{{ recurrence_notice.kind == 'error' ? 'alert' : 'success-notice' }}">{{ recurrence_notice.message }}</div>
+        {% endif %}
+        {% if recurrence and recurrence.lastError %}
+            <div class="alert">{{ t('recurrence.paused_reason', {'reason': recurrence.lastError}) }}</div>
+        {% endif %}
+
+        <form class="task-form" method="post" action="/tasks/{{ task.id }}/recurrence">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+
+            <label>
+                {{ t('recurrence.mode') }}
+                <select name="mode" required>
+                    {% set recurrence_mode = recurrence ? recurrence.mode : 'daily' %}
+                    <option value="daily" {{ recurrence_mode == 'daily' ? 'selected' : '' }}>{{ t('recurrence.mode.daily') }}</option>
+                    <option value="weekly" {{ recurrence_mode == 'weekly' ? 'selected' : '' }}>{{ t('recurrence.mode.weekly') }}</option>
+                    <option value="monthly" {{ recurrence_mode == 'monthly' ? 'selected' : '' }}>{{ t('recurrence.mode.monthly') }}</option>
+                    <option value="interval" {{ recurrence_mode == 'interval' ? 'selected' : '' }}>{{ t('recurrence.mode.interval') }}</option>
+                    <option value="after_completion" {{ recurrence_mode == 'after_completion' ? 'selected' : '' }}>{{ t('recurrence.mode.after_completion') }}</option>
+                </select>
+            </label>
+
+            <label>
+                {{ t('recurrence.interval') }}
+                <input type="number" name="interval_value" min="1" max="3650"
+                       value="{{ recurrence ? recurrence.intervalValue : 1 }}">
+                <span class="field-help">{{ t('recurrence.interval_help') }}</span>
+            </label>
+
+            <label>
+                {{ t('recurrence.spawn_status') }}
+                <select name="spawn_status_id" required>
+                    {% for status in recurrence_statuses %}
+                        <option value="{{ status.id }}"
+                            {{ (recurrence and recurrence.spawnStatusId == status.id)
+                               or (not recurrence and status.isDefault) ? 'selected' : '' }}>
+                            {{ status.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                <span class="field-help">{{ t('recurrence.spawn_status_help') }}</span>
+            </label>
+
+            <div class="form-actions">
+                <button type="submit">{{ recurrence ? t('recurrence.save') : t('recurrence.enable') }}</button>
+            </div>
+        </form>
+
+        {% if recurrence %}
+            <dl class="admin-user-facts">
+                <dt>{{ t('recurrence.next') }}</dt>
+                <dd>{{ recurrence.nextDeadline ?: t('recurrence.after_completion_waiting') }}</dd>
+                <dt>{{ t('recurrence.generated') }}</dt>
+                <dd>{{ recurrence.sequence }}</dd>
+            </dl>
+            <form method="post" action="/tasks/{{ task.id }}/recurrence/delete"
+                  onsubmit="return confirm('{{ t('recurrence.delete_confirm')|e('js') }}')">
+                <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+                <button type="submit" class="secondary danger-link">{{ t('recurrence.disable') }}</button>
+            </form>
+        {% endif %}
+    </section>
+{% endif %}
+
 {% if task %}
     {% set attachments = task_attachments(task.id) %}
     <section class="content-card attachment-card">
