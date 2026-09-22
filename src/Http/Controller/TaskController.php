@@ -24,6 +24,7 @@ use Tms\Domain\Discussion\DiscussionReadRepository;
 use Tms\Domain\Project\ProjectCustomFieldRepository;
 use Tms\Domain\Project\ProjectRecord;
 use Tms\Domain\Project\ProjectStatusRepository;
+use Tms\Domain\Recurrence\TaskRecurrenceRepository;
 use Tms\Domain\SavedView\SavedViewRepository;
 use Tms\Domain\Project\ProjectRepository;
 use Tms\Domain\Status\StatusRecord;
