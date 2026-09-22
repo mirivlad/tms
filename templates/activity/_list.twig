@@ -11,7 +11,7 @@
                             · <a class="text-link" href="/tasks/{{ event.taskId }}/edit">{{ event.subjectTitle }}</a>
                         {% endif %}
                     </div>
-                    <span class="muted">{{ format_utc_datetime(event.createdAt) }}</span>
+                    <span class="muted">{{ format_database_datetime(event.createdAt) }}</span>
                 </div>
                 <div class="activity-meta muted">{{ t('activity.by', {'user': event.actorUsername}) }}</div>
                 {% if event.changes is not empty %}

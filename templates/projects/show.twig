@@ -91,7 +91,7 @@
                 {% for activity in recent_discussion %}
                     <article>
                         <strong>{{ activity.comment.authorUsername|default(t('discussions.deleted_user')) }}</strong>
-                        <span class="muted">{{ activity.comment.updatedAt }}</span>
+                        <span class="muted">{{ format_database_datetime(activity.comment.updatedAt) }}</span>
                         {% if activity.task_title %}<span class="metadata-badge">{{ activity.task_title }}</span>{% endif %}
                         <div>{{ sanitize_task_html(activity.comment.bodyHtml)|raw }}</div>
                     </article>

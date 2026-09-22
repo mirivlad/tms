@@ -349,7 +349,7 @@
                                 {% endif %}
                             </td>
                         {% endfor %}
-                        <td class="nowrap" data-label="{{ t('tasks.table.created') }}">{{ task.createdAt|date('Y-m-d H:i') }}</td>
+                        <td class="nowrap" data-label="{{ t('tasks.table.created') }}">{{ format_database_datetime(task.createdAt) }}</td>
                         <td class="nowrap" data-label="{{ t('tasks.table.deadline') }}">{{ task.deadline ? task.deadline|date('Y-m-d H:i') : '—' }}</td>
                         <td class="row-actions task-row-actions">
                             <a class="text-link" href="/tasks/{{ task.id }}/edit" data-task-preview="{{ task.id }}">{{ t('common.view') }}</a>

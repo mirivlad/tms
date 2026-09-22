@@ -26,6 +26,9 @@ test "$(db "SELECT visibility_user_id FROM activity_events WHERE task_id=$task_i
 curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/tasks/$task_id/history" > /tmp/activity-task-history.html
 grep -q 'Task created' /tmp/activity-task-history.html
 grep -q 'Activity smoke task' /tmp/activity-task-history.html
+activity_created=$(db "SELECT DATE_FORMAT(created_at, '%Y-%m-%d %H:%i') FROM activity_events WHERE task_id=$task_id AND event_type='task.created' LIMIT 1")
+test -n "$activity_created"
+grep -Fq "$activity_created" /tmp/activity-task-history.html
 
 response=$(curl --fail --silent --header 'Accept: application/json'   --cookie "$COOKIE_JAR"   --data-urlencode "_csrf=$csrf"   --data-urlencode "status_id=$default_status"   --data-urlencode 'description=<p>Secret body must not be copied into activity JSON</p>'   --data-urlencode 'deadline=2026-09-30T12:00'   "$BASE_URL/api/tasks/$task_id/quick-edit")
 printf '%s' "$response" | grep -q '"success":true'
