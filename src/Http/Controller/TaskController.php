@@ -24,6 +24,7 @@ use Tms\Domain\Discussion\DiscussionReadRepository;
 use Tms\Domain\Project\ProjectCustomFieldRepository;
 use Tms\Domain\Project\ProjectRecord;
 use Tms\Domain\Project\ProjectStatusRepository;
+use Tms\Domain\Recurrence\TaskRecurrenceRepository;
 use Tms\Domain\SavedView\SavedViewRepository;
 use Tms\Domain\Project\ProjectRepository;
 use Tms\Domain\Status\StatusRecord;
@@ -54,6 +55,7 @@ final class TaskController
         private readonly ActivityRepository $activity,
         private readonly ChecklistRepository $checklists,
         private readonly SavedViewRepository $savedViews,
+        private readonly TaskRecurrenceRepository $recurrences,
         private readonly AttachmentRepository $attachments,
         private readonly StatusRepository $statuses,
         private readonly TaskTypeRepository $taskTypes,
@@ -721,17 +723,26 @@ final class TaskController
             ? ($this->discussionReads->statsForTasks($userId, [$task->id])[$task->id] ?? ['count' => 0, 'unread' => 0])
             : ['count' => 0, 'unread' => 0];
         $fields = $this->fieldsForScope($userId, $projectId);
+        $scopeStatuses = $this->statusesForScope($userId, $projectId);
         $checklistItems = $task === null ? [] : $this->checklists->listForTask($userId, $task->id);
         $checklistCompleted = count(array_filter($checklistItems, static fn ($item): bool => $item->isCompleted));
         $checklistNotice = $_SESSION['_checklist_notice'] ?? null;
         unset($_SESSION['_checklist_notice']);
+        $canManageRecurrence = $task !== null && $task->ownerId === $userId;
+        $recurrence = $canManageRecurrence ? $this->recurrences->findForTask($userId, $task->id) : null;
+        $recurrenceNotice = $_SESSION['_recurrence_notice'] ?? null;
+        unset($_SESSION['_recurrence_notice']);
+        $recurrenceStatuses = array_values(array_filter(
+            $scopeStatuses,
+            static fn (StatusRecord $status): bool => !$status->isCompletion,
+        ));
         $response = $response->withStatus($status);
 
         return $this->view->render($response, 'tasks/form.twig', $this->commonViewData($request) + [
             'task' => $task,
             'form' => $formData,
             'error' => $error,
-            'statuses' => $this->statusesForScope($userId, $projectId),
+            'statuses' => $scopeStatuses,
             'status_options_url' => '/api/task-statuses',
             'custom_fields_url' => '/api/task-custom-fields',
             'assignee_options_url' => '/api/task-assignees',
@@ -746,6 +757,10 @@ final class TaskController
             'checklist_items' => $checklistItems,
             'checklist_progress' => ['total' => count($checklistItems), 'completed' => $checklistCompleted],
             'checklist_notice' => is_array($checklistNotice) ? $checklistNotice : null,
+            'can_manage_recurrence' => $canManageRecurrence,
+            'recurrence' => $recurrence,
+            'recurrence_statuses' => $recurrenceStatuses,
+            'recurrence_notice' => is_array($recurrenceNotice) ? $recurrenceNotice : null,
             'custom_form_values' => $this->customFormValues($formData, $task, $fields, $projectId),
         ]);
     }

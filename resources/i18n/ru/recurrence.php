@@ -1,0 +1,36 @@
+<?php
+
+declare(strict_types=1);
+
+return [
+    'recurrence.title' => 'Повторение',
+    'recurrence.help' => 'Создаёт новый экземпляр задачи по календарю или после выполнения текущего.',
+    'recurrence.active' => 'Активно',
+    'recurrence.paused' => 'Приостановлено',
+    'recurrence.paused_reason' => 'Серия приостановлена: {reason}',
+    'recurrence.mode' => 'Повторять',
+    'recurrence.mode.daily' => 'Ежедневно',
+    'recurrence.mode.weekly' => 'Еженедельно',
+    'recurrence.mode.monthly' => 'Ежемесячно',
+    'recurrence.mode.interval' => 'Каждые N дней',
+    'recurrence.mode.after_completion' => 'Через N дней после выполнения',
+    'recurrence.interval' => 'Интервал, дней',
+    'recurrence.interval_help' => 'Используется для режимов «Каждые N дней» и «После выполнения».',
+    'recurrence.spawn_status' => 'Статус нового экземпляра',
+    'recurrence.spawn_status_help' => 'Статус завершения нельзя назначить новой автоматически созданной задаче.',
+    'recurrence.enable' => 'Включить повторение',
+    'recurrence.save' => 'Сохранить повторение',
+    'recurrence.disable' => 'Отключить повторение',
+    'recurrence.delete_confirm' => 'Отключить эту серию? Уже созданные задачи останутся.',
+    'recurrence.next' => 'Следующий срок',
+    'recurrence.generated' => 'Создано экземпляров',
+    'recurrence.after_completion_waiting' => 'Ожидается выполнение текущей задачи',
+    'recurrence.saved' => 'Настройки повторения сохранены.',
+    'recurrence.deleted' => 'Повторение отключено. Уже созданные задачи сохранены.',
+    'recurrence.not_found' => 'Повторяющаяся задача недоступна.',
+    'recurrence.invalid_mode' => 'Выберите поддерживаемый режим повторения.',
+    'recurrence.invalid_interval' => 'Интервал должен быть от 1 до 3650 дней.',
+    'recurrence.invalid_status' => 'Выберите незавершающий статус из текущего контекста задачи.',
+    'recurrence.deadline_required' => 'Для календарного повторения у текущей задачи должен быть задан срок.',
+    'recurrence.invalid' => 'Не удалось сохранить настройки повторения.',
+];

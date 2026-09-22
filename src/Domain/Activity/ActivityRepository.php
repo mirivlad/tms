@@ -124,6 +124,22 @@ final class ActivityRepository
         );
     }
 
+    public function latestTaskStatusChangeAt(int $taskId): ?string
+    {
+        $stmt = $this->db->prepare(
+            'SELECT created_at
+             FROM activity_events
+             WHERE task_id = :task_id
+               AND event_type = \'task.updated\'
+               AND JSON_CONTAINS_PATH(payload_json, \'one\', \'$.changes.status\') = 1
+             ORDER BY id DESC
+             LIMIT 1'
+        );
+        $stmt->execute(['task_id' => $taskId]);
+        $value = $stmt->fetchColumn();
+        return $value === false ? null : (string) $value;
+    }
+
     /** @return list<ActivityRecord> */
     public function listForTask(int $userId, int $taskId, int $limit = 100): array
     {

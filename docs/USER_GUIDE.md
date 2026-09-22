@@ -33,6 +33,16 @@ On **Tasks**, the current filter/sort/project scope can be saved as a private na
 
 A saved view stores only normalized task-list state that TMS understands. Page numbers and transient view identifiers are not stored. Changing filters or sorting after opening a saved view does not silently modify it; save a new view if the changed combination should be kept.
 
+## Recurring tasks
+
+The author of an existing task can enable **Recurrence** from the edit page. TMS supports daily, weekly, monthly, every-N-days schedules and an “N days after completion” mode.
+
+Calendar recurrence uses the current task deadline as its seed. When that schedule point is reached, TMS creates a new occurrence with the following deadline instead of mutating the old task. Monthly recurrence keeps the original day anchor: a series seeded on January 31 uses February 28/29 and returns to March 31.
+
+**After completion** waits until the current occurrence enters a completion status, then creates the next task with a deadline N days later. New occurrences use the configured non-completion status. TMS carries forward title, description, project, priority, still-valid metadata, assignee, custom-field values and checklist text/order; the copied checklist starts incomplete. Attachments and discussions remain local to each occurrence.
+
+Only the task author manages recurrence. Team-project members can continue working with the task under normal project permissions, but cannot enable or alter automation on another author's behalf.
+
 ## Projects
 
 Create a project when several tasks need shared context. Tasks may stay unassigned (**No project**) or belong to a personal or team-owned project. Project filters are available in the task list, board and calendar, and a project page shows the tasks that belong to it.

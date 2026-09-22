@@ -2,7 +2,7 @@
 
 # Установка и эксплуатация
 
-Рекомендуемый вариант — Docker Compose с готовым образом. TMS использует контейнер приложения, MariaDB, планировщик уведомлений и, при необходимости, worker Telegram Long polling.
+Рекомендуемый вариант — Docker Compose с готовым образом. TMS использует контейнер приложения, MariaDB, scheduler-worker для повторяющихся задач и уведомлений и, при необходимости, worker Telegram Long polling.
 
 ## 1. Подготовка конфигурации
 
@@ -37,7 +37,7 @@ cp .env.example .env
 | `REGISTRATION_ENABLED` | `false` | Разрешить открытую регистрацию |
 | `REGISTRATION_AUTO_APPROVE_AFTER_EMAIL` | `true` | Одобрять после подтверждения email |
 | `ATTACHMENT_MAX_BYTES` | `10485760` | Максимальный размер вложения |
-| `NOTIFICATION_INTERVAL_SECONDS` | `60` | Интервал Docker-worker уведомлений |
+| `NOTIFICATION_INTERVAL_SECONDS` | `60` | Интервал scheduler-worker повторяющихся задач и уведомлений |
 | `NOTIFICATION_SECRET` | пусто | Опциональный внешний base64-ключ 32 байта |
 | `TELEGRAM_*` | пусто | Опциональные bootstrap/fallback настройки Telegram |
 | `TMS_IMAGE` | текущий stable | Образ для `compose.portainer.yaml` |
@@ -140,4 +140,4 @@ docker compose -f compose.portainer.yaml up -d
 
 ## Нативная установка
 
-Она пригодна прежде всего для разработки; эталонный runtime — Docker/Apache. Для нативных уведомлений запускайте `php bin/notify.php` через cron, а при Long polling — `php bin/telegram-poll.php` как постоянно работающий supervised process. На одну БД должен работать только один polling worker.
+Она пригодна прежде всего для разработки; эталонный runtime — Docker/Apache. При нативной установке запускайте `php bin/recurring.php` и `php bin/notify.php` с одинаковым коротким интервалом (например, раз в минуту) через cron/systemd timer. При Long polling запускайте `php bin/telegram-poll.php` как постоянно работающий supervised process. На одну БД должен работать только один polling worker; recurrence защищена транзакционной блокировкой и переносит повторный запуск scheduler безопасно.

@@ -126,6 +126,40 @@ final class TaskCustomFieldValueRepository
         }
     }
 
+    public function cloneForTask(int $userId, int $sourceTaskId, int $targetTaskId): void
+    {
+        $sourceScope = $this->taskScopeForUser($userId, $sourceTaskId);
+        $targetScope = $this->taskScopeForUser($userId, $targetTaskId);
+        if ($sourceScope === null || $targetScope === null
+            || $sourceScope['project_id'] !== $targetScope['project_id']) {
+            throw new DomainException('Task custom-field scope changed during recurrence.');
+        }
+
+        $values = $this->listForTask($userId, $sourceTaskId);
+        if ($values === []) {
+            return;
+        }
+        if (!$this->fieldsBelongToScope($userId, $targetScope['project_id'], array_keys($values))) {
+            throw new DomainException('Custom field is unavailable.');
+        }
+
+        $insert = $this->db->prepare(
+            'INSERT INTO task_custom_field_values (
+                task_id, field_id, user_id, value, created_at, updated_at
+             ) VALUES (
+                :task_id, :field_id, :user_id, :value, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+             )'
+        );
+        foreach ($values as $fieldId => $value) {
+            $insert->execute([
+                'task_id' => $targetTaskId,
+                'field_id' => $fieldId,
+                'user_id' => $targetScope['owner_id'],
+                'value' => $value,
+            ]);
+        }
+    }
+
     /** @return array{project_id:?int,owner_id:int}|null */
     private function taskScopeForUser(int $userId, int $taskId): ?array
     {
