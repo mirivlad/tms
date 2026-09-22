@@ -133,13 +133,14 @@ final class ChecklistController
         $body = $this->body($request);
         $direction = is_string($body['direction'] ?? null) ? (string) $body['direction'] : '';
         try {
-            $this->checklists->move($this->userId(), $task->id, $itemId, $direction);
-            $this->activity->recordTaskEvent(
-                $this->userId(),
-                $task,
-                'task.checklist_reordered',
-                ['checklist_item' => ['old' => null, 'new' => $item->text]],
-            );
+            if ($this->checklists->move($this->userId(), $task->id, $itemId, $direction)) {
+                $this->activity->recordTaskEvent(
+                    $this->userId(),
+                    $task,
+                    'task.checklist_reordered',
+                    ['checklist_item' => ['old' => null, 'new' => $item->text]],
+                );
+            }
         } catch (DomainException $error) {
             $this->noticeRaw('error', $this->message($error));
         }
