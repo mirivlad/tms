@@ -38,7 +38,13 @@ final class DomainEventPublisher
             commentId: null,
             visibilityUserId: $visibilityUserId,
             visibilityTeamId: $visibilityTeamId,
-            payload: ['subject_title' => $task->title, 'changes' => []],
+            payload: [
+                'subject_title' => $task->title,
+                'changes' => [],
+                'owner_user_id' => $task->ownerId,
+                'assignee_user_id' => $task->assigneeUserId,
+                'previous_assignee_user_id' => null,
+            ],
         );
     }
 
@@ -66,7 +72,13 @@ final class DomainEventPublisher
             commentId: null,
             visibilityUserId: $visibilityUserId,
             visibilityTeamId: $visibilityTeamId,
-            payload: ['subject_title' => $after->title, 'changes' => $changes],
+            payload: [
+                'subject_title' => $after->title,
+                'changes' => $changes,
+                'owner_user_id' => $after->ownerId,
+                'assignee_user_id' => $after->assigneeUserId,
+                'previous_assignee_user_id' => $before->assigneeUserId,
+            ],
         );
     }
 
@@ -87,7 +99,13 @@ final class DomainEventPublisher
             commentId: null,
             visibilityUserId: $visibilityUserId,
             visibilityTeamId: $visibilityTeamId,
-            payload: ['subject_title' => $task->title, 'changes' => $changes],
+            payload: [
+                'subject_title' => $task->title,
+                'changes' => $changes,
+                'owner_user_id' => $task->ownerId,
+                'assignee_user_id' => $task->assigneeUserId,
+                'previous_assignee_user_id' => $task->assigneeUserId,
+            ],
         );
     }
 
