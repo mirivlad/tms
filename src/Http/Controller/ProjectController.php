@@ -351,7 +351,8 @@ final class ProjectController
     {
         $userId = $this->userId();
         $projectId = $this->routeId($args);
-        if ($this->projects->findManageableForUser($userId, $projectId) === null) {
+        $project = $this->projects->findManageableForUser($userId, $projectId);
+        if ($project === null) {
             return $this->notFound($response);
         }
 
@@ -364,6 +365,8 @@ final class ProjectController
             $this->sessionNotice('project_settings_notice', 'error', $this->domainMessage($error));
             return $this->redirect($response, '/projects/' . $projectId . '/settings');
         }
+
+        $this->events->projectEvent($userId, $project, 'project.deleted');
 
         foreach ($stored as $attachment) {
             if (!$this->storage->delete($attachment->storageName)) {
