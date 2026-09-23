@@ -58,6 +58,7 @@ use Tms\Http\Controller\CustomFieldController;
 use Tms\Http\Controller\DashboardController;
 use Tms\Http\Controller\DiscussionController;
 use Tms\Http\Controller\InternalNotificationController;
+use Tms\Http\Controller\NavigationAlertController;
 use Tms\Http\Controller\LocaleController;
 use Tms\Http\Controller\MetadataController;
 use Tms\Http\Controller\NotificationAdminController;
@@ -341,6 +342,11 @@ final class ApplicationFactory
             $tasks,
             $translator,
         );
+        $navigationAlertController = new NavigationAlertController(
+            $sessions,
+            $internalNotifications,
+            $teamInvitations,
+        );
         $notificationController = new NotificationSettingsController(
             $twig,
             $sessions,
@@ -497,6 +503,7 @@ final class ApplicationFactory
         $app->post('/tasks/{taskId:[0-9]+}/discussion/{commentId:[0-9]+}', [$discussionController, 'updateTask'])->add($requireAuth);
         $app->post('/tasks/{taskId:[0-9]+}/discussion/{commentId:[0-9]+}/delete', [$discussionController, 'deleteTask'])->add($requireAuth);
         $app->get('/api/customers/search', [$customerSearchController, 'search'])->add($requireAuth);
+        $app->get('/api/navigation-alerts', [$navigationAlertController, 'counts'])->add($requireAuth);
         $app->get('/board', [$taskController, 'board'])->add($requireAuth);
         $app->get('/calendar', [$calendarController, 'show'])->add($requireAuth);
 

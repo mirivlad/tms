@@ -26,13 +26,13 @@
         {% set notification_count = current_notification_count() %}
         {% set team_invitation_count = current_team_invitation_count() %}
         <a class="nav-create-task" href="/tasks/new" data-quick-add-trigger aria-label="{{ t('nav.new_task') }}"><span class="nav-create-task-icon" aria-hidden="true">+</span><span class="nav-create-task-label">{{ t('nav.new_task') }}</span></a>
-        <details class="nav-dropdown user-menu" data-nav-menu>
-            <summary title="{{ t('nav.user_menu') }}">
+        <details class="nav-dropdown user-menu" data-nav-menu data-notification-beacon>
+            <summary title="{{ t('nav.user_menu') }}" data-alert-summary>
                 <span class="user-menu-name">{{ username }}</span>
                 {% if notification_count > 0 or team_invitation_count > 0 %}
-                    <span class="user-menu-badges" aria-hidden="true">
-                        {% if notification_count > 0 %}<span class="nav-badge nav-badge-notifications">{{ notification_count }}</span>{% endif %}
-                        {% if team_invitation_count > 0 %}<span class="nav-badge nav-badge-invitations">{{ team_invitation_count }}</span>{% endif %}
+                    <span class="user-menu-badges" aria-hidden="true" data-alert-summary-badges>
+                        {% if notification_count > 0 %}<span class="nav-badge nav-badge-notifications" data-alert-count="notifications">{{ notification_count }}</span>{% endif %}
+                        {% if team_invitation_count > 0 %}<span class="nav-badge nav-badge-invitations" data-alert-count="invitations">{{ team_invitation_count }}</span>{% endif %}
                     </span>
                 {% endif %}
                 <span class="nav-dropdown-chevron" aria-hidden="true">▾</span>
@@ -42,13 +42,13 @@
                 <a class="mobile-menu-only" href="/projects" data-nav-path="/projects">{{ t('nav.projects') }}</a>
                 <a class="mobile-menu-only" href="/teams" data-nav-path="/teams">{{ t('nav.teams') }}</a>
                 <div class="nav-dropdown-separator mobile-menu-only" aria-hidden="true"></div>
-                <a class="user-menu-alert-link" href="/notifications" data-nav-path="/notifications">
+                <a class="user-menu-alert-link" href="/notifications" data-nav-path="/notifications" data-alert-kind="notifications" data-alert-label="{{ t('nav.notifications') }}">
                     <span>{{ t('nav.notifications') }}</span>
-                    {% if notification_count > 0 %}<span class="nav-badge nav-badge-notifications" aria-label="{{ t('nav.notifications') }}: {{ notification_count }}">{{ notification_count }}</span>{% endif %}
+                    {% if notification_count > 0 %}<span class="nav-badge nav-badge-notifications" data-alert-count="notifications" aria-label="{{ t('nav.notifications') }}: {{ notification_count }}">{{ notification_count }}</span>{% endif %}
                 </a>
-                <a class="user-menu-alert-link" href="/invitations" data-nav-path="/invitations">
+                <a class="user-menu-alert-link" href="/invitations" data-nav-path="/invitations" data-alert-kind="invitations" data-alert-label="{{ t('nav.team_invitations') }}">
                     <span>{{ t('nav.team_invitations') }}</span>
-                    {% if team_invitation_count > 0 %}<span class="nav-badge nav-badge-invitations" aria-label="{{ t('nav.team_invitations') }}: {{ team_invitation_count }}">{{ team_invitation_count }}</span>{% endif %}
+                    {% if team_invitation_count > 0 %}<span class="nav-badge nav-badge-invitations" data-alert-count="invitations" aria-label="{{ t('nav.team_invitations') }}: {{ team_invitation_count }}">{{ team_invitation_count }}</span>{% endif %}
                 </a>
                 <div class="nav-dropdown-separator" aria-hidden="true"></div>
                 <details class="nav-submenu user-settings-menu">
@@ -85,6 +85,7 @@
 {% include "task_preview_dialog.twig" %}
 <main class="page">{% block content %}{% endblock %}</main>
 <script src="/assets/nav-state.js" defer></script>
+<script src="/assets/notification-beacon.js" defer></script>
 <script src="/assets/action-icons.js" defer></script>
 <script src="/assets/customer-autocomplete.js" defer></script>
 <script src="/assets/money-input.js" defer></script>

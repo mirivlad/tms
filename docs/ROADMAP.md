@@ -2,6 +2,55 @@
 
 This file records the near-term product direction for TMS. Shipped behavior belongs in the user documentation; this file only describes the next agreed product steps.
 
+## v0.4 — Scheduling & Events
+
+The 0.4 line makes TMS time-aware and event-driven while keeping the current User → Team → Project → Task hierarchy intact.
+
+**Implementation status:** Stage A in progress.
+
+### Stage A — Realtime notification beacon
+
+- expose one authenticated, non-cacheable endpoint with unread internal-notification and pending team-invitation counts;
+- refresh navigation badges without a full page reload;
+- poll only while the browser tab is visible;
+- refresh immediately when a hidden tab becomes visible again;
+- create, update and remove both summary and menu badges as counts cross zero;
+- use simple polling for 0.4 rather than introducing SSE/WebSocket infrastructure prematurely.
+
+### Stage B — `scheduled_at`
+
+- add planned execution time separately from the existing deadline;
+- support create/edit and quick edit;
+- expose planned time in task list/filtering and Saved Views;
+- integrate planned time into Calendar;
+- preserve/generate planned time correctly for recurring task occurrences.
+
+### Stage C — Domain events
+
+- introduce explicit task/project/discussion domain events with stable event identifiers;
+- treat activity history as a consumer of events rather than the source of notification behavior;
+- define payload contracts that can later drive notifications and external integrations.
+
+### Stage D — Event notifications
+
+- notify on assignment/reassignment;
+- preserve existing mention and discussion-reply notification behavior under the event model;
+- notify on deadline and `scheduled_at` changes where useful;
+- support upcoming planned/deadline notifications;
+- make noisy event classes such as status changes user-configurable;
+- keep internal TMS notifications canonical; email and Telegram remain transports.
+
+### Stage E — Webhook foundation
+
+- event subscriptions;
+- signed webhook deliveries;
+- retry policy and delivery history;
+- API/event contracts suitable for external tools and agent integrations.
+
+### v0.4 non-goals
+
+No Gantt view, task dependency graph, time tracking, Workspace layer, general-purpose chat, or embedded AI workbench is planned for 0.4 unless a concrete blocking use case appears.
+
 ## v0.3 — Daily workflow
 
 The 0.3 line focuses on making TMS faster and more useful in day-to-day work without adding a new hierarchy layer. Each stage must remain useful for personal tasks as well as team projects.

@@ -42,6 +42,11 @@ docker compose exec -T app test -s /var/www/html/var/secrets/notification.key
 
 login ciadmin ci-admin-password-12345 "$admin_cookies"
 
+# Navigation alert counts are available without re-rendering a page.
+beacon_json=$(curl --fail --silent --cookie "$admin_cookies" -H 'Accept: application/json' "$base_url/api/navigation-alerts")
+printf '%s\n' "$beacon_json" | grep -Eq '"notification_count":[0-9]+'
+printf '%s\n' "$beacon_json" | grep -Eq '"team_invitation_count":[0-9]+'
+
 curl --fail --silent --cookie "$admin_cookies" "$base_url/settings/notifications" > /tmp/notify-settings.html
 grep -q '>Notification settings<' /tmp/notify-settings.html
 grep -q 'name="notify_upcoming"' /tmp/notify-settings.html
