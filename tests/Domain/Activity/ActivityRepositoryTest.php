@@ -73,6 +73,7 @@ final class ActivityRepositoryTest extends TestCase
             title: 'Deploy',
             description: '<p>Old</p>',
             deadline: null,
+            scheduledAt: null,
             statusId: 10,
             typeId: 20,
             priority: 0,
@@ -88,6 +89,7 @@ final class ActivityRepositoryTest extends TestCase
             title: 'Deploy',
             description: '<p>New</p>',
             deadline: '2026-09-23 12:00:00',
+            scheduledAt: '2026-09-23 09:00:00',
             statusId: 11,
             typeId: 20,
             priority: 2,
@@ -111,6 +113,7 @@ final class ActivityRepositoryTest extends TestCase
         self::assertSame('bob', $update->actorUsername);
         self::assertSame(['old' => 'Todo', 'new' => 'Done'], $update->changes['status']);
         self::assertSame(['old' => 'low', 'new' => 'high'], $update->changes['priority']);
+        self::assertSame(['old' => null, 'new' => '2026-09-23 09:00:00'], $update->changes['scheduled_at']);
         self::assertSame(['old' => null, 'new' => null], $update->changes['description']);
     }
 

@@ -118,6 +118,11 @@
         </label>
 
         <label>
+            {{ t('task_form.scheduled_at') }}
+            <input type="datetime-local" name="scheduled_at" value="{{ form.scheduled_at|default('') }}">
+        </label>
+
+        <label>
             {{ t('task_form.deadline') }}
             <input type="datetime-local" name="deadline" value="{{ form.deadline|default('') }}">
         </label>

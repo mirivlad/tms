@@ -23,6 +23,7 @@ return [
     'activity.field.customer' => 'Customer',
     'activity.field.project' => 'Project',
     'activity.field.assignee' => 'Assignee',
+    'activity.field.scheduled_at' => 'Planned for',
     'activity.field.deadline' => 'Deadline',
     'activity.field.lifecycle_status' => 'Project state',
     'activity.field.owner' => 'Owner',

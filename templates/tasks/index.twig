@@ -133,6 +133,14 @@
                     <input type="date" name="deadline_to" value="{{ filters.deadline_to }}">
                 </label>
                 <label>
+                    {{ t('tasks.scheduled_from') }}
+                    <input type="date" name="scheduled_from" value="{{ filters.scheduled_from }}">
+                </label>
+                <label>
+                    {{ t('tasks.scheduled_to') }}
+                    <input type="date" name="scheduled_to" value="{{ filters.scheduled_to }}">
+                </label>
+                <label>
                     {{ t('tasks.created_from') }}
                     <input type="date" name="created_from" value="{{ filters.created_from }}">
                 </label>
@@ -305,6 +313,7 @@
                             <th>{{ sorting.head(sort_links['custom_' ~ field.id], field.name) }}</th>
                         {% endfor %}
                         <th>{{ sorting.head(sort_links.created_at, t('tasks.table.created')) }}</th>
+                        <th>{{ sorting.head(sort_links.scheduled_at, t('tasks.table.scheduled')) }}</th>
                         <th>{{ sorting.head(sort_links.deadline, t('tasks.table.deadline')) }}</th>
                         <th></th>
                     </tr>
@@ -350,6 +359,7 @@
                             </td>
                         {% endfor %}
                         <td class="nowrap" data-label="{{ t('tasks.table.created') }}">{{ format_database_datetime(task.createdAt) }}</td>
+                        <td class="nowrap" data-label="{{ t('tasks.table.scheduled') }}">{{ task.scheduledAt ? task.scheduledAt|date('Y-m-d H:i') : '—' }}</td>
                         <td class="nowrap" data-label="{{ t('tasks.table.deadline') }}">{{ task.deadline ? task.deadline|date('Y-m-d H:i') : '—' }}</td>
                         <td class="row-actions task-row-actions">
                             <a class="text-link" href="/tasks/{{ task.id }}/edit" data-task-preview="{{ task.id }}">{{ t('common.view') }}</a>

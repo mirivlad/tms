@@ -47,6 +47,14 @@ The 0.4 line makes TMS time-aware and event-driven while keeping the current Use
 - retry policy and delivery history;
 - API/event contracts suitable for external tools and agent integrations.
 
+### Stage F — Documentation & maintenance contract
+
+- maintain a complete end-user handbook with step-by-step examples for every user-facing feature;
+- maintain a separate administrator handbook covering deployment, upgrades, configuration, user/team administration, notification transports, backup/restore, maintenance and troubleshooting;
+- keep handbook source files in the repository and publish both manuals as HTML and PDF;
+- treat documentation updates as part of feature completion: behavior or configuration changes must update the affected handbook sections in the same release;
+- add an explicit documentation-impact check to the release/review process so manuals cannot silently drift behind the application.
+
 ### v0.4 non-goals
 
 No Gantt view, task dependency graph, time tracking, Workspace layer, general-purpose chat, or embedded AI workbench is planned for 0.4 unless a concrete blocking use case appears.

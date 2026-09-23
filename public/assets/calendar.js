@@ -6,7 +6,7 @@
                 return;
             }
             document.dispatchEvent(new CustomEvent('tms:quick-add', {
-                detail: {deadline: `${date}T23:59`},
+                detail: {scheduled_at: `${date}T09:00`},
             }));
         });
     });

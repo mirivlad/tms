@@ -22,6 +22,8 @@ final class SavedViewQueryTest extends TestCase
             'overdue' => '1',
             'deadline_from' => '2026-09-01',
             'deadline_to' => '2026-09-30',
+            'scheduled_from' => '2026-09-05',
+            'scheduled_to' => '2026-09-25',
             'sort' => 'custom_44',
             'order' => 'ASC',
             'per_page' => '50',
@@ -46,6 +48,8 @@ final class SavedViewQueryTest extends TestCase
         self::assertSame('1', $query['overdue']);
         self::assertSame('2026-09-01', $query['deadline_from']);
         self::assertSame('2026-09-30', $query['deadline_to']);
+        self::assertSame('2026-09-05', $query['scheduled_from']);
+        self::assertSame('2026-09-25', $query['scheduled_to']);
         self::assertSame('custom_44', $query['sort']);
         self::assertSame('asc', $query['order']);
         self::assertSame(50, $query['per_page']);

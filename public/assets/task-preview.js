@@ -18,12 +18,14 @@
     const deleteForm = dialog.querySelector('[data-task-preview-delete-form]');
     const quickEditForm = dialog.querySelector('[data-task-preview-quick-edit]');
     const statusSelect = dialog.querySelector('[data-task-preview-status]');
+    const scheduledAtInput = dialog.querySelector('[data-task-preview-scheduled-at]');
     const deadlineInput = dialog.querySelector('[data-task-preview-deadline]');
     const saveResult = dialog.querySelector('[data-task-preview-save-result]');
 
     if (!(description instanceof HTMLElement)
         || !(quickEditForm instanceof HTMLFormElement)
         || !(statusSelect instanceof HTMLSelectElement)
+        || !(scheduledAtInput instanceof HTMLInputElement)
         || !(deadlineInput instanceof HTMLInputElement)) {
         return;
     }
@@ -38,6 +40,7 @@
         customer: dialog.dataset.labelCustomer,
         project: dialog.dataset.labelProject,
         assignee: dialog.dataset.labelAssignee,
+        scheduledAt: dialog.dataset.labelScheduledAt,
         deadline: dialog.dataset.labelDeadline,
         created: dialog.dataset.labelCreated,
         updated: dialog.dataset.labelUpdated,
@@ -110,6 +113,7 @@
         quickEditForm.hidden = true;
         quickEditForm.action = '/api/tasks/0/quick-edit';
         statusSelect.replaceChildren();
+        scheduledAtInput.value = '';
         deadlineInput.value = '';
         description.replaceChildren();
         if (discussion instanceof HTMLAnchorElement) {
@@ -153,6 +157,7 @@
             meta.textContent = `#${data.id}`;
             description.innerHTML = data.description_html || '';
             populateStatuses(data.status_options, data.status_id);
+            scheduledAtInput.value = data.scheduled_at_input || '';
             deadlineInput.value = data.deadline_input || '';
             quickEditForm.action = data.quick_update_url;
             quickEditForm.hidden = false;
@@ -164,6 +169,8 @@
             addFact(labels.customer || 'Customer', data.customer);
             addFact(labels.project || 'Project', data.project);
             addFact(labels.assignee || 'Assignee', data.assignee);
+            addFact(labels.scheduledAt || 'Planned for', dateTime(data.scheduled_at));
+            addFact(labels.deadline || 'Deadline', dateTime(data.deadline));
 
             if (Array.isArray(data.custom_fields) && data.custom_fields.length) {
                 for (const field of data.custom_fields) addCustomRow(field.name, field.value);

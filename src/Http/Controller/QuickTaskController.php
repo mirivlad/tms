@@ -54,7 +54,8 @@ final class QuickTaskController
                 throw new DomainException($this->translator->trans('validation.task_status_required'));
             }
 
-            $deadline = $this->normalizeDeadline($body['deadline'] ?? null);
+            $deadline = $this->normalizeDateTime($body['deadline'] ?? null, 'validation.deadline_invalid');
+            $scheduledAt = $this->normalizeDateTime($body['scheduled_at'] ?? null, 'validation.scheduled_at_invalid');
             $safeDescription = $description === ''
                 ? ''
                 : $this->sanitizer->sanitize(nl2br(htmlspecialchars(
@@ -73,6 +74,8 @@ final class QuickTaskController
                 1,
                 null,
                 $projectId,
+                null,
+                $scheduledAt,
             );
             $created = $this->tasks->findForUser($userId, $taskId);
             if ($created !== null) {
@@ -151,7 +154,7 @@ final class QuickTaskController
         return is_scalar($value) && ctype_digit((string) $value) && (int) $value > 0 ? (int) $value : null;
     }
 
-    private function normalizeDeadline(mixed $value): ?string
+    private function normalizeDateTime(mixed $value, string $validationKey): ?string
     {
         if (!is_string($value) || trim($value) === '') {
             return null;
@@ -165,6 +168,6 @@ final class QuickTaskController
             }
         }
 
-        throw new DomainException($this->translator->trans('validation.deadline_invalid'));
+        throw new DomainException($this->translator->trans($validationKey));
     }
 }

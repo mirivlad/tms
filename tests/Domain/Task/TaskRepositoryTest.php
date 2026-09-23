@@ -53,6 +53,7 @@ final class TaskRepositoryTest extends TestCase
                 title TEXT NOT NULL,
                 description TEXT NOT NULL DEFAULT "",
                 deadline TEXT NULL,
+            scheduled_at TEXT NULL,
                 status_id INTEGER NULL,
                 type_id INTEGER NULL,
                 priority INTEGER NOT NULL DEFAULT 0,

@@ -7,6 +7,7 @@
     const form = dialog.querySelector('[data-quick-add-form]');
     const titleInput = dialog.querySelector('[data-quick-add-title-input]');
     const result = dialog.querySelector('[data-quick-add-result]');
+    const scheduledAtInput = dialog.querySelector('input[name="scheduled_at"]');
     const deadlineInput = dialog.querySelector('input[name="deadline"]');
     const closeButton = dialog.querySelector('[data-quick-add-close]');
 
@@ -22,10 +23,13 @@
         }
     };
 
-    const open = (presetDeadline = '') => {
+    const open = ({deadline = '', scheduledAt = ''} = {}) => {
         form.reset();
-        if (deadlineInput instanceof HTMLInputElement && presetDeadline) {
-            deadlineInput.value = presetDeadline;
+        if (scheduledAtInput instanceof HTMLInputElement && scheduledAt) {
+            scheduledAtInput.value = scheduledAt;
+        }
+        if (deadlineInput instanceof HTMLInputElement && deadline) {
+            deadlineInput.value = deadline;
         }
         clearResult();
         dialog.showModal();
@@ -43,7 +47,10 @@
         const deadline = event instanceof CustomEvent && typeof event.detail?.deadline === 'string'
             ? event.detail.deadline
             : '';
-        open(deadline);
+        const scheduledAt = event instanceof CustomEvent && typeof event.detail?.scheduled_at === 'string'
+            ? event.detail.scheduled_at
+            : '';
+        open({deadline, scheduledAt});
     });
 
     closeButton?.addEventListener('click', () => dialog.close());

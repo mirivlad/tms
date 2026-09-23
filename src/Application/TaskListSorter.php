@@ -19,7 +19,7 @@ final class TaskListSorter
      */
     public function supports(string $field, array $customFields): bool
     {
-        if (in_array($field, ['title', 'status_name', 'type_name', 'priority', 'customer', 'created_at', 'deadline'], true)) {
+        if (in_array($field, ['title', 'status_name', 'type_name', 'priority', 'customer', 'created_at', 'scheduled_at', 'deadline'], true)) {
             return true;
         }
 
@@ -122,6 +122,7 @@ final class TaskListSorter
             'priority' => $task->priority,
             'customer' => $task->customerId === null ? null : ($customerNames[$task->customerId] ?? null),
             'created_at' => $task->createdAt,
+            'scheduled_at' => $task->scheduledAt,
             'deadline' => $task->deadline,
             default => null,
         };

@@ -9,7 +9,7 @@ use DateTimeImmutable;
 final class SavedViewQuery
 {
     private const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
-    private const SORTS = ['title', 'status_name', 'type_name', 'priority', 'customer', 'created_at', 'deadline'];
+    private const SORTS = ['title', 'status_name', 'type_name', 'priority', 'customer', 'created_at', 'scheduled_at', 'deadline'];
     private const PER_PAGE = [10, 25, 50, 100];
 
     /**
@@ -50,7 +50,7 @@ final class SavedViewQuery
             }
         }
 
-        foreach (['deadline_from', 'deadline_to', 'created_from', 'created_to'] as $key) {
+        foreach (['deadline_from', 'deadline_to', 'scheduled_from', 'scheduled_to', 'created_from', 'created_to'] as $key) {
             $value = $this->date($query[$key] ?? null);
             if ($value !== '') {
                 $result[$key] = $value;
