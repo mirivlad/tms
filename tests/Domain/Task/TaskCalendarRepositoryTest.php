@@ -149,8 +149,10 @@ final class TaskCalendarRepositoryTest extends TestCase
             priorityInvert: true,
         );
 
-        self::assertCount(1, $tasks);
-        self::assertSame('No dates task', $tasks[0]->title);
+        self::assertSame(['No dates task', 'Planned task'], array_map(
+            static fn ($task): string => $task->title,
+            $tasks,
+        ));
     }
 
     public function testCalendarCustomerSubstringEscapesLikeWildcards(): void
