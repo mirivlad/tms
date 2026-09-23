@@ -2,18 +2,58 @@
 
 # User guide
 
+This handbook is the canonical end-user manual for TMS. It explains not only what each screen does, but also how to combine tasks, projects, teams, schedules, saved views, discussions and notifications into a daily workflow.
+
+[TOC]
+
+## Getting started
+
+After sign-in, TMS opens as a workbench rather than a wizard. You can keep everything personal, or add Projects and Teams only when collaboration is useful. A task is always the basic unit of work; Projects add context, Teams add shared access, and Discussions stay attached to the work they describe.
+
+A useful first-time setup is:
+
+1. Open **Settings → Profile** and set your timezone and preferred theme.
+2. Open **Settings → Metadata** and review your personal statuses, task types and customers.
+3. Create one test task with both a planned time and a deadline.
+4. Open **Tasks**, **Board** and **Calendar** to see the same task through different views.
+5. If you work with other users, create a Team and then a team-owned Project.
+
 ## Main views
 
 - **Dashboard** — counters, status distribution, stale tasks and a daily tip.
 - **Tasks** — dense table with sorting, filters, pagination, quick view and bulk actions.
 - **Board** — Kanban columns by status with drag-and-drop.
-- **Calendar** — tasks by deadline, creation date for no-deadline mode, or both.
+- **Calendar** — separate events for planned work (`scheduled_at`) and deadlines, plus an optional view of tasks that have neither date.
 
 ## Creating and editing tasks
 
 Use **New task** or the global quick-add action. The quick-add dialog is also available with `Alt+N` or `Cmd+N` where supported by the browser/OS.
 
-A task can contain title, description, priority, status, type, customer, deadline and custom fields. In a team-owned project it can also have an optional assignee; assignment expresses responsibility and does not change who can access the project. Open the quick-view dialog from a task card or row to change status, description and deadline without opening the full edit page. Rich descriptions are sanitized server-side. Attachments are stored separately from the public web root and are available only through authorized application routes.
+A task can contain title, description, priority, status, type, customer, planned time, deadline and custom fields. In a team-owned project it can also have an optional assignee; assignment expresses responsibility and does not change who can access the project. Open the quick-view dialog from a task card or row to change status, description and deadline without opening the full edit page. Rich descriptions are sanitized server-side. Attachments are stored separately from the public web root and are available only through authorized application routes.
+
+### Planned time versus deadline
+
+TMS deliberately separates **Planned for** from **Deadline**:
+
+- **Planned for** answers “when do I intend to work on this?”;
+- **Deadline** answers “when must this be finished?”.
+
+They may be the same, different, or one of them may be empty.
+
+Example: a report is due Friday at 17:00, but you plan to work on it Thursday at 10:00. Set **Planned for = Thursday 10:00** and **Deadline = Friday 17:00**. Calendar **All events** shows both moments. If both timestamps are identical, the calendar collapses them into one combined event.
+
+Creating a task from a calendar day presets **Planned for** at 09:00 on that day rather than inventing a deadline. You can adjust the time immediately in quick edit or the full task form.
+
+### Example: create and plan a personal task
+
+1. Press **New task** or use the global quick-add button.
+2. Enter a title such as “Prepare monthly server report”.
+3. Choose the personal status and priority.
+4. Set **Planned for** to the time you want to start.
+5. Set **Deadline** only if there is a real completion constraint.
+6. Add a customer, type or custom fields only when they will help you search, sort or report later.
+7. Save the task.
+8. Open **Tasks** to verify the row, **Board** to see its workflow column and **Calendar** to verify its planned/deadline events.
 
 ## Activity history
 
@@ -37,7 +77,7 @@ A saved view stores only normalized task-list state that TMS understands. Page n
 
 The author of an existing task can enable **Recurrence** from the edit page. TMS supports daily, weekly, monthly, every-N-days schedules and an “N days after completion” mode.
 
-Calendar recurrence uses the current task deadline as its seed. When that schedule point is reached, TMS creates a new occurrence with the following deadline instead of mutating the old task. Monthly recurrence keeps the original day anchor: a series seeded on January 31 uses February 28/29 and returns to March 31.
+Calendar recurrence uses the current task deadline as its seed. If the source task also has a planned time, TMS preserves the same planned-time-to-deadline offset for each generated occurrence. When that schedule point is reached, TMS creates a new occurrence with the following deadline instead of mutating the old task. Monthly recurrence keeps the original day anchor: a series seeded on January 31 uses February 28/29 and returns to March 31.
 
 **After completion** waits until the current occurrence enters a completion status, then creates the next task with a deadline N days later. New occurrences use the configured non-completion status. TMS carries forward title, description, project, priority, still-valid metadata, assignee, custom-field values and checklist text/order; the copied checklist starts incomplete. Attachments and discussions remain local to each occurrence.
 
@@ -85,9 +125,9 @@ Language can be switched between English and Russian. The chosen UI language doe
 
 ## Notifications
 
-The **Notifications** item in the top bar is the canonical in-app inbox for team mentions and direct replies. Its badge counts unread items. Opening an item marks it read and jumps to the relevant project/task comment when that context is still accessible. Historical notifications remain visible after access is removed, but TMS will not reopen a project/task you can no longer access.
+The **Notifications** item in the user menu is the canonical in-app inbox. It contains team mentions, direct replies, task assignments/reassignments, configured date/status-change events and scheduled reminders. Its badge updates in the background without a full page reload while the tab is visible; returning to a previously hidden tab triggers an immediate refresh. Opening an item marks it read and jumps to the relevant project/task comment when that context is still accessible. Historical notifications remain visible after access is removed, but TMS will not reopen a project/task you can no longer access.
 
-Open **Settings → Notification settings** to choose email/Telegram channels and rules for tomorrow, upcoming deadlines, overdue tasks and digest delivery. The in-app inbox is always available; enabled email and Telegram channels also carry team invitations, mentions and direct replies as links back to TMS.
+Open **Settings → Notification settings** to choose email/Telegram channels and event/reminder rules. Assignment/reassignment and planned/deadline-change notifications are enabled by default; noisy status-change notifications are opt-in. Reminder rules cover tomorrow, approaching planned times and deadlines, overdue tasks and digest delivery. The in-app inbox is always available; enabled email and Telegram channels also carry team invitations, mentions and direct replies as links back to TMS.
 
 To link Telegram:
 
@@ -101,6 +141,66 @@ A link command is valid for 24 hours and can be used once. You can disconnect Te
 ## Password recovery
 
 Use **Forgot password** on the login page. Depending on deployment configuration, a reset link can be delivered by email and/or linked Telegram. The server administrator also has a local recovery path.
+
+## Practical workflows
+
+### Plan a workday
+
+1. Open **Calendar** in **Planned work** mode.
+2. Add or move `scheduled_at` values for the tasks you intend to work on.
+3. Leave deadlines unchanged unless the real due date changed.
+4. Use **Tasks** with a saved view for today's project/status/priority combination.
+5. Work the queue on **Board**, where wheel scrolling first moves a long column vertically and then hands off to horizontal board movement.
+
+### Build a reusable project workflow
+
+1. Create a Project.
+2. Open **Statuses** inside the project and adjust the workflow for that project.
+3. Add project-specific custom fields only for structured data unique to this project.
+4. Assign existing or new tasks to the project.
+5. Save a task-list view filtered to the project and the statuses you care about.
+6. If collaboration is needed, transfer/create the project under a Team and assign responsible members.
+
+### Collaborate without losing context in chat
+
+1. Open the Project or Task discussion instead of moving the conversation to an external messenger.
+2. Use `@username` when a specific team member must see the message.
+3. Reply to a comment when context matters.
+4. Use the notification inbox to return to the exact work item.
+5. Keep Telegram/email as notification transports rather than the source of truth.
+
+### Turn a repeated responsibility into a recurring task
+
+1. Create the first real occurrence with its normal project, priority, checklist, planned time and deadline.
+2. Save it, then open **Recurrence**.
+3. Choose calendar recurrence or **N days after completion**.
+4. Choose the non-completion status for generated occurrences.
+5. Verify the next generated task before relying on the series long-term.
+6. Edit the recurrence rule rather than manually cloning future tasks.
+
+### Find work quickly with Saved Views
+
+1. Configure project, status, priority, customer, date and custom-field filters on **Tasks**.
+2. Choose the sort order.
+3. Save the current combination with a descriptive name such as “Production · this week”.
+4. Mark it as default only if it is genuinely your normal landing view.
+5. Create a separate saved view when you want a different reusable combination; opening a saved view and changing filters does not silently overwrite it.
+
+## Files and attachments
+
+Task attachments and Project files are private application data. Upload them from the relevant task/project page and download them only through TMS. Do not treat the generated storage path as a public file share.
+
+Use task attachments for material specific to one task. Use Project files for shared project-level material such as requirements, reference documents or exported reports.
+
+## What access and assignment mean
+
+Access and assignment are separate concepts:
+
+- a personal task/project is visible only to its owner;
+- a team-owned project and its tasks are visible to current members of that team;
+- assigning a task names the responsible member but does not grant access by itself;
+- removing a member removes access immediately and clears assignments that are no longer valid;
+- transferring project ownership changes future visibility but does not expose history that belonged to the previous scope.
 
 ## Useful habits
 
