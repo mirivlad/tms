@@ -43,6 +43,7 @@ ghcr.io/mirivlad/tms:v0.3.1
 | Administration | [Administration](docs/ADMINISTRATION.md) | [Администрирование](docs/ADMINISTRATION.ru.md) |
 | User guide | [User guide](docs/USER_GUIDE.md) | [Руководство пользователя](docs/USER_GUIDE.ru.md) |
 | Notifications & Telegram | [Notifications](docs/notifications.md) | [Уведомления](docs/notifications.ru.md) |
+| Webhooks | [Webhooks](docs/webhooks.md) | [Вебхуки](docs/webhooks.ru.md) |
 | FAQ | [FAQ](docs/FAQ.md) | [FAQ](docs/FAQ.ru.md) |
 | Account recovery | [Account recovery](docs/ACCOUNT_RECOVERY.md) | [Восстановление доступа](docs/ACCOUNT_RECOVERY.ru.md) |
 | Architecture | [Architecture](docs/ARCHITECTURE.md) | — |
