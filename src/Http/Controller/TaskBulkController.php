@@ -8,7 +8,7 @@ use DateTimeImmutable;
 use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Tms\Domain\Activity\ActivityRepository;
+use Tms\Application\DomainEventPublisher;
 use Tms\Domain\Attachment\AttachmentRepository;
 use Tms\Domain\Task\TaskRecord;
 use Tms\Domain\Task\TaskRepository;
@@ -28,7 +28,7 @@ final class TaskBulkController
     public function __construct(
         private readonly SessionManager $sessions,
         private readonly TaskRepository $tasks,
-        private readonly ActivityRepository $activity,
+        private readonly DomainEventPublisher $events,
         private readonly AttachmentRepository $attachments,
         private readonly AttachmentStorage $storage,
         private readonly Translator $translator,
@@ -61,7 +61,7 @@ final class TaskBulkController
                 foreach ($tasks as $before) {
                     $after = $this->tasks->findForUser($userId, $before->id);
                     if ($after !== null) {
-                        $this->activity->recordTaskChanged($userId, $before, $after);
+                        $this->events->taskChanged($userId, $before, $after);
                     }
                 }
             }
