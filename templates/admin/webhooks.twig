@@ -1,0 +1,111 @@
+{% extends "app_layout.twig" %}
+{% block title %}{{ t('webhooks.title') }} · TMS{% endblock %}
+{% block styles %}<link rel="stylesheet" href="/assets/webhooks.css">{% endblock %}
+{% block content %}
+<div class="page-header compact-page-header">
+  <div><h1>{{ t('webhooks.title') }}</h1><p class="muted">{{ t('webhooks.subtitle') }}</p></div>
+  <a class="secondary-link button-link" href="/admin">{{ t('admin.back') }}</a>
+</div>
+
+{% if notice %}<div class="success-notice">{{ notice }}</div>{% endif %}
+{% if error %}<div class="alert">{{ error }}</div>{% endif %}
+{% if secret_once %}
+<section class="content-card webhook-secret-card">
+  <h2>{{ t('webhooks.secret_title') }}</h2>
+  <p>{{ t('webhooks.secret_once') }}</p>
+  <div class="link-command"><code>{{ secret_once.secret }}</code></div>
+</section>
+{% endif %}
+
+<section class="content-card">
+  <div class="section-heading"><div><h2>{{ t('webhooks.create') }}</h2><p class="muted">{{ t('webhooks.create_help') }}</p></div></div>
+  <form method="post" action="/admin/webhooks" class="webhook-form">
+    <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+    <div class="webhook-fields">
+      <label>{{ t('webhooks.name') }}<input name="name" required maxlength="120" placeholder="Automation bridge"></label>
+      <label>{{ t('webhooks.endpoint') }}<input name="endpoint_url" type="url" required maxlength="2048" placeholder="https://agent.example/webhooks/tms"></label>
+      <label class="checkbox-inline webhook-enabled"><input type="checkbox" name="is_active" value="1" checked> {{ t('webhooks.active') }}</label>
+    </div>
+    <fieldset class="webhook-events">
+      <legend>{{ t('webhooks.events') }}</legend>
+      <div class="webhook-event-grid">
+      {% for event_type in event_types %}
+        <label class="checkbox-inline"><input type="checkbox" name="event_types[]" value="{{ event_type }}" checked> <code>{{ event_type }}</code></label>
+      {% endfor %}
+      </div>
+    </fieldset>
+    <button type="submit">{{ t('webhooks.create_action') }}</button>
+  </form>
+</section>
+
+<section class="content-card">
+  <div class="section-heading"><div><h2>{{ t('webhooks.subscriptions') }}</h2><p class="muted">{{ t('webhooks.subscriptions_help') }}</p></div></div>
+  {% if subscriptions %}
+    <div class="webhook-list">
+    {% for subscription in subscriptions %}
+      <article class="webhook-subscription">
+        <form method="post" action="/admin/webhooks/{{ subscription.id }}" class="webhook-form">
+          <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+          <div class="webhook-subscription-head">
+            <strong>#{{ subscription.id }}</strong>
+            <span class="webhook-state {{ subscription.isActive ? 'active' : 'inactive' }}">{{ subscription.isActive ? t('webhooks.active') : t('webhooks.inactive') }}</span>
+          </div>
+          <div class="webhook-fields">
+            <label>{{ t('webhooks.name') }}<input name="name" required maxlength="120" value="{{ subscription.name }}"></label>
+            <label>{{ t('webhooks.endpoint') }}<input name="endpoint_url" type="url" required maxlength="2048" value="{{ subscription.endpointUrl }}"></label>
+            <label class="checkbox-inline webhook-enabled"><input type="checkbox" name="is_active" value="1" {{ subscription.isActive ? 'checked' : '' }}> {{ t('webhooks.active') }}</label>
+          </div>
+          <fieldset class="webhook-events">
+            <legend>{{ t('webhooks.events') }}</legend>
+            <div class="webhook-event-grid">
+            {% for event_type in event_types %}
+              <label class="checkbox-inline"><input type="checkbox" name="event_types[]" value="{{ event_type }}" {{ event_type in subscription.eventTypes ? 'checked' : '' }}> <code>{{ event_type }}</code></label>
+            {% endfor %}
+            </div>
+          </fieldset>
+          <div class="inline-actions"><button type="submit">{{ t('common.save') }}</button></div>
+        </form>
+        <div class="inline-actions webhook-destructive-actions">
+          <form method="post" action="/admin/webhooks/{{ subscription.id }}/rotate-secret">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <button class="secondary" type="submit">{{ t('webhooks.rotate_secret') }}</button>
+          </form>
+          <form method="post" action="/admin/webhooks/{{ subscription.id }}/delete" onsubmit="return confirm('{{ t('webhooks.delete_confirm')|e('js') }}')">
+            <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+            <button class="danger" type="submit">{{ t('common.delete') }}</button>
+          </form>
+        </div>
+      </article>
+    {% endfor %}
+    </div>
+  {% else %}
+    <p class="empty-state">{{ t('webhooks.none') }}</p>
+  {% endif %}
+</section>
+
+<section class="content-card">
+  <div class="section-heading"><div><h2>{{ t('webhooks.delivery_history') }}</h2><p class="muted">{{ t('webhooks.delivery_help') }}</p></div></div>
+  {% if deliveries %}
+  <div class="table-scroll">
+    <table class="webhook-delivery-table">
+      <thead><tr><th>{{ t('webhooks.subscription') }}</th><th>{{ t('webhooks.event') }}</th><th>{{ t('webhooks.status') }}</th><th>{{ t('webhooks.attempts') }}</th><th>HTTP</th><th>{{ t('webhooks.last_attempt') }}</th><th></th></tr></thead>
+      <tbody>
+      {% for delivery in deliveries %}
+        <tr>
+          <td>{{ delivery.subscription_name }}</td>
+          <td><code>{{ delivery.event_type }}</code><small class="muted webhook-event-id">{{ delivery.event_id }}</small></td>
+          <td><span class="webhook-state {{ delivery.status }}">{{ t('webhooks.status.' ~ delivery.status) }}</span>{% if delivery.last_error %}<small class="webhook-error">{{ delivery.last_error }}</small>{% endif %}</td>
+          <td>{{ delivery.attempt_count }}</td>
+          <td>{{ delivery.response_status ?? '—' }}</td>
+          <td>{{ delivery.last_attempt_at ? format_database_datetime(delivery.last_attempt_at) : '—' }}</td>
+          <td>{% if delivery.status == 'failed' %}<form method="post" action="/admin/webhooks/deliveries/{{ delivery.id }}/retry"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button class="secondary compact" type="submit">{{ t('webhooks.retry') }}</button></form>{% endif %}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+    <p class="empty-state">{{ t('webhooks.no_deliveries') }}</p>
+  {% endif %}
+</section>
+{% endblock %}
