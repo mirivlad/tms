@@ -98,6 +98,7 @@ final class RecurringTaskRunner
             $task->customerId,
             $task->projectId,
             $task->assigneeUserId,
+            $this->occurrenceScheduledAt($task, $deadline),
         );
 
         $this->customValues->cloneForTask($recurrence->ownerUserId, $task->id, $taskId);
@@ -166,6 +167,25 @@ final class RecurringTaskRunner
             return null;
         }
         return new DateTimeImmutable($recurrence->nextDeadline, $timezone);
+    }
+
+    private function occurrenceScheduledAt(TaskRecord $source, DateTimeImmutable $generatedDeadline): ?string
+    {
+        if ($source->scheduledAt === null || $source->scheduledAt === '') {
+            return null;
+        }
+        if ($source->deadline === null || $source->deadline === '') {
+            return $generatedDeadline->format('Y-m-d H:i:s');
+        }
+
+        $zone = $generatedDeadline->getTimezone();
+        $sourceDeadline = new DateTimeImmutable($source->deadline, $zone);
+        $sourceScheduledAt = new DateTimeImmutable($source->scheduledAt, $zone);
+        $offsetSeconds = $sourceScheduledAt->getTimestamp() - $sourceDeadline->getTimestamp();
+
+        return $generatedDeadline
+            ->modify(($offsetSeconds >= 0 ? '+' : '') . $offsetSeconds . ' seconds')
+            ->format('Y-m-d H:i:s');
     }
 
     /** @return array{0:?string,1:?string} */
