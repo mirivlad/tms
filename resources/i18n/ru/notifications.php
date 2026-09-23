@@ -161,6 +161,7 @@ return [
 
     'notifications.message.tomorrow' => 'Задачи на завтра',
     'notifications.message.upcoming' => 'Приближается срок задачи',
+    'notifications.message.planned_upcoming' => 'Приближается плановое время задачи',
     'notifications.message.overdue' => 'Просроченные задачи',
     'notifications.message.digest' => 'Дайджест задач',
     'notifications.message.none' => 'Подходящих задач нет.',
