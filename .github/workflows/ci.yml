@@ -39,6 +39,7 @@ jobs:
       REGISTRATION_ENABLED: "true"
       REGISTRATION_AUTO_APPROVE_AFTER_EMAIL: "false"
       NOTIFICATION_INTERVAL_SECONDS: "3600"
+      WEBHOOK_INTERVAL_SECONDS: "3600"
       TELEGRAM_BOT_NAME: "@ci_tms_bot"
       TELEGRAM_WEBHOOK_SECRET: ci-webhook-secret-12345
 
@@ -276,6 +277,9 @@ jobs:
 
       - name: Exercise notification workflow
         run: bash tests/smoke/notifications.sh
+
+      - name: Exercise webhook workflow
+        run: bash tests/smoke/webhooks.sh
 
       - name: Exercise password recovery workflow
         run: bash tests/smoke/password-recovery.sh
