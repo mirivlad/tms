@@ -47,6 +47,8 @@ use Tms\Domain\Team\TeamRepository;
 use Tms\Domain\TaskType\TaskTypeRepository;
 use Tms\Domain\User\UserRepository;
 use Tms\Domain\UserPreference\UserPreferenceRepository;
+use Tms\Domain\Webhook\WebhookDeliveryRepository;
+use Tms\Domain\Webhook\WebhookSubscriptionRepository;
 use Tms\Application\RegistrationService;
 use Tms\Http\Controller\ActivityController;
 use Tms\Http\Controller\AdminController;
@@ -84,6 +86,7 @@ use Tms\Http\Controller\TaskStatusController;
 use Tms\Http\Controller\TelegramWebhookController;
 use Tms\Http\Controller\TeamController;
 use Tms\Http\Controller\TeamInvitationController;
+use Tms\Http\Controller\WebhookAdminController;
 use Tms\Http\CookiePolicy;
 use Tms\Http\Middleware\CsrfMiddleware;
 use Tms\Http\Middleware\PersistentLoginMiddleware;
@@ -197,6 +200,8 @@ final class ApplicationFactory
         $smtpSettings = new SmtpSettingsRepository($db);
         $telegramLinkTokens = new TelegramLinkTokenRepository($db);
         $telegramSystemSettings = new TelegramSystemSettingsRepository($db);
+        $webhookSubscriptions = new WebhookSubscriptionRepository($db, $notificationSecret);
+        $webhookDeliveries = new WebhookDeliveryRepository($db);
         $attachmentPolicy = new AttachmentPolicy($attachmentMaxBytes);
         $attachmentStorage = new AttachmentStorage($attachmentStoragePath, dirname(__DIR__, 2) . '/public');
         $sessions = new SessionManager(new NativeSessionIdRegenerator());
@@ -268,6 +273,7 @@ final class ApplicationFactory
             new ActivityEventConsumer($activity),
             $discussionNotificationService,
             $taskEventNotifications,
+            new WebhookEventConsumer($webhookSubscriptions, $webhookDeliveries),
         ]);
         $eventPublisher = new DomainEventPublisher($db, $eventBus, $appTimezone);
         $passwordRecovery = new PasswordRecoveryService(
@@ -363,6 +369,13 @@ final class ApplicationFactory
             $sessions,
             $internalNotifications,
             $teamInvitations,
+        );
+        $webhookAdminController = new WebhookAdminController(
+            $twig,
+            $sessions,
+            $webhookSubscriptions,
+            $webhookDeliveries,
+            $translator,
         );
         $notificationController = new NotificationSettingsController(
             $twig,
@@ -570,6 +583,12 @@ final class ApplicationFactory
         $app->post('/admin/users/{id:[0-9]+}/delete', [$adminController, 'delete'])->add($requireAdmin)->add($requireAuth);
         $app->post('/admin/users/{id:[0-9]+}/impersonate', [$adminController, 'impersonate'])->add($requireAdmin)->add($requireAuth);
         $app->post('/admin/stop-impersonation', [$adminController, 'stopImpersonation'])->add($requireAuth);
+        $app->get('/admin/webhooks', [$webhookAdminController, 'index'])->add($requireAdmin)->add($requireAuth);
+        $app->post('/admin/webhooks', [$webhookAdminController, 'create'])->add($requireAdmin)->add($requireAuth);
+        $app->post('/admin/webhooks/{id:[0-9]+}', [$webhookAdminController, 'update'])->add($requireAdmin)->add($requireAuth);
+        $app->post('/admin/webhooks/{id:[0-9]+}/rotate-secret', [$webhookAdminController, 'rotateSecret'])->add($requireAdmin)->add($requireAuth);
+        $app->post('/admin/webhooks/{id:[0-9]+}/delete', [$webhookAdminController, 'delete'])->add($requireAdmin)->add($requireAuth);
+        $app->post('/admin/webhooks/deliveries/{id:[0-9]+}/retry', [$webhookAdminController, 'retryDelivery'])->add($requireAdmin)->add($requireAuth);
         $app->get('/admin/notifications', [$notificationAdminController, 'show'])->add($requireAdmin)->add($requireAuth);
         $app->post('/admin/notifications/smtp', [$notificationAdminController, 'saveSmtp'])->add($requireAdmin)->add($requireAuth);
         $app->post('/admin/notifications/smtp-test', [$notificationAdminController, 'testEmail'])->add($requireAdmin)->add($requireAuth);
