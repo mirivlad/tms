@@ -9,7 +9,7 @@ use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
-use Tms\Domain\Activity\ActivityRepository;
+use Tms\Application\DomainEventPublisher;
 use Tms\Application\TaskListSorter;
 use Tms\Domain\Attachment\AttachmentRecord;
 use Tms\Domain\Attachment\AttachmentRepository;
@@ -52,7 +52,7 @@ final class TaskController
         private readonly Twig $view,
         private readonly SessionManager $sessions,
         private readonly TaskRepository $tasks,
-        private readonly ActivityRepository $activity,
+        private readonly DomainEventPublisher $events,
         private readonly ChecklistRepository $checklists,
         private readonly SavedViewRepository $savedViews,
         private readonly TaskRecurrenceRepository $recurrences,
@@ -391,7 +391,7 @@ final class TaskController
             }
             $updated = $this->tasks->findForUser($userId, $taskId);
             if ($updated !== null) {
-                $this->activity->recordTaskChanged($userId, $task, $updated);
+                $this->events->taskChanged($userId, $task, $updated);
             }
 
             return $this->json($response, [
@@ -633,7 +633,7 @@ final class TaskController
             $this->customValues->replaceForTask($userId, $taskId, $customInput);
             $created = $this->tasks->findForUser($userId, $taskId);
             if ($created !== null) {
-                $this->activity->recordTaskCreated($userId, $created);
+                $this->events->taskCreated($userId, $created);
             }
 
             return $response->withHeader('Location', '/tasks/' . $taskId . '/edit')->withStatus(302);
@@ -686,7 +686,7 @@ final class TaskController
             $this->customValues->replaceForTask($userId, $taskId, $customInput);
             $updated = $this->tasks->findForUser($userId, $taskId);
             if ($updated !== null) {
-                $this->activity->recordTaskChanged($userId, $task, $updated);
+                $this->events->taskChanged($userId, $task, $updated);
             }
 
             return $response->withHeader('Location', '/tasks')->withStatus(302);
