@@ -51,7 +51,11 @@
                                 </a>
                             {% endfor %}
                             {% if day.events|length > 3 %}
-                                <a class="calendar-more" href="/tasks{% if day.task_query %}?{{ day.task_query }}{% endif %}">{{ tp('calendar.more_events', day.events|length - 3) }}</a>
+                                {% if day.task_query %}
+                                    <a class="calendar-more" href="/tasks?{{ day.task_query }}">{{ tp('calendar.more_events', day.events|length - 3) }}</a>
+                                {% else %}
+                                    <span class="calendar-more">{{ tp('calendar.more_events', day.events|length - 3) }}</span>
+                                {% endif %}
                             {% endif %}
                         </div>
                     </article>
