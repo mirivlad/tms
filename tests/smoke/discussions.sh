@@ -246,9 +246,11 @@ task_admin_csrf=$(csrf_from /tmp/discussion-task-admin.html)
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$task_admin_csrf"   "$BASE_URL/tasks/$task_id/delete")
 test "$code" = "302"
 test "$(db "SELECT COUNT(*) FROM discussion_comments WHERE task_id=$task_id")" = "0"
+test "$(db "SELECT COUNT(*) FROM domain_events WHERE task_id=$task_id AND event_type='task.deleted'")" = "1"
 
 curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/projects/$project_id/settings" > /tmp/discussion-project-final.html
 project_csrf=$(csrf_from /tmp/discussion-project-final.html)
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$project_csrf"   "$BASE_URL/projects/$project_id/delete")
 test "$code" = "302"
 test "$(db "SELECT COUNT(*) FROM discussion_comments WHERE project_id=$project_id")" = "0"
+test "$(db "SELECT COUNT(*) FROM domain_events WHERE project_id=$project_id AND event_type='project.deleted'")" = "1"
