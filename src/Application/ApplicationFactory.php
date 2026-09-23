@@ -184,8 +184,6 @@ final class ApplicationFactory
         $tasks = new TaskRepository($db);
         $activity = new ActivityRepository($db);
         $domainEvents = new DomainEventRepository($db);
-        $eventBus = new DomainEventBus($domainEvents, [new ActivityEventConsumer($activity)]);
-        $eventPublisher = new DomainEventPublisher($db, $eventBus, $appTimezone);
         $checklists = new ChecklistRepository($db);
         $savedViews = new SavedViewRepository($db);
         $savedViewQuery = new SavedViewQuery();
@@ -257,6 +255,21 @@ final class ApplicationFactory
             $translator,
             $appUrl,
         );
+        $taskEventNotifications = new TaskEventNotificationConsumer(
+            $tasks,
+            $internalNotifications,
+            $notificationSettings,
+            $emailSender,
+            $telegramSender,
+            $translator,
+            $appUrl,
+        );
+        $eventBus = new DomainEventBus($domainEvents, [
+            new ActivityEventConsumer($activity),
+            $discussionNotificationService,
+            $taskEventNotifications,
+        ]);
+        $eventPublisher = new DomainEventPublisher($db, $eventBus, $appTimezone);
         $passwordRecovery = new PasswordRecoveryService(
             $users,
             $resetTokens,
@@ -319,7 +332,6 @@ final class ApplicationFactory
         $discussionController = new DiscussionController(
             $sessions,
             $discussions,
-            $discussionNotificationService,
             $eventPublisher,
             $descriptionSanitizer,
             $translator,
