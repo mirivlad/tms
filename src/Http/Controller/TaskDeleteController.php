@@ -6,6 +6,7 @@ namespace Tms\Http\Controller;
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
+use Tms\Application\DomainEventPublisher;
 use Tms\Domain\Attachment\AttachmentRepository;
 use Tms\Domain\Task\TaskRepository;
 use Tms\Infrastructure\AttachmentStorage;
@@ -16,6 +17,7 @@ final class TaskDeleteController
     public function __construct(
         private readonly SessionManager $sessions,
         private readonly TaskRepository $tasks,
+        private readonly DomainEventPublisher $events,
         private readonly AttachmentRepository $attachments,
         private readonly AttachmentStorage $storage,
     ) {
@@ -30,7 +32,8 @@ final class TaskDeleteController
         $userId = $this->sessions->currentUserId() ?? 0;
         $rawTaskId = $args['id'] ?? '';
         $taskId = ctype_digit($rawTaskId) ? (int) $rawTaskId : 0;
-        if ($taskId < 1 || $this->tasks->findForUser($userId, $taskId) === null) {
+        $task = $taskId < 1 ? null : $this->tasks->findForUser($userId, $taskId);
+        if ($task === null) {
             return $response->withHeader('Location', '/tasks')->withStatus(302);
         }
 
@@ -38,6 +41,7 @@ final class TaskDeleteController
         if (!$this->tasks->deleteForUser($userId, $taskId)) {
             return $response->withHeader('Location', '/tasks')->withStatus(302);
         }
+        $this->events->taskEvent($userId, $task, 'task.deleted');
 
         foreach ($stored as $attachment) {
             if (!$this->storage->delete($attachment->storageName)) {
