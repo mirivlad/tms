@@ -82,3 +82,4 @@ Recurring task generation publishes the ordinary `task.created` event for the ge
 5. An event is written to the durable journal before synchronous consumers run.
 6. Activity history is a consumer of task/project events; it is not the event source. Deletion events remain journal-only because their subjects no longer exist for history navigation.
 7. Notification and webhook stages must consume this contract rather than reconstructing events from UI/controller state.
+8. Webhook delivery wraps this envelope in protocol metadata but does not reinterpret the event. Delivery signing/retry behavior is documented in [webhooks.md](webhooks.md).
