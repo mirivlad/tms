@@ -100,11 +100,15 @@ final class CalendarController
             $withoutProject,
         );
 
-        $tasksByDay = [];
+        $rangeStart = $gridStart->format('Y-m-d H:i:s');
+        $rangeEnd = $gridEnd->format('Y-m-d H:i:s');
+        $eventsByDay = [];
         foreach ($tasks as $task) {
-            $date = $this->displayDate($task);
-            $tasksByDay[$date] ??= [];
-            $tasksByDay[$date][] = $task;
+            foreach ($this->calendarEvents($task, $mode, $rangeStart, $rangeEnd) as $event) {
+                $date = substr($event['timestamp'], 0, 10);
+                $eventsByDay[$date] ??= [];
+                $eventsByDay[$date][] = $event;
+            }
         }
 
         $days = [];
@@ -117,7 +121,8 @@ final class CalendarController
                 'day' => (int) $date->format('j'),
                 'current_month' => $date->format('Y-m') === $month,
                 'today' => $dateKey === $today,
-                'tasks' => $tasksByDay[$dateKey] ?? [],
+                'events' => $eventsByDay[$dateKey] ?? [],
+                'task_query' => $this->taskListDayQuery($dateKey, $mode, $projectFilter),
             ];
         }
 
@@ -165,16 +170,73 @@ final class CalendarController
 
     private function mode(mixed $value): string
     {
-        if (!is_string($value) || !in_array($value, ['deadlines_only', 'no_deadlines', 'all'], true)) {
+        if ($value === 'no_deadlines') {
+            return 'no_dates';
+        }
+        if (!is_string($value) || !in_array($value, ['planned_only', 'deadlines_only', 'no_dates', 'all'], true)) {
             return 'deadlines_only';
         }
         return $value;
     }
 
-    private function displayDate(TaskRecord $task): string
+    /**
+     * @return list<array{task:TaskRecord,kind:string,timestamp:string}>
+     */
+    private function calendarEvents(TaskRecord $task, string $mode, string $rangeStart, string $rangeEnd): array
     {
-        $value = $task->deadline ?? $task->createdAt;
-        return substr($value, 0, 10);
+        $inRange = static fn (?string $value): bool => $value !== null && $value >= $rangeStart && $value < $rangeEnd;
+        $events = [];
+
+        if ($mode === 'planned_only') {
+            if ($inRange($task->scheduledAt)) {
+                $events[] = ['task' => $task, 'kind' => 'planned', 'timestamp' => (string) $task->scheduledAt];
+            }
+            return $events;
+        }
+
+        if ($mode === 'deadlines_only') {
+            if ($inRange($task->deadline)) {
+                $events[] = ['task' => $task, 'kind' => 'deadline', 'timestamp' => (string) $task->deadline];
+            }
+            return $events;
+        }
+
+        if ($mode === 'no_dates') {
+            if ($task->scheduledAt === null && $task->deadline === null && $inRange($task->createdAt)) {
+                $events[] = ['task' => $task, 'kind' => 'created', 'timestamp' => $task->createdAt];
+            }
+            return $events;
+        }
+
+        if ($task->scheduledAt !== null && $task->deadline !== null && $task->scheduledAt === $task->deadline && $inRange($task->scheduledAt)) {
+            return [['task' => $task, 'kind' => 'planned_deadline', 'timestamp' => $task->scheduledAt]];
+        }
+        if ($inRange($task->scheduledAt)) {
+            $events[] = ['task' => $task, 'kind' => 'planned', 'timestamp' => (string) $task->scheduledAt];
+        }
+        if ($inRange($task->deadline)) {
+            $events[] = ['task' => $task, 'kind' => 'deadline', 'timestamp' => (string) $task->deadline];
+        }
+        if ($task->scheduledAt === null && $task->deadline === null && $inRange($task->createdAt)) {
+            $events[] = ['task' => $task, 'kind' => 'created', 'timestamp' => $task->createdAt];
+        }
+        return $events;
+    }
+
+    private function taskListDayQuery(string $date, string $mode, string $projectFilter): string
+    {
+        $params = [];
+        if ($mode === 'planned_only') {
+            $params['scheduled_from'] = $date;
+            $params['scheduled_to'] = $date;
+        } elseif ($mode === 'deadlines_only') {
+            $params['deadline_from'] = $date;
+            $params['deadline_to'] = $date;
+        }
+        if ($projectFilter !== 'none') {
+            $params['project'] = $projectFilter;
+        }
+        return http_build_query($params, '', '&', PHP_QUERY_RFC3986);
     }
 
     /** @param array<string, mixed> $query */
