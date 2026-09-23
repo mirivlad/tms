@@ -88,6 +88,17 @@ jobs:
           grep -Fq 'linux/arm64' <<< "$manifest"
           docker pull "$IMAGE"
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: docs/handbook-requirements.txt
+
+      - name: Build release handbooks
+        run: |
+          python3 -m pip install -r docs/handbook-requirements.txt
+          python3 scripts/build-handbooks.py --output build/handbooks
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -155,8 +166,19 @@ jobs:
           )
 
           printf '%s\n' "$notes" > /tmp/release-notes.md
+          assets=(
+            build/handbooks/user-handbook-en.html
+            build/handbooks/user-handbook-en.pdf
+            build/handbooks/user-handbook-ru.html
+            build/handbooks/user-handbook-ru.pdf
+            build/handbooks/admin-handbook-en.html
+            build/handbooks/admin-handbook-en.pdf
+            build/handbooks/admin-handbook-ru.html
+            build/handbooks/admin-handbook-ru.pdf
+          )
           args=(
             "$TAG"
+            "${assets[@]}"
             --target "$GITHUB_SHA"
             --title "TMS $TAG"
             --notes-file /tmp/release-notes.md
