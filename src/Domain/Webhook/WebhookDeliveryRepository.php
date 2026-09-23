@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Tms\Domain\Webhook;
 
 use PDO;
-use Tms\Domain\Event\DomainEvent;
 
 final class WebhookDeliveryRepository
 {
@@ -26,13 +25,13 @@ final class WebhookDeliveryRepository
         }
 
         $stmt = $this->db->prepare(
-            'INSERT INTO webhook_deliveries (
+            "INSERT INTO webhook_deliveries (
                 subscription_id, event_id, status, attempt_count, next_attempt_at,
                 created_at, updated_at
              ) VALUES (
                 :subscription_id, :event_id, 'pending', 0, CURRENT_TIMESTAMP,
                 CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
-             )'
+             )"
         );
         $stmt->execute(['subscription_id' => $subscriptionId, 'event_id' => $eventId]);
         return true;
@@ -43,7 +42,7 @@ final class WebhookDeliveryRepository
     {
         $limit = max(1, min(200, $limit));
         $stmt = $this->db->prepare(
-            'SELECT id, subscription_id, event_id, status, attempt_count,
+            "SELECT id, subscription_id, event_id, status, attempt_count,
                     next_attempt_at, last_attempt_at, response_status, last_error,
                     delivered_at, created_at, updated_at
              FROM webhook_deliveries
@@ -51,7 +50,7 @@ final class WebhookDeliveryRepository
                AND next_attempt_at IS NOT NULL
                AND next_attempt_at <= :now_at
              ORDER BY next_attempt_at ASC, id ASC
-             LIMIT ' . $limit
+             LIMIT " . $limit
         );
         $stmt->execute(['now_at' => $now]);
         return $this->fetchAll($stmt);
@@ -60,7 +59,7 @@ final class WebhookDeliveryRepository
     public function markSucceeded(int $id, int $attemptCount, int $responseStatus, string $now): void
     {
         $stmt = $this->db->prepare(
-            'UPDATE webhook_deliveries
+            "UPDATE webhook_deliveries
              SET status = 'succeeded',
                  attempt_count = :attempt_count,
                  next_attempt_at = NULL,
@@ -69,7 +68,7 @@ final class WebhookDeliveryRepository
                  last_error = NULL,
                  delivered_at = :delivered_at,
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = :id'
+             WHERE id = :id"
         );
         $stmt->execute([
             'id' => $id,
@@ -89,7 +88,7 @@ final class WebhookDeliveryRepository
         string $now,
     ): void {
         $stmt = $this->db->prepare(
-            'UPDATE webhook_deliveries
+            "UPDATE webhook_deliveries
              SET status = 'retry',
                  attempt_count = :attempt_count,
                  next_attempt_at = :next_attempt_at,
@@ -97,7 +96,7 @@ final class WebhookDeliveryRepository
                  response_status = :response_status,
                  last_error = :last_error,
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = :id'
+             WHERE id = :id"
         );
         $stmt->execute([
             'id' => $id,
@@ -117,7 +116,7 @@ final class WebhookDeliveryRepository
         string $now,
     ): void {
         $stmt = $this->db->prepare(
-            'UPDATE webhook_deliveries
+            "UPDATE webhook_deliveries
              SET status = 'failed',
                  attempt_count = :attempt_count,
                  next_attempt_at = NULL,
@@ -125,7 +124,7 @@ final class WebhookDeliveryRepository
                  response_status = :response_status,
                  last_error = :last_error,
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = :id'
+             WHERE id = :id"
         );
         $stmt->execute([
             'id' => $id,
@@ -150,7 +149,7 @@ final class WebhookDeliveryRepository
     public function retry(int $id): bool
     {
         $stmt = $this->db->prepare(
-            'UPDATE webhook_deliveries
+            "UPDATE webhook_deliveries
              SET status = 'pending',
                  attempt_count = 0,
                  next_attempt_at = CURRENT_TIMESTAMP,
@@ -159,7 +158,7 @@ final class WebhookDeliveryRepository
                  last_error = NULL,
                  delivered_at = NULL,
                  updated_at = CURRENT_TIMESTAMP
-             WHERE id = :id AND status = 'failed''
+             WHERE id = :id AND status = 'failed'"
         );
         $stmt->execute(['id' => $id]);
         return $stmt->rowCount() === 1;
