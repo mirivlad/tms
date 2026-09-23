@@ -17,6 +17,8 @@ return [
     'notifications.context_unavailable' => 'That work context is no longer available to you.',
     'notifications.discussion_mention' => '{actor} mentioned you in {context}',
     'notifications.discussion_reply' => '{actor} replied to you in {context}',
+    'notifications.inbox.discussion_mention' => '{actor} mentioned you in {context}',
+    'notifications.inbox.discussion_reply' => '{actor} replied to you in {context}',
     'notifications.collaboration_subject' => 'TMS: {context}',
     'notifications.collaboration_open' => 'Open in TMS',
     'validation.admin_required' => 'Administrator access is required.',
