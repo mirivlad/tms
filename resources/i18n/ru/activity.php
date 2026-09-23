@@ -23,6 +23,7 @@ return [
     'activity.field.customer' => 'Заказчик',
     'activity.field.project' => 'Проект',
     'activity.field.assignee' => 'Ответственный',
+    'activity.field.scheduled_at' => 'Запланировано на',
     'activity.field.deadline' => 'Срок',
     'activity.field.lifecycle_status' => 'Состояние проекта',
     'activity.field.owner' => 'Владелец',
