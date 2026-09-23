@@ -8,7 +8,11 @@ use PDO;
 use PHPUnit\Framework\TestCase;
 use Slim\Psr7\Factory\ResponseFactory;
 use Slim\Psr7\Factory\ServerRequestFactory;
+use Tms\Application\ActivityEventConsumer;
+use Tms\Application\DomainEventBus;
+use Tms\Application\DomainEventPublisher;
 use Tms\Domain\Activity\ActivityRepository;
+use Tms\Domain\Event\DomainEventRepository;
 use Tms\Domain\Task\TaskRepository;
 use Tms\Http\Controller\TaskStatusController;
 use Tms\I18n\Translator;
@@ -29,8 +33,24 @@ final class TaskStatusControllerTest extends TestCase
             id INTEGER PRIMARY KEY,
             username TEXT NOT NULL
         )');
+        $this->db->exec('CREATE TABLE domain_events (
+            event_id TEXT PRIMARY KEY,
+            event_type TEXT NOT NULL,
+            schema_version INTEGER NOT NULL,
+            actor_user_id INTEGER NULL,
+            actor_username TEXT NOT NULL,
+            task_id INTEGER NULL,
+            project_id INTEGER NULL,
+            comment_id INTEGER NULL,
+            visibility_user_id INTEGER NULL,
+            visibility_team_id INTEGER NULL,
+            payload_json TEXT NOT NULL,
+            occurred_at TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )');
         $this->db->exec('CREATE TABLE activity_events (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_event_id TEXT NULL UNIQUE,
             actor_user_id INTEGER NULL,
             actor_username TEXT NOT NULL,
             event_type TEXT NOT NULL,
@@ -100,10 +120,19 @@ final class TaskStatusControllerTest extends TestCase
             }
         };
         $sessions = new SessionManager($regenerator);
+        $activity = new ActivityRepository($this->db);
+        $events = new DomainEventPublisher(
+            $this->db,
+            new DomainEventBus(
+                new DomainEventRepository($this->db),
+                [new ActivityEventConsumer($activity)],
+            ),
+            'UTC',
+        );
         $this->controller = new TaskStatusController(
             $sessions,
             new TaskRepository($this->db),
-            new ActivityRepository($this->db),
+            $events,
             new Translator(dirname(__DIR__, 2) . '/resources/i18n', 'en'),
         );
     }
@@ -159,6 +188,9 @@ final class TaskStatusControllerTest extends TestCase
         self::assertSame(302, $response->getStatusCode());
         self::assertSame('/board', $response->getHeaderLine('Location'));
         self::assertSame(11, $this->statusOf(100));
+        self::assertSame(1, (int) $this->db->query(
+            "SELECT COUNT(*) FROM domain_events WHERE task_id=100 AND event_type='task.updated'"
+        )->fetchColumn());
     }
 
     private function statusOf(int $taskId): int
