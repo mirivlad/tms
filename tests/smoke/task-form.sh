@@ -13,6 +13,7 @@ grep -q 'data-rich-editor' /tmp/task-form-parity.html
 grep -q '/assets/task-form.css' /tmp/task-form-parity.html
 grep -q '/assets/task-form.js' /tmp/task-form-parity.html
 grep -q 'data-customer-autocomplete' /tmp/task-form-parity.html
+grep -q 'name="scheduled_at"' /tmp/task-form-parity.html
 csrf=$(sed -n 's/.*name="_csrf" value="\([^"]*\)".*/\1/p' /tmp/task-form-parity.html | head -n1)
 default_status=$(sed -n 's/.*<option value="\([0-9][0-9]*\)" selected>.*/\1/p' /tmp/task-form-parity.html | head -n1)
 test -n "$csrf"
@@ -43,6 +44,8 @@ create_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
   --data-urlencode 'title=CI rich task' \
   --data-urlencode "description=$malicious" \
   --data-urlencode "status_id=$default_status" \
+  --data-urlencode 'scheduled_at=2026-09-24T09:30' \
+  --data-urlencode 'deadline=2026-09-25T17:00' \
   --data-urlencode 'priority=medium' \
   --data-urlencode 'customer=Shared Lookup Own' \
   "$base_url/tasks")
@@ -51,6 +54,8 @@ test "$create_status" = "302"
 rich_id=$(db "SELECT id FROM tasks WHERE created_by=$admin_id AND title='CI rich task' LIMIT 1")
 test -n "$rich_id"
 rich_description=$(db "SELECT description FROM tasks WHERE id=$rich_id")
+test "$(db "SELECT DATE_FORMAT(scheduled_at,'%Y-%m-%d %H:%i:%s') FROM tasks WHERE id=$rich_id")" = "2026-09-24 09:30:00"
+test "$(db "SELECT DATE_FORMAT(deadline,'%Y-%m-%d %H:%i:%s') FROM tasks WHERE id=$rich_id")" = "2026-09-25 17:00:00"
 printf '%s' "$rich_description" | grep -q '<strong>world</strong>'
 printf '%s' "$rich_description" | grep -q 'href="https://example.com/path"'
 for forbidden in '<script' '<img' 'onerror' 'javascript:'; do
@@ -73,11 +78,15 @@ update_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
   --data-urlencode 'title=CI rich task updated' \
   --data-urlencode 'description=<p onclick="alert(9)">Edited <em>safe</em></p>' \
   --data-urlencode "status_id=$default_status" \
+  --data-urlencode 'scheduled_at=2026-09-24T11:00' \
+  --data-urlencode 'deadline=2026-09-26T17:30' \
   --data-urlencode 'priority=high' \
   --data-urlencode 'customer=Shared Lookup Own' \
   "$base_url/tasks/$rich_id")
 test "$update_status" = "302"
 updated_description=$(db "SELECT description FROM tasks WHERE id=$rich_id")
+test "$(db "SELECT DATE_FORMAT(scheduled_at,'%Y-%m-%d %H:%i:%s') FROM tasks WHERE id=$rich_id")" = "2026-09-24 11:00:00"
+test "$(db "SELECT DATE_FORMAT(deadline,'%Y-%m-%d %H:%i:%s') FROM tasks WHERE id=$rich_id")" = "2026-09-26 17:30:00"
 printf '%s' "$updated_description" | grep -q '<em>safe</em>'
 if printf '%s' "$updated_description" | grep -qi 'onclick'; then
   echo "Event handler survived task update sanitization." >&2
@@ -101,6 +110,7 @@ quick_status=$(curl --silent --output /tmp/quick-add.json --write-out '%{http_co
   --header 'Accept: application/json' \
   --data-urlencode "_csrf=$quick_csrf" \
   --data-urlencode 'title=CI quick task' \
+  --data-urlencode 'scheduled_at=2026-09-27T08:45' \
   --data-urlencode 'description=Quick <script>alert(7)</script> note' \
   "$base_url/tasks/quick-add")
 test "$quick_status" = "201"
@@ -109,6 +119,7 @@ quick_id=$(db "SELECT id FROM tasks WHERE created_by=$admin_id AND title='CI qui
 test -n "$quick_id"
 test "$(db "SELECT priority FROM tasks WHERE id=$quick_id")" = "1"
 test "$(db "SELECT status_id FROM tasks WHERE id=$quick_id")" = "$default_status"
+test "$(db "SELECT DATE_FORMAT(scheduled_at,'%Y-%m-%d %H:%i:%s') FROM tasks WHERE id=$quick_id")" = "2026-09-27 08:45:00"
 quick_description=$(db "SELECT description FROM tasks WHERE id=$quick_id")
 if printf '%s' "$quick_description" | grep -q '<script'; then
   echo "Quick-add stored executable markup." >&2
