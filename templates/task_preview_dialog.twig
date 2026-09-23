@@ -8,6 +8,7 @@
     data-label-customer="{{ t('tasks.customer') }}"
     data-label-project="{{ t('projects.task_project') }}"
     data-label-assignee="{{ t('task_form.assignee') }}"
+    data-label-scheduled-at="{{ t('task_form.scheduled_at') }}"
     data-label-deadline="{{ t('task_form.deadline') }}"
     data-label-created="{{ t('task_preview.created') }}"
     data-label-updated="{{ t('task_preview.updated') }}"
@@ -27,6 +28,10 @@
                 <label>
                     <span>{{ t('task_form.status') }}</span>
                     <select name="status_id" data-task-preview-status required></select>
+                </label>
+                <label>
+                    <span>{{ t('task_form.scheduled_at') }}</span>
+                    <input type="datetime-local" name="scheduled_at" data-task-preview-scheduled-at>
                 </label>
                 <label>
                     <span>{{ t('task_form.deadline') }}</span>
