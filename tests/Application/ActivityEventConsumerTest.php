@@ -60,6 +60,50 @@ final class ActivityEventConsumerTest extends TestCase
         );
     }
 
+    public function testDeletionEventsRemainJournalOnly(): void
+    {
+        $db = new PDO('sqlite::memory:');
+        $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+        $db->exec('CREATE TABLE activity_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            source_event_id TEXT NULL UNIQUE,
+            actor_user_id INTEGER NULL,
+            actor_username TEXT NOT NULL,
+            event_type TEXT NOT NULL,
+            task_id INTEGER NULL,
+            project_id INTEGER NULL,
+            visibility_user_id INTEGER NULL,
+            visibility_team_id INTEGER NULL,
+            payload_json TEXT NOT NULL,
+            created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        )');
+
+        $consumer = new ActivityEventConsumer(new ActivityRepository($db));
+        foreach ([
+            ['task.deleted', 42, null],
+            ['project.deleted', null, 9],
+        ] as [$type, $taskId, $projectId]) {
+            $consumer->consume(new DomainEvent(
+                id: $type === 'task.deleted'
+                    ? '11111111-2222-4333-8444-555555555555'
+                    : 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee',
+                type: $type,
+                schemaVersion: 1,
+                actorUserId: 7,
+                actorUsername: 'alice',
+                taskId: $taskId,
+                projectId: $projectId,
+                commentId: null,
+                visibilityUserId: 7,
+                visibilityTeamId: null,
+                payload: ['subject_title' => 'Deleted subject', 'changes' => []],
+                occurredAt: '2026-09-23 12:34:56.123456',
+            ));
+        }
+
+        self::assertSame(0, (int) $db->query('SELECT COUNT(*) FROM activity_events')->fetchColumn());
+    }
+
     public function testDiscussionEventsDoNotBecomeTaskProjectActivityRows(): void
     {
         $db = new PDO('sqlite::memory:');
