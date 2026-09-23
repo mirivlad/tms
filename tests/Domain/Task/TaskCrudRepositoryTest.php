@@ -52,6 +52,7 @@ final class TaskCrudRepositoryTest extends TestCase
             title TEXT NOT NULL,
             description TEXT NOT NULL DEFAULT "",
             deadline TEXT NULL,
+            scheduled_at TEXT NULL,
             status_id INTEGER NULL,
             type_id INTEGER NULL,
             priority INTEGER NOT NULL DEFAULT 0,
@@ -96,6 +97,58 @@ final class TaskCrudRepositoryTest extends TestCase
         self::assertTrue($this->tasks->updateForUser(1, $id, 'Renamed', 'Updated', null, 11, null, 3, null));
         self::assertSame('Renamed', $this->tasks->findForUser(1, $id)?->title);
         self::assertSame(11, $this->tasks->findForUser(1, $id)?->statusId);
+    }
+
+    public function testPlannedTimePersistsAcrossCreateFullUpdateQuickUpdateAndFiltering(): void
+    {
+        $id = $this->tasks->createForUser(
+            1,
+            'Planned task',
+            '',
+            '2026-10-05 17:00:00',
+            10,
+            null,
+            1,
+            null,
+            null,
+            null,
+            '2026-10-03 09:30:00',
+        );
+
+        self::assertSame('2026-10-03 09:30:00', $this->tasks->findForUser(1, $id)?->scheduledAt);
+
+        self::assertTrue($this->tasks->updateForUser(
+            1,
+            $id,
+            'Planned task',
+            '',
+            '2026-10-06 17:00:00',
+            10,
+            null,
+            1,
+            null,
+            null,
+            null,
+            '2026-10-04 10:00:00',
+        ));
+        self::assertSame('2026-10-04 10:00:00', $this->tasks->findForUser(1, $id)?->scheduledAt);
+
+        self::assertTrue($this->tasks->quickUpdateForUser(
+            1,
+            $id,
+            '',
+            '2026-10-06 17:00:00',
+            10,
+            '2026-10-04 11:15:00',
+        ));
+        self::assertSame('2026-10-04 11:15:00', $this->tasks->findForUser(1, $id)?->scheduledAt);
+
+        $results = $this->tasks->listFilteredForUser(
+            1,
+            scheduledFrom: '2026-10-04',
+            scheduledTo: '2026-10-04',
+        );
+        self::assertSame([$id], array_map(static fn ($task): int => $task->id, $results));
     }
 
     public function testProjectAssignmentIsOwnedOptionalAndFilterable(): void
