@@ -4,8 +4,12 @@
 declare(strict_types=1);
 
 use Dotenv\Dotenv;
+use Tms\Application\ActivityEventConsumer;
+use Tms\Application\DomainEventBus;
+use Tms\Application\DomainEventPublisher;
 use Tms\Application\RecurringTaskRunner;
 use Tms\Domain\Activity\ActivityRepository;
+use Tms\Domain\Event\DomainEventRepository;
 use Tms\Domain\Checklist\ChecklistRepository;
 use Tms\Domain\CustomField\TaskCustomFieldValueRepository;
 use Tms\Domain\Project\ProjectStatusRepository;
@@ -47,6 +51,16 @@ try {
     $offset = (new DateTimeImmutable('now', new DateTimeZone($appTimezone)))->format('P');
     $db->exec('SET time_zone = ' . $db->quote($offset));
 
+    $activity = new ActivityRepository($db);
+    $eventPublisher = new DomainEventPublisher(
+        $db,
+        new DomainEventBus(
+            new DomainEventRepository($db),
+            [new ActivityEventConsumer($activity)],
+        ),
+        $appTimezone,
+    );
+
     $runner = new RecurringTaskRunner(
         $db,
         new TaskRecurrenceRepository($db),
@@ -56,7 +70,8 @@ try {
         new ProjectStatusRepository($db),
         new ChecklistRepository($db),
         new TaskCustomFieldValueRepository($db),
-        new ActivityRepository($db),
+        $eventPublisher,
+        $activity,
         $appTimezone,
     );
     $stats = $runner->run();
