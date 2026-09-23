@@ -40,17 +40,18 @@
                     <article class="calendar-day {{ day.current_month ? '' : 'outside-month' }} {{ day.today ? 'today' : '' }}">
                         <header class="calendar-day-number"><button class="calendar-day-add" type="button" data-calendar-add data-date="{{ day.date }}" title="{{ t('calendar.add_task_on', {'date': day.date}) }}" aria-label="{{ t('calendar.add_task_on', {'date': day.date}) }}">+</button><time datetime="{{ day.date }}">{{ day.day }}</time></header>
                         <div class="calendar-task-list">
-                            {% for task in day.tasks|slice(0, 3) %}
-                                <a class="calendar-task priority-border-{{ task.priority }}" href="/tasks/{{ task.id }}/edit" data-task-preview="{{ task.id }}" title="{{ task.title }}">
+                            {% for event in day.events|slice(0, 3) %}
+                                {% set task = event.task %}
+                                <a class="calendar-task calendar-event-{{ event.kind }} priority-border-{{ task.priority }}" href="/tasks/{{ task.id }}/edit" data-task-preview="{{ task.id }}" title="{{ task.title }}">
                                     <span class="status-dot" style="--status-color: {{ status_map[task.statusId].color|default('var(--status-neutral)') }}"></span>
                                     <span class="calendar-task-text">
                                         <strong>{{ task.title }}</strong>
-                                        <small>{% if task.deadline %}{{ task.deadline|date('H:i') }}{% else %}{{ t('calendar.created') }}{% endif %} · {{ priority_labels[task.priority]|default(t('priority.medium')) }}</small>
+                                        <small>{{ event.timestamp|date('H:i') }} · {{ t('calendar.event.' ~ event.kind) }} · {{ priority_labels[task.priority]|default(t('priority.medium')) }}</small>
                                     </span>
                                 </a>
                             {% endfor %}
-                            {% if day.tasks|length > 3 %}
-                                <a class="calendar-more" href="/tasks?deadline_from={{ day.date }}&deadline_to={{ day.date }}{% if filters.project != 'none' %}&amp;project={{ filters.project }}{% endif %}">{{ tp('calendar.more_tasks', day.tasks|length - 3) }}</a>
+                            {% if day.events|length > 3 %}
+                                <a class="calendar-more" href="/tasks{% if day.task_query %}?{{ day.task_query }}{% endif %}">{{ tp('calendar.more_events', day.events|length - 3) }}</a>
                             {% endif %}
                         </div>
                     </article>
@@ -66,8 +67,9 @@
             <div class="calendar-filter-heading"><strong>{{ t('calendar.filters') }}</strong><a class="text-link" href="/calendar?month={{ month }}">{{ t('common.reset') }}</a></div>
             <label>{{ t('calendar.show') }}
                 <select name="mode">
+                    <option value="planned_only" {{ filters.mode == 'planned_only' ? 'selected' : '' }}>{{ t('calendar.mode.planned') }}</option>
                     <option value="deadlines_only" {{ filters.mode == 'deadlines_only' ? 'selected' : '' }}>{{ t('calendar.mode.deadlines') }}</option>
-                    <option value="no_deadlines" {{ filters.mode == 'no_deadlines' ? 'selected' : '' }}>{{ t('calendar.mode.no_deadline') }}</option>
+                    <option value="no_dates" {{ filters.mode == 'no_dates' ? 'selected' : '' }}>{{ t('calendar.mode.no_dates') }}</option>
                     <option value="all" {{ filters.mode == 'all' ? 'selected' : '' }}>{{ t('calendar.mode.all') }}</option>
                 </select>
             </label>
