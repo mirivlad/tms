@@ -37,11 +37,8 @@
                     <a class="notification-inbox-link" href="/notifications/{{ notification.id }}/open">
                         <div class="notification-inbox-heading">
                             <strong>
-                                {% if notification.notificationType == 'discussion_reply' %}
-                                    {{ t('notifications.discussion_reply', {'actor': notification.actorUsername, 'context': notification.contextLabel}) }}
-                                {% else %}
-                                    {{ t('notifications.discussion_mention', {'actor': notification.actorUsername, 'context': notification.contextLabel}) }}
-                                {% endif %}
+                                {% set notification_key = 'notifications.inbox.' ~ notification.notificationType %}
+                                {{ t(notification_key, {'actor': notification.actorUsername, 'context': notification.contextLabel}) }}
                             </strong>
                             {% if notification.isUnread %}<span class="notification-unread-dot" aria-label="{{ t('notifications.unread') }}"></span>{% endif %}
                         </div>

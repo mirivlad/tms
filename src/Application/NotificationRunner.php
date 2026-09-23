@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tms\Application;
 
 use DateTimeImmutable;
+use Tms\Domain\Notification\InternalNotificationRepository;
 use Tms\Domain\Notification\NotificationSettingsRecord;
 use Tms\Domain\Notification\NotificationSettingsRepository;
 use Tms\Domain\Notification\NotificationTaskRepository;
@@ -18,6 +19,7 @@ final class NotificationRunner
     public function __construct(
         private readonly NotificationSettingsRepository $settings,
         private readonly NotificationTaskRepository $tasks,
+        private readonly InternalNotificationRepository $internal,
         private readonly SentNotificationRepository $sent,
         private readonly EmailSender $email,
         private readonly TelegramSender $telegram,
@@ -114,6 +116,26 @@ final class NotificationRunner
                         $task['id'],
                     );
                 }
+
+                $planned = $this->tasks->scheduledBetween(
+                    $settings->userId,
+                    $this->sql($now),
+                    $this->sql($now->modify('+' . $lead . ' minutes')),
+                    $priority,
+                );
+                foreach ($planned as $task) {
+                    $key = 'planned-upcoming:' . $priority . ':' . $task['id'] . ':' . $task['deadline'];
+                    $this->deliverBatch(
+                        $settings,
+                        'planned_upcoming',
+                        $key,
+                        $this->translator->trans('notifications.message.planned_upcoming'),
+                        [$task],
+                        $stats,
+                        false,
+                        $task['id'],
+                    );
+                }
             }
         }
     }
@@ -137,6 +159,19 @@ final class NotificationRunner
         }
         $text = $this->renderText($subject, $tasks);
         $html = $this->renderHtml($subject, $tasks);
+        $contextLabel = count($tasks) === 1 ? $tasks[0]['title'] : $subject;
+        $targetUrl = $taskId !== null ? '/tasks/' . $taskId . '/edit' : '/tasks';
+        $this->internal->create(
+            userId: $settings->userId,
+            actorUserId: null,
+            actorUsername: $this->translator->trans('notifications.system_actor'),
+            notificationType: 'reminder_' . $type,
+            contextLabel: $contextLabel,
+            bodyPreview: $this->preview($tasks),
+            targetUrl: $targetUrl,
+            dedupeKey: hash('sha256', 'reminder:' . $dedupeKey . ':' . $settings->userId),
+            taskId: $taskId,
+        );
 
         if ($settings->emailEnabled && !$this->sent->wasSent($settings->userId, 'email', $dedupeKey)) {
             $stats['attempted']++;
@@ -202,6 +237,25 @@ final class NotificationRunner
                 . '</a> — ' . htmlspecialchars($task['deadline'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '</li>';
         }
         return $html . '</ul>';
+    }
+
+    /** @param list<array{id:int,title:string,deadline:string,priority:int}> $tasks */
+    private function preview(array $tasks): string
+    {
+        if ($tasks === []) {
+            return $this->translator->trans('notifications.message.none');
+        }
+
+        $parts = [];
+        foreach (array_slice($tasks, 0, 3) as $task) {
+            $parts[] = $task['title'] . ' — ' . $task['deadline'];
+        }
+        if (count($tasks) > 3) {
+            $parts[] = '…';
+        }
+
+        $preview = implode(' · ', $parts);
+        return mb_strlen($preview) <= 240 ? $preview : rtrim(mb_substr($preview, 0, 237)) . '…';
     }
 
     private function sql(DateTimeImmutable $dateTime): string

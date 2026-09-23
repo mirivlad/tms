@@ -6,6 +6,7 @@ declare(strict_types=1);
 use Dotenv\Dotenv;
 use GuzzleHttp\Client;
 use Tms\Application\NotificationRunner;
+use Tms\Domain\Notification\InternalNotificationRepository;
 use Tms\Domain\Notification\NotificationSettingsRepository;
 use Tms\Domain\Notification\NotificationTaskRepository;
 use Tms\Domain\Notification\SentNotificationRepository;
@@ -74,6 +75,7 @@ try {
     $runner = new NotificationRunner(
         new NotificationSettingsRepository($db),
         new NotificationTaskRepository($db),
+        new InternalNotificationRepository($db),
         new SentNotificationRepository($db),
         new SmtpEmailSender($smtp, $secretBox),
         new TelegramBotSender(new Client(), $telegramConfiguration),

@@ -7,7 +7,6 @@ namespace Tms\Http\Controller;
 use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Tms\Application\DiscussionNotificationService;
 use Tms\Application\DomainEventPublisher;
 use Tms\Domain\Discussion\DiscussionRepository;
 use Tms\I18n\Translator;
@@ -19,7 +18,6 @@ final class DiscussionController
     public function __construct(
         private readonly SessionManager $sessions,
         private readonly DiscussionRepository $discussions,
-        private readonly DiscussionNotificationService $notifications,
         private readonly DomainEventPublisher $events,
         private readonly TaskDescriptionSanitizer $sanitizer,
         private readonly Translator $translator,
@@ -179,7 +177,6 @@ final class DiscussionController
                 if ($context !== null) {
                     $this->events->discussionComment($userId, 'discussion.comment.created', $context);
                 }
-                $this->processNotifications($userId, $commentId);
             }
             $this->notice('success', 'discussions.saved');
         } catch (DomainException $error) {
@@ -213,7 +210,6 @@ final class DiscussionController
                 if ($context !== null) {
                     $this->events->discussionComment($userId, 'discussion.comment.updated', $context);
                 }
-                $this->processNotifications($userId, $commentId);
             }
             $this->notice($updated ? 'success' : 'error', $updated ? 'discussions.saved' : 'discussions.unavailable');
         } catch (DomainException $error) {
@@ -243,15 +239,6 @@ final class DiscussionController
 
         $this->notice($deleted ? 'success' : 'error', $deleted ? 'discussions.deleted' : 'discussions.unavailable');
         return $this->redirect($response, $projectId, $taskId);
-    }
-
-    private function processNotifications(int $userId, int $commentId): void
-    {
-        try {
-            $this->notifications->processComment($userId, $commentId);
-        } catch (\Throwable $error) {
-            error_log('TMS discussion notification processing failed: ' . $error->getMessage());
-        }
     }
 
     private function errorKey(DomainException $error): string

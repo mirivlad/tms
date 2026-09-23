@@ -38,7 +38,13 @@ final class DomainEventPublisher
             commentId: null,
             visibilityUserId: $visibilityUserId,
             visibilityTeamId: $visibilityTeamId,
-            payload: ['subject_title' => $task->title, 'changes' => []],
+            payload: [
+                'subject_title' => $task->title,
+                'changes' => [],
+                'owner_user_id' => $task->ownerId,
+                'assignee_user_id' => $task->assigneeUserId,
+                'previous_assignee_user_id' => null,
+            ],
         );
     }
 
@@ -57,6 +63,10 @@ final class DomainEventPublisher
             $changes = $this->redactPreviousContext($changes);
         }
 
+        $previousAssigneeUserId = $beforeVisibility === $afterVisibility
+            ? $before->assigneeUserId
+            : null;
+
         [$visibilityUserId, $visibilityTeamId] = $afterVisibility;
         return $this->publish(
             actorUserId: $actorUserId,
@@ -66,7 +76,13 @@ final class DomainEventPublisher
             commentId: null,
             visibilityUserId: $visibilityUserId,
             visibilityTeamId: $visibilityTeamId,
-            payload: ['subject_title' => $after->title, 'changes' => $changes],
+            payload: [
+                'subject_title' => $after->title,
+                'changes' => $changes,
+                'owner_user_id' => $after->ownerId,
+                'assignee_user_id' => $after->assigneeUserId,
+                'previous_assignee_user_id' => $previousAssigneeUserId,
+            ],
         );
     }
 
@@ -87,7 +103,13 @@ final class DomainEventPublisher
             commentId: null,
             visibilityUserId: $visibilityUserId,
             visibilityTeamId: $visibilityTeamId,
-            payload: ['subject_title' => $task->title, 'changes' => $changes],
+            payload: [
+                'subject_title' => $task->title,
+                'changes' => $changes,
+                'owner_user_id' => $task->ownerId,
+                'assignee_user_id' => $task->assigneeUserId,
+                'previous_assignee_user_id' => $task->assigneeUserId,
+            ],
         );
     }
 

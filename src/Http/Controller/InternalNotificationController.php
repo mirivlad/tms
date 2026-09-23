@@ -71,6 +71,9 @@ final class InternalNotificationController
         ?int $projectId,
         ?int $taskId,
     ): bool {
+        if ($targetUrl === '/tasks' || $targetUrl === '/calendar') {
+            return true;
+        }
         if (str_starts_with($targetUrl, '/tasks/')) {
             return $taskId !== null && $this->tasks->findForUser($userId, $taskId) !== null;
         }

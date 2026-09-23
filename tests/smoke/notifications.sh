@@ -37,6 +37,7 @@ test -n "$other_id"
 test "$(db "SELECT COUNT(*) FROM schema_migrations WHERE version='005_notifications.sql'")" = "1"
 test "$(db "SELECT COUNT(*) FROM schema_migrations WHERE version='010_telegram_system_settings.sql'")" = "1"
 test "$(db "SELECT COUNT(*) FROM schema_migrations WHERE version='011_telegram_delivery_mode.sql'")" = "1"
+test "$(db "SELECT COUNT(*) FROM schema_migrations WHERE version='20260923_003_event_notification_preferences.sql'")" = "1"
 test "$(docker compose exec -T app stat -c '%a' /var/www/html/var/secrets/notification.key)" = "600"
 docker compose exec -T app test -s /var/www/html/var/secrets/notification.key
 
@@ -50,6 +51,9 @@ printf '%s\n' "$beacon_json" | grep -Eq '"team_invitation_count":[0-9]+'
 curl --fail --silent --cookie "$admin_cookies" "$base_url/settings/notifications" > /tmp/notify-settings.html
 grep -q '>Notification settings<' /tmp/notify-settings.html
 grep -q 'name="notify_upcoming"' /tmp/notify-settings.html
+grep -q 'name="notify_task_assignments"' /tmp/notify-settings.html
+grep -q 'name="notify_task_dates"' /tmp/notify-settings.html
+grep -q 'name="notify_task_status"' /tmp/notify-settings.html
 grep -q 'Send test message' /tmp/notify-settings.html
 if grep -q '/admin/notifications' /tmp/notify-settings.html; then
   echo 'User notification settings must not link to system notification administration.' >&2
@@ -69,7 +73,11 @@ save_status=$(curl --silent --output /dev/null --write-out '%{http_code}' \
   --data-urlencode "_csrf=$csrf" \
   --data-urlencode 'email_enabled=1' \
   --data-urlencode 'email_address=alerts@example.com' \
+  --data-urlencode 'notify_task_assignments=1' \
+  --data-urlencode 'notify_task_dates=1' \
+  --data-urlencode 'notify_task_status=1' \
   --data-urlencode 'notify_tomorrow=1' \
+  --data-urlencode 'notify_upcoming=1' \
   --data-urlencode 'tomorrow_time=23:59' \
   --data-urlencode 'urgent_minutes=15' \
   --data-urlencode 'high_minutes=60' \
@@ -82,6 +90,10 @@ test "$save_status" = "302"
 test "$(db "SELECT email_enabled FROM notification_settings WHERE user_id=$admin_id")" = "1"
 test "$(db "SELECT email_address FROM notification_settings WHERE user_id=$admin_id")" = "alerts@example.com"
 test "$(db "SELECT notify_tomorrow FROM notification_settings WHERE user_id=$admin_id")" = "1"
+test "$(db "SELECT notify_task_assignments FROM notification_settings WHERE user_id=$admin_id")" = "1"
+test "$(db "SELECT notify_task_dates FROM notification_settings WHERE user_id=$admin_id")" = "1"
+test "$(db "SELECT notify_task_status FROM notification_settings WHERE user_id=$admin_id")" = "1"
+test "$(db "SELECT notify_upcoming FROM notification_settings WHERE user_id=$admin_id")" = "1"
 test "$(db "SELECT COUNT(*) FROM notification_settings WHERE user_id=$other_id")" = "0"
 
 # Configure SMTP metadata through the admin route but leave the transport disabled,
@@ -276,5 +288,29 @@ test "$forbidden_admin" = "403"
 # The notifier is a separate process, starts only after the application is healthy,
 # and can be invoked repeatedly without performing migrations itself.
 docker compose ps notifier --status running | grep -q notifier
+
+default_status=$(db "SELECT id FROM statuses WHERE user_id=$admin_id AND is_completion=0 ORDER BY is_default DESC, sort_order ASC, id ASC LIMIT 1")
+test -n "$default_status"
+planned_at=$(TZ="${APP_TIMEZONE:-UTC}" date -d '10 minutes' '+%Y-%m-%d %H:%M:%S')
+planned_at_sql=$(printf '%s' "$planned_at" | sed "s/'/''/g")
+db "INSERT INTO tasks (
+      created_by,title,description,scheduled_at,status_id,priority,created_at,updated_at
+    ) VALUES (
+      $admin_id,'CI planned reminder','','$planned_at_sql',$default_status,3,NOW(),NOW()
+    )"
+planned_task_id=$(db "SELECT id FROM tasks WHERE created_by=$admin_id AND title='CI planned reminder' ORDER BY id DESC LIMIT 1")
+test -n "$planned_task_id"
+
 runner_output=$(docker compose exec -T notifier php /var/www/html/bin/notify.php)
 printf '%s\n' "$runner_output" | grep -q '^Notification run:'
+test "$(db "SELECT COUNT(*) FROM internal_notifications
+            WHERE user_id=$admin_id
+              AND task_id=$planned_task_id
+              AND notification_type='reminder_planned_upcoming'")" = "1"
+
+# Re-running the notifier must not duplicate the canonical in-app reminder.
+docker compose exec -T notifier php /var/www/html/bin/notify.php >/tmp/notify-second-run.txt
+test "$(db "SELECT COUNT(*) FROM internal_notifications
+            WHERE user_id=$admin_id
+              AND task_id=$planned_task_id
+              AND notification_type='reminder_planned_upcoming'")" = "1"

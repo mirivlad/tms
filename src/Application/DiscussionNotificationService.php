@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tms\Application;
 
 use Tms\Domain\Discussion\DiscussionRepository;
+use Tms\Domain\Event\DomainEvent;
+use Tms\Domain\Event\DomainEventConsumer;
 use Tms\Domain\Notification\InternalNotificationRepository;
 use Tms\Domain\Notification\NotificationSettingsRepository;
 use Tms\Domain\Team\TeamMemberRecord;
@@ -13,7 +15,7 @@ use Tms\I18n\Translator;
 use Tms\Infrastructure\EmailSender;
 use Tms\Infrastructure\TelegramSender;
 
-final class DiscussionNotificationService
+final class DiscussionNotificationService implements DomainEventConsumer
 {
     public function __construct(
         private readonly DiscussionRepository $discussions,
@@ -25,6 +27,21 @@ final class DiscussionNotificationService
         private readonly Translator $translator,
         private readonly string $appUrl,
     ) {
+    }
+
+    public function consume(DomainEvent $event): void
+    {
+        if (!in_array($event->type, ['discussion.comment.created', 'discussion.comment.updated'], true)
+            || $event->actorUserId === null
+            || $event->commentId === null) {
+            return;
+        }
+
+        try {
+            $this->processComment($event->actorUserId, $event->commentId);
+        } catch (\Throwable $error) {
+            error_log('TMS discussion notification consumer failed: ' . $error->getMessage());
+        }
     }
 
     public function processComment(int $actorUserId, int $commentId): void
