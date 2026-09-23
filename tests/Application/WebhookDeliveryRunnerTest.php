@@ -89,7 +89,7 @@ final class WebhookDeliveryRunnerTest extends TestCase
             $sender,
         );
 
-        $stats = $runner->run(new DateTimeImmutable('2026-09-23 13:00:00'));
+        $stats = $runner->run(new DateTimeImmutable('2099-01-01 13:00:00'));
 
         self::assertSame(1, $stats['recovered']);
         self::assertSame(1, $stats['attempted']);
@@ -147,7 +147,7 @@ final class WebhookDeliveryRunnerTest extends TestCase
             new RecordingWebhookSender(new WebhookDeliveryResult(false, 503, 'HTTP 503')),
         );
 
-        $stats = $runner->run(new DateTimeImmutable('2026-09-23 13:00:00'));
+        $stats = $runner->run(new DateTimeImmutable('2099-01-01 13:00:00'));
 
         self::assertSame(1, $stats['retried']);
         $row = $this->db->query(
@@ -158,7 +158,7 @@ final class WebhookDeliveryRunnerTest extends TestCase
         self::assertSame('retry', $row['status']);
         self::assertSame(1, (int) $row['attempt_count']);
         self::assertSame(503, (int) $row['response_status']);
-        self::assertSame('2026-09-23 13:01:00.000000', $row['next_attempt_at']);
+        self::assertSame('2099-01-01 13:01:00.000000', $row['next_attempt_at']);
         self::assertSame('HTTP 503', $row['last_error']);
     }
 
@@ -176,7 +176,7 @@ final class WebhookDeliveryRunnerTest extends TestCase
             visibilityUserId: 7,
             visibilityTeamId: null,
             payload: ['subject_title' => 'Deploy', 'changes' => []],
-            occurredAt: '2026-09-23 12:34:56.123456',
+            occurredAt: '2099-01-01 12:34:56.123456',
         );
     }
 
