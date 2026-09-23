@@ -75,5 +75,5 @@ Recurring task generation publishes the ordinary `task.created` event for the ge
 3. Removing a field, changing its meaning/type, or changing visibility semantics requires a new schema version.
 4. Consumers must be idempotent by `event_id`.
 5. An event is written to the durable journal before synchronous consumers run.
-6. Activity history is a consumer of task/project events; it is not the event source.
+6. Activity history is a consumer of task/project events; it is not the event source. Deletion events remain journal-only because their subjects no longer exist for history navigation.
 7. Notification and webhook stages must consume this contract rather than reconstructing events from UI/controller state.
