@@ -17,6 +17,8 @@ return [
     'notifications.context_unavailable' => 'Этот рабочий контекст больше вам недоступен.',
     'notifications.discussion_mention' => '{actor} упомянул вас в {context}',
     'notifications.discussion_reply' => '{actor} ответил вам в {context}',
+    'notifications.inbox.discussion_mention' => '{actor} упомянул вас в «{context}»',
+    'notifications.inbox.discussion_reply' => '{actor} ответил вам в «{context}»',
     'notifications.collaboration_subject' => 'TMS: {context}',
     'notifications.collaboration_open' => 'Открыть в TMS',
     'validation.admin_required' => 'Требуются права администратора.',
