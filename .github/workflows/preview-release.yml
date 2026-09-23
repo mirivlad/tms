@@ -88,6 +88,15 @@ jobs:
           grep -Fq 'linux/arm64' <<< "$manifest"
           docker pull "$IMAGE"
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Build User/Admin handbooks
+        run: |
+          python3 -m pip install -r docs/handbooks/requirements.txt
+          python3 tools/build_handbooks.py
+
       - name: Create GitHub release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -115,6 +124,12 @@ jobs:
           - ordered task checklists with progress tracking and activity events;
           - private saved task views for reusable filters, sorting, project scope and an optional default view;
           - recurring task series with daily, weekly, monthly, every-N-days and N-days-after-completion schedules, generated idempotently as new task occurrences;
+          - separate planned execution time (`scheduled_at`) alongside deadline across task editing, filtering, Saved Views, Calendar and recurrence;
+          - lightweight realtime navigation badges for unread notifications and team invitations while the browser tab is active;
+          - a durable domain-event journal driving activity history, work-event notifications and external integrations;
+          - configurable event notifications for assignments/reassignments, planned/deadline changes, optional status changes and upcoming planned/deadline times;
+          - administrator-managed outbound webhooks with encrypted signing secrets, HMAC-SHA256 signatures, durable retries, delivery history and a dedicated worker;
+          - complete User and Administrator handbooks in English and Russian, generated as HTML/PDF and attached to each version release;
           - dense responsive workbench layout across dashboard, tasks, projects, teams, discussions, notifications and administration, with mobile task cards and focused navigation;
           - project-aware status filters in Tasks and Calendar: No project uses personal statuses, a selected project uses its workflow, and All projects exposes all accessible statuses;
           - global quick add, task quick view with inline status/description/deadline editing and bulk task operations;
@@ -157,6 +172,9 @@ jobs:
           printf '%s\n' "$notes" > /tmp/release-notes.md
           args=(
             "$TAG"
+            build/handbooks/*.html
+            build/handbooks/*.pdf
+            build/handbooks/manifest.json
             --target "$GITHUB_SHA"
             --title "TMS $TAG"
             --notes-file /tmp/release-notes.md

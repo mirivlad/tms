@@ -51,6 +51,14 @@ php bin/create-admin.php admin admin@example.com
 
 Порядок привязки пользователя и диагностика описаны в разделе [Уведомления](notifications.ru.md).
 
+## Исходящие webhooks
+
+Раздел **Администрирование → Webhooks** управляет общесистемными подписками на доменные события. Для подписки выбираются endpoint и типы событий. Signing secret генерируется TMS, показывается открытым только при создании/ротации и хранится зашифрованным тем же ключевым механизмом, что системные notification credentials.
+
+Webhook worker отправляет JSON асинхронно, подписывает точное тело HMAC-SHA256 по строке `timestamp.body`, сохраняет HTTP status/error и выполняет retry с backoff. После исправления endpoint неуспешную доставку можно повторить вручную. Подробный протокол, заголовки и проверка подписи описаны в [руководстве Webhooks](webhooks.ru.md).
+
+Для Docker/Portainer должен быть запущен отдельный `webhook-worker`; при нативной установке регулярно запускайте `php bin/webhooks.php`.
+
 ## Backup и обновления
 
 `tms-db`, `tms-attachments` и `tms-secrets` рассматривайте как единый комплект резервной копии. Перед обновлением или восстановлением прочитайте [руководство по установке](INSTALLATION.ru.md).
@@ -67,6 +75,7 @@ php bin/create-admin.php admin admin@example.com
 docker compose -f compose.portainer.yaml ps
 docker compose -f compose.portainer.yaml logs --tail=100 app
 docker compose -f compose.portainer.yaml logs --tail=100 notifier
+docker compose -f compose.portainer.yaml logs --tail=100 webhook-worker
 docker compose -f compose.portainer.yaml logs --tail=100 telegram-poller
 ```
 

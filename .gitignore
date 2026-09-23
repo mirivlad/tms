@@ -30,3 +30,8 @@ docker-compose.override.yml
 
 # Keep dependency locks reproducible
 !composer.lock
+build/
+
+# Python build cache
+__pycache__/
+*.py[cod]

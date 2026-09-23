@@ -6,7 +6,7 @@ This file records the near-term product direction for TMS. Shipped behavior belo
 
 The 0.4 line makes TMS time-aware and event-driven while keeping the current User → Team → Project → Task hierarchy intact.
 
-**Implementation status:** Stage A in progress.
+**Implementation status:** complete; pending the v0.4 version release.
 
 ### Stage A — Realtime notification beacon
 

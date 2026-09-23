@@ -1,0 +1,228 @@
+@page {
+  size: A4;
+  margin: 16mm 15mm 18mm;
+}
+
+:root {
+  color-scheme: light;
+  --ink: #1f2933;
+  --muted: #5f6b76;
+  --line: #d7dde3;
+  --soft: #f5f7f9;
+  --accent: #275d9a;
+  --accent-soft: #edf4fb;
+  --code: #f2f4f6;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  font-size: 15px;
+}
+
+body {
+  margin: 0;
+  background: white;
+  color: var(--ink);
+  font-family: "DejaVu Sans", "Noto Sans", Arial, sans-serif;
+  line-height: 1.55;
+}
+
+.handbook {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 2.5rem 3rem 4rem;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  color: #17202a;
+  line-height: 1.22;
+  break-after: avoid-page;
+  page-break-after: avoid;
+}
+
+h1 {
+  margin: 0 0 1.2rem;
+  padding-bottom: 0.7rem;
+  border-bottom: 3px solid var(--accent);
+  font-size: 2.15rem;
+}
+
+h2 {
+  margin-top: 2.4rem;
+  padding-bottom: 0.35rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 1.55rem;
+}
+
+h3 {
+  margin-top: 1.8rem;
+  font-size: 1.23rem;
+}
+
+h4 {
+  margin-top: 1.4rem;
+  font-size: 1.05rem;
+}
+
+p,
+li {
+  orphans: 3;
+  widows: 3;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+code {
+  border-radius: 0.25rem;
+  background: var(--code);
+  padding: 0.08rem 0.3rem;
+  font-family: "DejaVu Sans Mono", "Noto Sans Mono", monospace;
+  font-size: 0.91em;
+}
+
+pre {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+  border: 1px solid var(--line);
+  border-radius: 0.5rem;
+  background: var(--code);
+  padding: 0.8rem 0.95rem;
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+pre code {
+  padding: 0;
+  background: transparent;
+}
+
+blockquote {
+  margin: 1.2rem 0;
+  border-left: 4px solid var(--accent);
+  background: var(--accent-soft);
+  padding: 0.65rem 1rem;
+  color: #31465d;
+}
+
+table {
+  width: 100%;
+  margin: 1.1rem 0 1.5rem;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+th,
+td {
+  border: 1px solid var(--line);
+  padding: 0.45rem 0.55rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+th {
+  background: var(--soft);
+}
+
+ul,
+ol {
+  padding-left: 1.55rem;
+}
+
+li + li {
+  margin-top: 0.2rem;
+}
+
+.toc {
+  margin: 1.5rem 0 2rem;
+  border: 1px solid var(--line);
+  border-radius: 0.6rem;
+  background: var(--soft);
+  padding: 1rem 1.25rem;
+}
+
+.toc ul {
+  margin: 0.3rem 0;
+}
+
+hr {
+  margin: 2rem 0;
+  border: 0;
+  border-top: 1px solid var(--line);
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+  break-inside: avoid;
+}
+
+@media print {
+  html {
+    font-size: 10.5pt;
+  }
+
+  body {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .handbook {
+    max-width: none;
+    padding: 0;
+  }
+
+  a {
+    color: inherit;
+  }
+
+  h1 {
+    font-size: 23pt;
+  }
+
+  h2 {
+    font-size: 16pt;
+  }
+
+  h3 {
+    font-size: 13pt;
+  }
+
+  table,
+  pre,
+  blockquote {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+
+@media (max-width: 720px) {
+  .handbook {
+    padding: 1.25rem 1rem 2.5rem;
+  }
+
+  h1 {
+    font-size: 1.7rem;
+  }
+
+  h2 {
+    font-size: 1.35rem;
+  }
+
+  table {
+    display: block;
+    overflow-x: auto;
+  }
+}
