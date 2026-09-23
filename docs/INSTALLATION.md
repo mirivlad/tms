@@ -2,7 +2,7 @@
 
 # Installation and operations
 
-The recommended deployment is Docker Compose with the published image. TMS needs an application container, MariaDB, a scheduler worker for recurring tasks and notifications and, when enabled, the Telegram polling worker.
+The recommended deployment is Docker Compose with the published image. TMS needs an application container, MariaDB, a scheduler worker for recurring tasks and notifications, a webhook delivery worker and, when enabled, the Telegram polling worker.
 
 ## 1. Prepare configuration
 
@@ -38,6 +38,7 @@ Other supported settings:
 | `REGISTRATION_AUTO_APPROVE_AFTER_EMAIL` | `true` | Approve a user after email verification |
 | `ATTACHMENT_MAX_BYTES` | `10485760` | Maximum attachment size in bytes |
 | `NOTIFICATION_INTERVAL_SECONDS` | `60` | Recurrence/notification scheduler interval |
+| `WEBHOOK_INTERVAL_SECONDS` | `15` | Outbound webhook worker interval |
 | `NOTIFICATION_SECRET` | empty | Optional external 32-byte base64 encryption key |
 | `TELEGRAM_*` | empty | Optional bootstrap/fallback Telegram configuration |
 | `TMS_IMAGE` | stable pinned image | Override image used by `compose.portainer.yaml` |
@@ -140,4 +141,4 @@ Application rollback is done by restoring the previous image tag. Database migra
 
 ## Native installation
 
-Native development is supported, but Docker/Apache is the reference runtime. Run `php bin/recurring.php` and `php bin/notify.php` on the same short schedule (for example once per minute) using cron or a systemd timer. Run `php bin/telegram-poll.php` as a supervised long-lived process when Long polling is selected. Run only one polling worker per database; recurrence generation itself is transactionally locked and safe across scheduler retries.
+Native development is supported, but Docker/Apache is the reference runtime. Run `php bin/recurring.php` and `php bin/notify.php` on the same short schedule (for example once per minute) using cron or a systemd timer. Run `php bin/webhooks.php` on a short schedule when outbound webhooks are configured. Run `php bin/telegram-poll.php` as a supervised long-lived process when Long polling is selected. Run only one Telegram polling worker and one webhook worker per database; recurrence generation itself is transactionally locked and safe across scheduler retries.
