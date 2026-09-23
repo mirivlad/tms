@@ -54,8 +54,15 @@ jobs:
           test "$(find build/handbooks -maxdepth 1 -name '*.pdf' | wc -l)" = "4"
           grep -q 'TMS User Handbook' build/handbooks/user-handbook-en.html
           grep -q 'Руководство пользователя TMS' build/handbooks/user-handbook-ru.html
-          test -s build/handbooks/admin-handbook-en.pdf
-          test -s build/handbooks/admin-handbook-ru.pdf
+          for pdf in build/handbooks/*.pdf; do
+            test -s "$pdf"
+            pdfinfo "$pdf" >/dev/null
+          done
+          mkdir -p /tmp/handbook-render
+          pdftoppm -f 1 -singlefile -png -r 120 build/handbooks/user-handbook-en.pdf /tmp/handbook-render/user-en >/dev/null
+          pdftoppm -f 1 -singlefile -png -r 120 build/handbooks/admin-handbook-ru.pdf /tmp/handbook-render/admin-ru >/dev/null
+          test -s /tmp/handbook-render/user-en.png
+          test -s /tmp/handbook-render/admin-ru.png
       - uses: actions/upload-artifact@v4
         with:
           name: tms-handbooks-${{ github.sha }}
