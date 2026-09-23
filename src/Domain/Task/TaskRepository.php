@@ -164,7 +164,10 @@ final class TaskRepository
         ?int $projectId = null,
         bool $withoutProject = false,
     ): array {
-        if (!in_array($mode, ['deadlines_only', 'no_deadlines', 'all'], true)) {
+        if ($mode === 'no_deadlines') {
+            $mode = 'no_dates';
+        }
+        if (!in_array($mode, ['planned_only', 'deadlines_only', 'no_dates', 'all'], true)) {
             throw new DomainException('Unsupported calendar mode.');
         }
         $statusIds = $this->positiveIds($statusIds);
@@ -184,17 +187,26 @@ final class TaskRepository
         $sql .= ' WHERE ' . $this->taskAccessCondition('t', 'calendar_') . ' AND ';
         $params = $this->taskAccessParams($userId, 'calendar_');
 
-        if ($mode === 'deadlines_only') {
+        if ($mode === 'planned_only') {
+            $sql .= '(t.scheduled_at >= :scheduled_range_start AND t.scheduled_at < :scheduled_range_end)';
+            $params['scheduled_range_start'] = $rangeStart;
+            $params['scheduled_range_end'] = $rangeEnd;
+        } elseif ($mode === 'deadlines_only') {
             $sql .= '(t.deadline >= :deadline_range_start AND t.deadline < :deadline_range_end)';
             $params['deadline_range_start'] = $rangeStart;
             $params['deadline_range_end'] = $rangeEnd;
-        } elseif ($mode === 'no_deadlines') {
-            $sql .= '(t.deadline IS NULL AND t.created_at >= :created_range_start AND t.created_at < :created_range_end)';
+        } elseif ($mode === 'no_dates') {
+            $sql .= '(t.scheduled_at IS NULL AND t.deadline IS NULL
+                      AND t.created_at >= :created_range_start AND t.created_at < :created_range_end)';
             $params['created_range_start'] = $rangeStart;
             $params['created_range_end'] = $rangeEnd;
         } else {
-            $sql .= '((t.deadline IS NOT NULL AND t.deadline >= :deadline_range_start AND t.deadline < :deadline_range_end)
-                     OR (t.deadline IS NULL AND t.created_at >= :created_range_start AND t.created_at < :created_range_end))';
+            $sql .= '((t.scheduled_at IS NOT NULL AND t.scheduled_at >= :scheduled_range_start AND t.scheduled_at < :scheduled_range_end)
+                     OR (t.deadline IS NOT NULL AND t.deadline >= :deadline_range_start AND t.deadline < :deadline_range_end)
+                     OR (t.scheduled_at IS NULL AND t.deadline IS NULL
+                         AND t.created_at >= :created_range_start AND t.created_at < :created_range_end))';
+            $params['scheduled_range_start'] = $rangeStart;
+            $params['scheduled_range_end'] = $rangeEnd;
             $params['deadline_range_start'] = $rangeStart;
             $params['deadline_range_end'] = $rangeEnd;
             $params['created_range_start'] = $rangeStart;
@@ -228,7 +240,7 @@ final class TaskRepository
             $sql .= ' AND ' . $condition;
         }
 
-        $sql .= ' ORDER BY COALESCE(t.deadline, t.created_at) ASC, t.priority DESC, t.id ASC';
+        $sql .= ' ORDER BY COALESCE(t.scheduled_at, t.deadline, t.created_at) ASC, t.priority DESC, t.id ASC';
         return $this->fetchTasks($sql, $params);
     }
 
