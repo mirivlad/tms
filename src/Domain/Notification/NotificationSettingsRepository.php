@@ -30,8 +30,6 @@ final class NotificationSettingsRepository
         $stmt = $this->db->query(
             $this->selectSql()
             . " WHERE u.is_active = 1 AND u.approved_at IS NOT NULL
-                 AND ((COALESCE(ns.email_enabled, 0) = 1)
-                   OR (COALESCE(ns.telegram_enabled, 0) = 1 AND ns.telegram_chat_id IS NOT NULL))
                  AND (COALESCE(ns.notify_tomorrow, 0) = 1
                    OR COALESCE(ns.notify_upcoming, 0) = 1
                    OR COALESCE(ns.notify_overdue, 0) = 1
@@ -88,11 +86,13 @@ final class NotificationSettingsRepository
         $stmt = $this->db->prepare(
             'INSERT INTO notification_settings (
                 user_id, email_enabled, email_address, telegram_enabled,
+                notify_task_assignments, notify_task_dates, notify_task_status,
                 notify_tomorrow, tomorrow_time, notify_upcoming,
                 urgent_minutes, high_minutes, medium_minutes, low_minutes,
                 notify_overdue, overdue_time, notify_digest, digest_time
              ) VALUES (
                 :user_id, :email_enabled, :email_address, :telegram_enabled,
+                :notify_task_assignments, :notify_task_dates, :notify_task_status,
                 :notify_tomorrow, :tomorrow_time, :notify_upcoming,
                 :urgent_minutes, :high_minutes, :medium_minutes, :low_minutes,
                 :notify_overdue, :overdue_time, :notify_digest, :digest_time
@@ -101,6 +101,9 @@ final class NotificationSettingsRepository
                 email_enabled = VALUES(email_enabled),
                 email_address = VALUES(email_address),
                 telegram_enabled = VALUES(telegram_enabled),
+                notify_task_assignments = VALUES(notify_task_assignments),
+                notify_task_dates = VALUES(notify_task_dates),
+                notify_task_status = VALUES(notify_task_status),
                 notify_tomorrow = VALUES(notify_tomorrow),
                 tomorrow_time = VALUES(tomorrow_time),
                 notify_upcoming = VALUES(notify_upcoming),
@@ -118,6 +121,9 @@ final class NotificationSettingsRepository
             'email_enabled' => !empty($values['email_enabled']) ? 1 : 0,
             'email_address' => $emailAddress !== '' ? $emailAddress : null,
             'telegram_enabled' => !empty($values['telegram_enabled']) ? 1 : 0,
+            'notify_task_assignments' => !empty($values['notify_task_assignments']) ? 1 : 0,
+            'notify_task_dates' => !empty($values['notify_task_dates']) ? 1 : 0,
+            'notify_task_status' => !empty($values['notify_task_status']) ? 1 : 0,
             'notify_tomorrow' => !empty($values['notify_tomorrow']) ? 1 : 0,
             'tomorrow_time' => $times['tomorrow_time'],
             'notify_upcoming' => !empty($values['notify_upcoming']) ? 1 : 0,
@@ -164,6 +170,9 @@ final class NotificationSettingsRepository
                        COALESCE(ns.email_enabled, 0) AS email_enabled, ns.email_address,
                        COALESCE(ns.telegram_enabled, 0) AS telegram_enabled,
                        ns.telegram_chat_id, ns.telegram_username,
+                       COALESCE(ns.notify_task_assignments, 1) AS notify_task_assignments,
+                       COALESCE(ns.notify_task_dates, 1) AS notify_task_dates,
+                       COALESCE(ns.notify_task_status, 0) AS notify_task_status,
                        COALESCE(ns.notify_tomorrow, 0) AS notify_tomorrow,
                        COALESCE(TIME_FORMAT(ns.tomorrow_time, '%H:%i'), '08:00') AS tomorrow_time,
                        COALESCE(ns.notify_upcoming, 0) AS notify_upcoming,
@@ -191,6 +200,9 @@ final class NotificationSettingsRepository
             telegramEnabled: (bool) $row['telegram_enabled'],
             telegramChatId: $row['telegram_chat_id'] !== null ? (string) $row['telegram_chat_id'] : null,
             telegramUsername: $row['telegram_username'] !== null ? (string) $row['telegram_username'] : null,
+            notifyTaskAssignments: (bool) $row['notify_task_assignments'],
+            notifyTaskDates: (bool) $row['notify_task_dates'],
+            notifyTaskStatus: (bool) $row['notify_task_status'],
             notifyTomorrow: (bool) $row['notify_tomorrow'],
             tomorrowTime: (string) $row['tomorrow_time'],
             notifyUpcoming: (bool) $row['notify_upcoming'],
