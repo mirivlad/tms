@@ -37,7 +37,11 @@ final class DiscussionNotificationService implements DomainEventConsumer
             return;
         }
 
-        $this->processComment($event->actorUserId, $event->commentId);
+        try {
+            $this->processComment($event->actorUserId, $event->commentId);
+        } catch (\Throwable $error) {
+            error_log('TMS discussion notification consumer failed: ' . $error->getMessage());
+        }
     }
 
     public function processComment(int $actorUserId, int $commentId): void
