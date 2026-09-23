@@ -25,16 +25,21 @@ Exactly one visibility scope is required: personal user or team.
 
 ## Common payload
 
-Task and project lifecycle events use:
+Task and project lifecycle events use a common title/change shape. Task events also carry current notification-routing identifiers:
 
 ```json
 {
   "subject_title": "Deploy TMS",
   "changes": {
     "status": {"old": "Todo", "new": "Done"}
-  }
+  },
+  "owner_user_id": 12,
+  "assignee_user_id": 34,
+  "previous_assignee_user_id": 56
 }
 ```
+
+When a task crosses a visibility boundary, previous-context values, including `previous_assignee_user_id`, are redacted rather than exposed to the new scope.
 
 Descriptions are deliberately represented as a change marker with null values instead of copying their contents into the event journal.
 
