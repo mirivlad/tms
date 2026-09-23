@@ -8,7 +8,7 @@ use DateTimeImmutable;
 use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Tms\Domain\Activity\ActivityRepository;
+use Tms\Application\DomainEventPublisher;
 use Tms\Domain\Project\ProjectRepository;
 use Tms\Domain\Project\ProjectStatusRepository;
 use Tms\Domain\Status\StatusRepository;
@@ -22,7 +22,7 @@ final class QuickTaskController
     public function __construct(
         private readonly SessionManager $sessions,
         private readonly TaskRepository $tasks,
-        private readonly ActivityRepository $activity,
+        private readonly DomainEventPublisher $events,
         private readonly StatusRepository $statuses,
         private readonly ProjectRepository $projects,
         private readonly ProjectStatusRepository $projectStatuses,
@@ -79,7 +79,7 @@ final class QuickTaskController
             );
             $created = $this->tasks->findForUser($userId, $taskId);
             if ($created !== null) {
-                $this->activity->recordTaskCreated($userId, $created);
+                $this->events->taskCreated($userId, $created);
             }
 
             $message = $this->translator->trans('quick_add.created');

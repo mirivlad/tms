@@ -32,6 +32,7 @@ final class RecurringTaskRunner
         private readonly ProjectStatusRepository $projectStatuses,
         private readonly ChecklistRepository $checklists,
         private readonly TaskCustomFieldValueRepository $customValues,
+        private readonly DomainEventPublisher $events,
         private readonly ActivityRepository $activity,
         private readonly string $applicationTimezone,
     ) {
@@ -110,7 +111,7 @@ final class RecurringTaskRunner
         if ($created === null) {
             throw new DomainException('Generated recurring task could not be reloaded.');
         }
-        $this->activity->recordTaskCreated($recurrence->ownerUserId, $created);
+        $this->events->taskCreated($recurrence->ownerUserId, $created);
 
         $sequence = $recurrence->sequence + 1;
         $this->recurrences->recordOccurrence(

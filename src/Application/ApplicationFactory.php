@@ -26,6 +26,7 @@ use Tms\Domain\CustomField\CustomFieldValueCodec;
 use Tms\Domain\CustomField\TaskCustomFieldValueRepository;
 use Tms\Domain\Discussion\DiscussionReadRepository;
 use Tms\Domain\Discussion\DiscussionRepository;
+use Tms\Domain\Event\DomainEventRepository;
 use Tms\Domain\Notification\InternalNotificationRepository;
 use Tms\Domain\Notification\NotificationSettingsRepository;
 use Tms\Domain\Notification\SmtpSettingsRepository;
@@ -182,6 +183,9 @@ final class ApplicationFactory
         $projectAttachments = new ProjectAttachmentRepository($db);
         $tasks = new TaskRepository($db);
         $activity = new ActivityRepository($db);
+        $domainEvents = new DomainEventRepository($db);
+        $eventBus = new DomainEventBus($domainEvents, [new ActivityEventConsumer($activity)]);
+        $eventPublisher = new DomainEventPublisher($db, $eventBus, $appTimezone);
         $checklists = new ChecklistRepository($db);
         $savedViews = new SavedViewRepository($db);
         $savedViewQuery = new SavedViewQuery();
@@ -294,21 +298,21 @@ final class ApplicationFactory
         $registrationController = new RegistrationController($twig, $registration, $sessions, $registrationCaptcha, $translator, $registrationEnabled);
         $adminController = new AdminController($twig, $sessions, $users, $rememberTokens, $registration, $userBootstrap, $attachments, $projectAttachments, $attachmentStorage, $translator);
         $profileController = new ProfileController($twig, $sessions, $users, $preferences, $rememberTokens, $translator);
-        $projectController = new ProjectController($twig, $sessions, $projects, $activity, $projectAttachments, $attachmentStorage, $tasks, $projectStatuses, $projectCustomFields, $teams, $discussions, $discussionReads, $translator);
+        $projectController = new ProjectController($twig, $sessions, $projects, $eventPublisher, $projectAttachments, $attachmentStorage, $tasks, $projectStatuses, $projectCustomFields, $teams, $discussions, $discussionReads, $translator);
         $projectStatusController = new ProjectStatusController($sessions, $projects, $projectStatuses, $translator);
         $projectCustomFieldController = new ProjectCustomFieldController($sessions, $projects, $projectCustomFields, $translator);
         $projectAttachmentController = new ProjectAttachmentController($sessions, $projects, $projectAttachments, $attachmentPolicy, $attachmentStorage, $translator);
         $teamController = new TeamController($twig, $sessions, $teams, $projects, $tasks, $projectStatuses, $teamInvitations, $teamInvitationDelivery, $users, $translator);
         $teamInvitationController = new TeamInvitationController($twig, $sessions, $teamInvitations, $translator);
         $dashboardController = new DashboardController($twig, $sessions, $tasks, $statuses, $projects, $teams, $dashboardTips, $translator);
-        $taskController = new TaskController($twig, $sessions, $tasks, $activity, $checklists, $savedViews, $recurrences, $attachments, $statuses, $taskTypes, $customers, $projects, $projectStatuses, $projectCustomFields, $teams, $discussionReads, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator, $descriptionSanitizer);
-        $taskDeleteController = new TaskDeleteController($sessions, $tasks, $attachments, $attachmentStorage);
-        $taskBulkController = new TaskBulkController($sessions, $tasks, $activity, $attachments, $attachmentStorage, $translator);
+        $taskController = new TaskController($twig, $sessions, $tasks, $eventPublisher, $checklists, $savedViews, $recurrences, $attachments, $statuses, $taskTypes, $customers, $projects, $projectStatuses, $projectCustomFields, $teams, $discussionReads, $customFields, $customValues, $customValueCodec, $taskListSorter, $translator, $descriptionSanitizer);
+        $taskDeleteController = new TaskDeleteController($sessions, $tasks, $eventPublisher, $attachments, $attachmentStorage);
+        $taskBulkController = new TaskBulkController($sessions, $tasks, $eventPublisher, $attachments, $attachmentStorage, $translator);
         $attachmentController = new AttachmentController($sessions, $tasks, $attachments, $attachmentPolicy, $attachmentStorage, $translator);
-        $quickTaskController = new QuickTaskController($sessions, $tasks, $activity, $statuses, $projects, $projectStatuses, $descriptionSanitizer, $translator);
+        $quickTaskController = new QuickTaskController($sessions, $tasks, $eventPublisher, $statuses, $projects, $projectStatuses, $descriptionSanitizer, $translator);
         $customerSearchController = new CustomerSearchController($sessions, $customers);
-        $taskStatusController = new TaskStatusController($sessions, $tasks, $activity, $translator);
-        $checklistController = new ChecklistController($sessions, $tasks, $checklists, $activity, $translator);
+        $taskStatusController = new TaskStatusController($sessions, $tasks, $eventPublisher, $translator);
+        $checklistController = new ChecklistController($sessions, $tasks, $checklists, $eventPublisher, $translator);
         $savedViewController = new SavedViewController($sessions, $savedViews, $savedViewQuery, $translator);
         $recurrenceController = new RecurrenceController($sessions, $tasks, $recurrences, $recurrenceSchedule, $statuses, $preferences, $translator);
         $activityController = new ActivityController($twig, $sessions, $activity, $tasks, $projects, $teams, $translator);
@@ -316,6 +320,7 @@ final class ApplicationFactory
             $sessions,
             $discussions,
             $discussionNotificationService,
+            $eventPublisher,
             $descriptionSanitizer,
             $translator,
         );

@@ -8,7 +8,7 @@ use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
-use Tms\Domain\Activity\ActivityRepository;
+use Tms\Application\DomainEventPublisher;
 use Tms\Domain\CustomField\CustomFieldRepository;
 use Tms\Domain\Discussion\DiscussionReadRepository;
 use Tms\Domain\Discussion\DiscussionRepository;
@@ -30,7 +30,7 @@ final class ProjectController
         private readonly Twig $view,
         private readonly SessionManager $sessions,
         private readonly ProjectRepository $projects,
-        private readonly ActivityRepository $activity,
+        private readonly DomainEventPublisher $events,
         private readonly ProjectAttachmentRepository $attachments,
         private readonly AttachmentStorage $storage,
         private readonly TaskRepository $tasks,
@@ -76,7 +76,7 @@ final class ProjectController
             }
             $created = $this->projects->findForUser($userId, $projectId);
             if ($created !== null) {
-                $this->activity->recordProjectCreated($userId, $created);
+                $this->events->projectCreated($userId, $created);
             }
         } catch (DomainException $error) {
             return $this->renderIndex(
@@ -336,7 +336,7 @@ final class ProjectController
             $this->projects->changeOwnershipForUser($this->userId(), $projectId, $targetTeamId);
             $updated = $this->projects->findForUser($this->userId(), $projectId);
             if ($updated !== null) {
-                $this->activity->recordProjectChanged($this->userId(), $project, $updated);
+                $this->events->projectChanged($this->userId(), $project, $updated);
             }
             $this->sessionNotice('project_settings_notice', 'success', $this->translator->trans('projects.saved'));
         } catch (DomainException $error) {
@@ -351,7 +351,8 @@ final class ProjectController
     {
         $userId = $this->userId();
         $projectId = $this->routeId($args);
-        if ($this->projects->findManageableForUser($userId, $projectId) === null) {
+        $project = $this->projects->findManageableForUser($userId, $projectId);
+        if ($project === null) {
             return $this->notFound($response);
         }
 
@@ -364,6 +365,8 @@ final class ProjectController
             $this->sessionNotice('project_settings_notice', 'error', $this->domainMessage($error));
             return $this->redirect($response, '/projects/' . $projectId . '/settings');
         }
+
+        $this->events->projectEvent($userId, $project, 'project.deleted');
 
         foreach ($stored as $attachment) {
             if (!$this->storage->delete($attachment->storageName)) {

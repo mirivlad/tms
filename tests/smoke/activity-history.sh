@@ -20,7 +20,11 @@ printf '%s' "$response" | grep -q '"success":true'
 admin_id=$(db "SELECT id FROM users WHERE username='ciadmin' LIMIT 1")
 task_id=$(db "SELECT id FROM tasks WHERE created_by=$admin_id AND title='Activity smoke task' ORDER BY id DESC LIMIT 1")
 test -n "$task_id"
+test "$(db "SELECT COUNT(*) FROM domain_events WHERE task_id=$task_id AND event_type='task.created'")" = "1"
+created_event_id=$(db "SELECT event_id FROM domain_events WHERE task_id=$task_id AND event_type='task.created' LIMIT 1")
+test -n "$created_event_id"
 test "$(db "SELECT COUNT(*) FROM activity_events WHERE task_id=$task_id AND event_type='task.created'")" = "1"
+test "$(db "SELECT source_event_id FROM activity_events WHERE task_id=$task_id AND event_type='task.created' LIMIT 1")" = "$created_event_id"
 test "$(db "SELECT visibility_user_id FROM activity_events WHERE task_id=$task_id AND event_type='task.created' LIMIT 1")" = "$admin_id"
 
 curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/tasks/$task_id/history" > /tmp/activity-task-history.html
@@ -33,7 +37,11 @@ grep -Fq "$activity_created" /tmp/activity-task-history.html
 response=$(curl --fail --silent --header 'Accept: application/json'   --cookie "$COOKIE_JAR"   --data-urlencode "_csrf=$csrf"   --data-urlencode "status_id=$default_status"   --data-urlencode 'description=<p>Secret body must not be copied into activity JSON</p>'   --data-urlencode 'deadline=2026-09-30T12:00'   "$BASE_URL/api/tasks/$task_id/quick-edit")
 printf '%s' "$response" | grep -q '"success":true'
 
+test "$(db "SELECT COUNT(*) FROM domain_events WHERE task_id=$task_id")" = "2"
+updated_event_id=$(db "SELECT event_id FROM domain_events WHERE task_id=$task_id AND event_type='task.updated' ORDER BY occurred_at DESC LIMIT 1")
+test -n "$updated_event_id"
 test "$(db "SELECT COUNT(*) FROM activity_events WHERE task_id=$task_id")" = "2"
+test "$(db "SELECT source_event_id FROM activity_events WHERE task_id=$task_id AND event_type='task.updated' ORDER BY id DESC LIMIT 1")" = "$updated_event_id"
 payload=$(db "SELECT payload_json FROM activity_events WHERE task_id=$task_id AND event_type='task.updated' ORDER BY id DESC LIMIT 1")
 printf '%s' "$payload" | grep -q '"description"'
 if printf '%s' "$payload" | grep -q 'Secret body'; then
@@ -55,7 +63,11 @@ test "$status" = "302"
 
 project_id=$(db "SELECT id FROM projects WHERE owner_user_id=$admin_id AND name='Activity smoke project' ORDER BY id DESC LIMIT 1")
 test -n "$project_id"
+test "$(db "SELECT COUNT(*) FROM domain_events WHERE project_id=$project_id AND task_id IS NULL AND event_type='project.created'")" = "1"
+project_event_id=$(db "SELECT event_id FROM domain_events WHERE project_id=$project_id AND task_id IS NULL AND event_type='project.created' LIMIT 1")
+test -n "$project_event_id"
 test "$(db "SELECT COUNT(*) FROM activity_events WHERE project_id=$project_id AND task_id IS NULL AND event_type='project.created'")" = "1"
+test "$(db "SELECT source_event_id FROM activity_events WHERE project_id=$project_id AND task_id IS NULL AND event_type='project.created' LIMIT 1")" = "$project_event_id"
 
 curl --fail --silent --cookie "$COOKIE_JAR" "$BASE_URL/projects/$project_id/activity" > /tmp/activity-project-history.html
 grep -q 'Project created' /tmp/activity-project-history.html

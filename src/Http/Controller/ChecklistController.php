@@ -7,7 +7,7 @@ namespace Tms\Http\Controller;
 use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Tms\Domain\Activity\ActivityRepository;
+use Tms\Application\DomainEventPublisher;
 use Tms\Domain\Checklist\ChecklistRepository;
 use Tms\Domain\Task\TaskRecord;
 use Tms\Domain\Task\TaskRepository;
@@ -20,7 +20,7 @@ final class ChecklistController
         private readonly SessionManager $sessions,
         private readonly TaskRepository $tasks,
         private readonly ChecklistRepository $checklists,
-        private readonly ActivityRepository $activity,
+        private readonly DomainEventPublisher $events,
         private readonly Translator $translator,
     ) {
     }
@@ -42,7 +42,7 @@ final class ChecklistController
             );
             $item = $this->checklists->findForTask($this->userId(), $task->id, $itemId);
             if ($item !== null) {
-                $this->activity->recordTaskEvent(
+                $this->events->taskEvent(
                     $this->userId(),
                     $task,
                     'task.checklist_added',
@@ -79,7 +79,7 @@ final class ChecklistController
             );
             $after = $this->checklists->findForTask($this->userId(), $task->id, $itemId);
             if ($after !== null && $after->text !== $before->text) {
-                $this->activity->recordTaskEvent(
+                $this->events->taskEvent(
                     $this->userId(),
                     $task,
                     'task.checklist_updated',
@@ -108,7 +108,7 @@ final class ChecklistController
 
         $completed = !$item->isCompleted;
         $this->checklists->setCompleted($this->userId(), $task->id, $itemId, $completed);
-        $this->activity->recordTaskEvent(
+        $this->events->taskEvent(
             $this->userId(),
             $task,
             $completed ? 'task.checklist_completed' : 'task.checklist_reopened',
@@ -134,7 +134,7 @@ final class ChecklistController
         $direction = is_string($body['direction'] ?? null) ? (string) $body['direction'] : '';
         try {
             if ($this->checklists->move($this->userId(), $task->id, $itemId, $direction)) {
-                $this->activity->recordTaskEvent(
+                $this->events->taskEvent(
                     $this->userId(),
                     $task,
                     'task.checklist_reordered',
@@ -161,7 +161,7 @@ final class ChecklistController
         }
 
         if ($this->checklists->delete($this->userId(), $task->id, $itemId)) {
-            $this->activity->recordTaskEvent(
+            $this->events->taskEvent(
                 $this->userId(),
                 $task,
                 'task.checklist_deleted',

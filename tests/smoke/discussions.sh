@@ -88,6 +88,8 @@ root_id=$(db "SELECT id FROM discussion_comments
               WHERE project_id=$project_id AND task_id IS NULL AND author_user_id=$member_id
               ORDER BY id DESC LIMIT 1")
 test -n "$root_id"
+test "$(db "SELECT COUNT(*) FROM domain_events WHERE comment_id=$root_id AND event_type='discussion.comment.created'")" = "1"
+test "$(db "SELECT visibility_team_id FROM domain_events WHERE comment_id=$root_id AND event_type='discussion.comment.created' LIMIT 1")" = "$team_id"
 root_body=$(db "SELECT body_html FROM discussion_comments WHERE id=$root_id")
 printf '%s' "$root_body" | grep -q '<strong>team</strong>'
 if printf '%s' "$root_body" | grep -qi '<script'; then
@@ -140,6 +142,7 @@ test "$(db "SELECT COUNT(*) FROM discussion_comments WHERE project_id=$project_i
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$MEMBER_COOKIES"   --data-urlencode "_csrf=$member_csrf"   --data-urlencode 'body=<p>Edited root @ciadmin</p>'   "$BASE_URL/projects/$project_id/discussion/$root_id")
 test "$code" = "302"
 grep -q 'Edited root' < <(db "SELECT body_html FROM discussion_comments WHERE id=$root_id")
+test "$(db "SELECT COUNT(*) FROM domain_events WHERE comment_id=$root_id AND event_type='discussion.comment.updated'")" = "1"
 test "$(db "SELECT COUNT(*) FROM internal_notifications
             WHERE user_id=$admin_id AND comment_id=$root_id
               AND notification_type='discussion_mention'")" = "1"
@@ -152,6 +155,7 @@ test "$(db "SELECT deleted_at IS NULL FROM discussion_comments WHERE id=$reply_i
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$project_csrf"   "$BASE_URL/projects/$project_id/discussion/$root_id/delete")
 test "$code" = "302"
 test "$(db "SELECT deleted_at IS NOT NULL FROM discussion_comments WHERE id=$root_id")" = "1"
+test "$(db "SELECT COUNT(*) FROM domain_events WHERE comment_id=$root_id AND event_type='discussion.comment.deleted'")" = "1"
 test "$(db "SELECT COUNT(*) FROM discussion_comments WHERE id=$reply_id")" = "1"
 
 curl --fail --silent --cookie "$MEMBER_COOKIES" "$BASE_URL/projects/$project_id/discussion" > /tmp/discussion-thread.html
@@ -182,6 +186,8 @@ task_comment=$(db "SELECT id FROM discussion_comments
                    WHERE task_id=$task_id AND project_id IS NULL
                    ORDER BY id DESC LIMIT 1")
 test -n "$task_comment"
+test "$(db "SELECT COUNT(*) FROM domain_events WHERE comment_id=$task_comment AND task_id=$task_id AND event_type='discussion.comment.created'")" = "1"
+test "$(db "SELECT project_id FROM domain_events WHERE comment_id=$task_comment AND event_type='discussion.comment.created' LIMIT 1")" = "$project_id"
 test "$(db "SELECT COUNT(*) FROM internal_notifications
             WHERE user_id=$admin_id AND comment_id=$task_comment
               AND notification_type='discussion_mention'")" = "1"
@@ -240,9 +246,11 @@ task_admin_csrf=$(csrf_from /tmp/discussion-task-admin.html)
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$task_admin_csrf"   "$BASE_URL/tasks/$task_id/delete")
 test "$code" = "302"
 test "$(db "SELECT COUNT(*) FROM discussion_comments WHERE task_id=$task_id")" = "0"
+test "$(db "SELECT COUNT(*) FROM domain_events WHERE task_id=$task_id AND event_type='task.deleted'")" = "1"
 
 curl --fail --silent --cookie "$ADMIN_COOKIES" "$BASE_URL/projects/$project_id/settings" > /tmp/discussion-project-final.html
 project_csrf=$(csrf_from /tmp/discussion-project-final.html)
 code=$(curl --silent -o /dev/null -w '%{http_code}'   --cookie "$ADMIN_COOKIES"   --data-urlencode "_csrf=$project_csrf"   "$BASE_URL/projects/$project_id/delete")
 test "$code" = "302"
 test "$(db "SELECT COUNT(*) FROM discussion_comments WHERE project_id=$project_id")" = "0"
+test "$(db "SELECT COUNT(*) FROM domain_events WHERE project_id=$project_id AND event_type='project.deleted'")" = "1"
