@@ -62,6 +62,9 @@ jobs:
           grep -Fq 'channel=latest' .github/workflows/preview-release.yml
           grep -Fq 'prerelease=true' .github/workflows/preview-release.yml
           grep -Fq 'steps.version.outputs.channel' .github/workflows/preview-release.yml
+          grep -Fq 'python3 tools/build_handbooks.py' .github/workflows/preview-release.yml
+          grep -Fq 'build/handbooks/*.html' .github/workflows/preview-release.yml
+          grep -Fq 'build/handbooks/*.pdf' .github/workflows/preview-release.yml
           if grep -Eq 'ghcr\.io/.+:latest' .github/workflows/edge-image.yml .github/workflows/preview-release.yml; then
             echo 'latest must only be selected dynamically for stable releases.' >&2
             exit 1

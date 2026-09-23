@@ -7,17 +7,23 @@
 - **Dashboard** — counters, status distribution, stale tasks and a daily tip.
 - **Tasks** — dense table with sorting, filters, pagination, quick view and bulk actions.
 - **Board** — Kanban columns by status with drag-and-drop.
-- **Calendar** — tasks by deadline, creation date for no-deadline mode, or both.
+- **Calendar** — tasks by planned time and deadline; tasks with neither date can use creation date in the corresponding mode.
 
 ## Creating and editing tasks
 
 Use **New task** or the global quick-add action. The quick-add dialog is also available with `Alt+N` or `Cmd+N` where supported by the browser/OS.
 
-A task can contain title, description, priority, status, type, customer, deadline and custom fields. In a team-owned project it can also have an optional assignee; assignment expresses responsibility and does not change who can access the project. Open the quick-view dialog from a task card or row to change status, description and deadline without opening the full edit page. Rich descriptions are sanitized server-side. Attachments are stored separately from the public web root and are available only through authorized application routes.
+A task can contain title, description, priority, status, type, customer, planned time (**Planned for**), deadline and custom fields. In a team-owned project it can also have an optional assignee; assignment expresses responsibility and does not change who can access the project. Open the quick-view dialog from a task card or row to change status, description, planned time and deadline without opening the full edit page. Rich descriptions are sanitized server-side. Attachments are stored separately from the public web root and are available only through authorized application routes.
+
+## Planned time and deadline
+
+**Planned for** (`scheduled_at`) is when you intend to start or work on the task. **Deadline** is the hard completion boundary. They are independent: a task can have either one, both, or neither.
+
+Planned time is available in create/full edit/quick edit, task-list sorting and filtering, Saved Views and Calendar. Calendar prefers planned time as the work moment, falls back to deadline when no planned time exists, and can use creation date for undated tasks in the corresponding mode. Recurring tasks carry planned time into generated occurrences consistently with the recurrence schedule.
 
 ## Activity history
 
-Existing tasks expose an **Activity** link from the task edit header, and projects expose **Activity** in the project navigation. The history records task/project creation and meaningful field changes such as status, deadline, priority, assignee, project state and ownership.
+Existing tasks expose an **Activity** link from the task edit header, and projects expose **Activity** in the project navigation. The history records task/project creation and meaningful field changes such as status, planned time, deadline, priority, assignee, project state and ownership.
 
 History stores human-readable snapshots of changed metadata so later renaming a status does not rewrite old events. Rich-text descriptions are not copied into the activity log; the event records only that the description changed. Visibility is snapshotted in the personal/team context that existed when the event was written, so transferring a project between teams does not expose the previous team's history.
 
@@ -85,9 +91,9 @@ Language can be switched between English and Russian. The chosen UI language doe
 
 ## Notifications
 
-The **Notifications** item in the top bar is the canonical in-app inbox for team mentions and direct replies. Its badge counts unread items. Opening an item marks it read and jumps to the relevant project/task comment when that context is still accessible. Historical notifications remain visible after access is removed, but TMS will not reopen a project/task you can no longer access.
+The **Notifications** item in the top bar is the canonical in-app inbox for work events: mentions/replies, assignments/reassignments, planned-time/deadline changes, optional status changes and time-based reminders. The unread badge refreshes without a full page reload while the tab is visible and is refreshed immediately when a hidden tab becomes visible again. Opening an item marks it read and opens its accessible task/project context. Historical notifications remain visible after access is removed, but inaccessible work is not reopened.
 
-Open **Settings → Notification settings** to choose email/Telegram channels and rules for tomorrow, upcoming deadlines, overdue tasks and digest delivery. The in-app inbox is always available; enabled email and Telegram channels also carry team invitations, mentions and direct replies as links back to TMS.
+Open **Settings → Notification settings** to select work-event rules, reminders and additional email/Telegram transports. Assignments/reassignments, planned-time/deadline changes, status changes, upcoming planned/deadline reminders, tomorrow tasks, overdue tasks and digest delivery can be controlled independently where applicable. The in-app inbox remains canonical; email and Telegram carry the same events as additional transports.
 
 To link Telegram:
 

@@ -51,6 +51,14 @@ The Telegram proxy is used for connection tests, outgoing messages, webhook API 
 
 See [Notifications](notifications.md) for the user-linking flow and troubleshooting.
 
+## Outbound webhooks
+
+**Administration → Webhooks** manages deployment-wide subscriptions to domain events. Each subscription selects an endpoint and event types. TMS generates the signing secret, shows plaintext only at creation/rotation, and stores it encrypted with the same key mechanism used for system notification credentials.
+
+The webhook worker sends JSON asynchronously, signs the exact body with HMAC-SHA256 over `timestamp.body`, records HTTP status/errors, and retries failures with backoff. Failed deliveries can be manually retried after the endpoint is fixed. See [Webhooks](webhooks.md) for the exact protocol, headers and verification procedure.
+
+Docker/Portainer deployments must run the dedicated `webhook-worker`; native deployments should run `php bin/webhooks.php` on a short schedule.
+
 ## Backups and upgrades
 
 Treat `tms-db`, `tms-attachments` and `tms-secrets` as one logical backup set. Read [Installation](INSTALLATION.md) before upgrades or restores.
@@ -67,6 +75,7 @@ Useful checks after a deployment change:
 docker compose -f compose.portainer.yaml ps
 docker compose -f compose.portainer.yaml logs --tail=100 app
 docker compose -f compose.portainer.yaml logs --tail=100 notifier
+docker compose -f compose.portainer.yaml logs --tail=100 webhook-worker
 docker compose -f compose.portainer.yaml logs --tail=100 telegram-poller
 ```
 

@@ -42,6 +42,8 @@ ghcr.io/mirivlad/tms:v0.3.1
 | Installation, update, backup | [Installation](docs/INSTALLATION.md) | [Установка](docs/INSTALLATION.ru.md) |
 | Administration | [Administration](docs/ADMINISTRATION.md) | [Администрирование](docs/ADMINISTRATION.ru.md) |
 | User guide | [User guide](docs/USER_GUIDE.md) | [Руководство пользователя](docs/USER_GUIDE.ru.md) |
+| Complete User/Admin handbooks (HTML/PDF in releases) | [Handbook build](docs/handbooks/README.md) | [Сборка handbook'ов](docs/handbooks/README.md) |
+| Documentation maintenance contract | [Policy](docs/DOCUMENTATION_POLICY.md) | [Политика](docs/DOCUMENTATION_POLICY.md) |
 | Notifications & Telegram | [Notifications](docs/notifications.md) | [Уведомления](docs/notifications.ru.md) |
 | Webhooks | [Webhooks](docs/webhooks.md) | [Вебхуки](docs/webhooks.ru.md) |
 | FAQ | [FAQ](docs/FAQ.md) | [FAQ](docs/FAQ.ru.md) |

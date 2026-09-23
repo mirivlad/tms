@@ -27,6 +27,41 @@ jobs:
       - run: composer install --no-interaction --prefer-dist
       - run: composer check
 
+  documentation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Verify documentation impact
+        if: github.event_name == 'pull_request'
+        env:
+          DOCS_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          DOCS_HEAD_SHA: HEAD
+          DOCS_PR_BODY: ${{ github.event.pull_request.body }}
+        run: python3 tools/check_docs_impact.py
+
+      - name: Install handbook renderer
+        run: python3 -m pip install -r docs/handbooks/requirements.txt
+
+      - name: Build User/Admin handbooks
+        run: python3 tools/build_handbooks.py
+
+      - name: Upload handbook artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tms-handbooks-${{ github.sha }}
+          path: |
+            build/handbooks/*.html
+            build/handbooks/*.pdf
+            build/handbooks/manifest.json
+          if-no-files-found: error
+
   docker-smoke:
     runs-on: ubuntu-latest
     env:
