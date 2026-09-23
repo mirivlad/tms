@@ -7,7 +7,7 @@ namespace Tms\Http\Controller;
 use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
-use Tms\Domain\Activity\ActivityRepository;
+use Tms\Application\DomainEventPublisher;
 use Tms\Domain\Task\TaskRepository;
 use Tms\I18n\Translator;
 use Tms\Security\SessionManager;
@@ -17,7 +17,7 @@ final class TaskStatusController
     public function __construct(
         private readonly SessionManager $sessions,
         private readonly TaskRepository $tasks,
-        private readonly ActivityRepository $activity,
+        private readonly DomainEventPublisher $events,
         private readonly Translator $translator,
     ) {
     }
@@ -44,7 +44,7 @@ final class TaskStatusController
                 }
                 $updated = $this->tasks->findForUser($userId, $taskId);
                 if ($updated !== null) {
-                    $this->activity->recordTaskChanged($userId, $task, $updated);
+                    $this->events->taskChanged($userId, $task, $updated);
                 }
             }
         } catch (DomainException) {
