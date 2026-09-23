@@ -358,6 +358,7 @@ final class TaskRepository
             'title' => $title,
             'description' => trim($description),
             'deadline' => $deadline,
+            'scheduled_at' => $scheduledAt,
             'status_id' => $statusId,
             'type_id' => $typeId,
             'priority' => $priority,
@@ -405,6 +406,7 @@ final class TaskRepository
         $stmt->execute([
             'description' => trim($description),
             'deadline' => $deadline,
+            'scheduled_at' => $scheduledAt,
             'status_id' => $statusId,
             'task_id' => $taskId,
         ]);
