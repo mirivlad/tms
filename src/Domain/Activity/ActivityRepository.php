@@ -6,6 +6,7 @@ namespace Tms\Domain\Activity;
 
 use JsonException;
 use PDO;
+use Tms\Domain\Event\DomainEvent;
 use Tms\Domain\Project\ProjectRecord;
 use Tms\Domain\Task\TaskRecord;
 
@@ -121,6 +122,42 @@ final class ActivityRepository
             visibilityUserId: $visibilityUserId,
             visibilityTeamId: $visibilityTeamId,
             payload: ['subject_title' => $after->name, 'changes' => $changes],
+        );
+    }
+
+    public function recordDomainEvent(DomainEvent $event): void
+    {
+        if ((!str_starts_with($event->type, 'task.') && !str_starts_with($event->type, 'project.'))
+            || (($event->visibilityUserId === null) === ($event->visibilityTeamId === null))) {
+            return;
+        }
+
+        $subjectTitle = $event->payload['subject_title'] ?? null;
+        $rawChanges = $event->payload['changes'] ?? [];
+        if (!is_string($subjectTitle) || !is_array($rawChanges)) {
+            return;
+        }
+
+        $changes = [];
+        foreach ($rawChanges as $field => $change) {
+            if (!is_string($field) || !is_array($change)) {
+                continue;
+            }
+            $old = array_key_exists('old', $change) && $change['old'] !== null ? (string) $change['old'] : null;
+            $new = array_key_exists('new', $change) && $change['new'] !== null ? (string) $change['new'] : null;
+            $changes[$field] = ['old' => $old, 'new' => $new];
+        }
+
+        $this->insert(
+            actorUserId: $event->actorUserId ?? 0,
+            eventType: $event->type,
+            taskId: $event->taskId,
+            projectId: $event->projectId,
+            visibilityUserId: $event->visibilityUserId,
+            visibilityTeamId: $event->visibilityTeamId,
+            payload: ['subject_title' => $subjectTitle, 'changes' => $changes],
+            sourceEventId: $event->id,
+            actorUsername: $event->actorUsername,
         );
     }
 
@@ -283,30 +320,35 @@ final class ActivityRepository
         ?int $visibilityUserId,
         ?int $visibilityTeamId,
         array $payload,
+        ?string $sourceEventId = null,
+        ?string $actorUsername = null,
     ): void {
         if (($visibilityUserId === null) === ($visibilityTeamId === null)) {
             return;
         }
 
-        $stmt = $this->db->prepare(
-            'INSERT INTO activity_events (
-                actor_user_id, actor_username, event_type, task_id, project_id,
-                visibility_user_id, visibility_team_id, payload_json, created_at
-             ) VALUES (
-                :actor_user_id, :actor_username, :event_type, :task_id, :project_id,
-                :visibility_user_id, :visibility_team_id, :payload_json, CURRENT_TIMESTAMP
-             )'
-        );
-        $stmt->execute([
-            'actor_user_id' => $actorUserId,
-            'actor_username' => $this->label('users', $actorUserId, 'username') ?? ('user#' . $actorUserId),
+        $columns = 'actor_user_id, actor_username, event_type, task_id, project_id,
+                    visibility_user_id, visibility_team_id, payload_json, created_at';
+        $values = ':actor_user_id, :actor_username, :event_type, :task_id, :project_id,
+                   :visibility_user_id, :visibility_team_id, :payload_json, CURRENT_TIMESTAMP';
+        $params = [
+            'actor_user_id' => $actorUserId > 0 ? $actorUserId : null,
+            'actor_username' => $actorUsername ?? ($this->label('users', $actorUserId, 'username') ?? ('user#' . $actorUserId)),
             'event_type' => $eventType,
             'task_id' => $taskId,
             'project_id' => $projectId,
             'visibility_user_id' => $visibilityUserId,
             'visibility_team_id' => $visibilityTeamId,
             'payload_json' => json_encode($payload, JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-        ]);
+        ];
+        if ($sourceEventId !== null) {
+            $columns = 'source_event_id, ' . $columns;
+            $values = ':source_event_id, ' . $values;
+            $params['source_event_id'] = $sourceEventId;
+        }
+
+        $stmt = $this->db->prepare('INSERT INTO activity_events (' . $columns . ') VALUES (' . $values . ')');
+        $stmt->execute($params);
     }
 
     /** @return list<ActivityRecord> */
