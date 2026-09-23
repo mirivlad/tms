@@ -49,6 +49,21 @@ final class TaskListSorterTest extends TestCase
         self::assertSame([2, 1, 3], array_map(static fn (TaskRecord $task): int => $task->id, $byRegion));
     }
 
+    public function testPlannedTimeIsASupportedStandardSort(): void
+    {
+        self::assertTrue($this->sorter->supports('scheduled_at', []));
+
+        $tasks = [
+            $this->task(2, 'Late', scheduledAt: '2026-09-25 09:00:00'),
+            $this->task(3, 'Missing'),
+            $this->task(1, 'Early', scheduledAt: '2026-09-24 09:00:00'),
+        ];
+
+        $sorted = $this->sorter->sort($tasks, 'scheduled_at', 'asc', [], [], [], [], []);
+
+        self::assertSame([1, 2, 3], array_map(static fn (TaskRecord $task): int => $task->id, $sorted));
+    }
+
     public function testForeignCustomSortKeyIsRejected(): void
     {
         $tasks = [$this->task(1, 'B'), $this->task(2, 'A')];
@@ -64,7 +79,7 @@ final class TaskListSorterTest extends TestCase
         return new CustomFieldRecord($id, 1, $name, $type, $options, false, $id);
     }
 
-    private function task(int $id, string $title, ?int $statusId = null): TaskRecord
+    private function task(int $id, string $title, ?int $statusId = null, ?string $scheduledAt = null): TaskRecord
     {
         return new TaskRecord(
             id: $id,
@@ -72,7 +87,7 @@ final class TaskListSorterTest extends TestCase
             title: $title,
             description: '',
             deadline: null,
-            scheduledAt: null,
+            scheduledAt: $scheduledAt,
             statusId: $statusId,
             typeId: null,
             priority: 1,
