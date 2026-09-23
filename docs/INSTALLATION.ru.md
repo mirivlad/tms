@@ -2,7 +2,7 @@
 
 # Установка и эксплуатация
 
-Рекомендуемый вариант — Docker Compose с готовым образом. TMS использует контейнер приложения, MariaDB, scheduler-worker для повторяющихся задач и уведомлений и, при необходимости, worker Telegram Long polling.
+Рекомендуемый вариант — Docker Compose с готовым образом. TMS использует контейнер приложения, MariaDB, scheduler-worker для повторяющихся задач и уведомлений, отдельный worker исходящих вебхуков и, при необходимости, worker Telegram Long polling.
 
 ## 1. Подготовка конфигурации
 
@@ -38,6 +38,7 @@ cp .env.example .env
 | `REGISTRATION_AUTO_APPROVE_AFTER_EMAIL` | `true` | Одобрять после подтверждения email |
 | `ATTACHMENT_MAX_BYTES` | `10485760` | Максимальный размер вложения |
 | `NOTIFICATION_INTERVAL_SECONDS` | `60` | Интервал scheduler-worker повторяющихся задач и уведомлений |
+| `WEBHOOK_INTERVAL_SECONDS` | `15` | Интервал worker исходящих вебхуков |
 | `NOTIFICATION_SECRET` | пусто | Опциональный внешний base64-ключ 32 байта |
 | `TELEGRAM_*` | пусто | Опциональные bootstrap/fallback настройки Telegram |
 | `TMS_IMAGE` | текущий stable | Образ для `compose.portainer.yaml` |
@@ -140,4 +141,4 @@ docker compose -f compose.portainer.yaml up -d
 
 ## Нативная установка
 
-Она пригодна прежде всего для разработки; эталонный runtime — Docker/Apache. При нативной установке запускайте `php bin/recurring.php` и `php bin/notify.php` с одинаковым коротким интервалом (например, раз в минуту) через cron/systemd timer. При Long polling запускайте `php bin/telegram-poll.php` как постоянно работающий supervised process. На одну БД должен работать только один polling worker; recurrence защищена транзакционной блокировкой и переносит повторный запуск scheduler безопасно.
+Она пригодна прежде всего для разработки; эталонный runtime — Docker/Apache. При нативной установке запускайте `php bin/recurring.php` и `php bin/notify.php` с одинаковым коротким интервалом (например, раз в минуту) через cron/systemd timer. При настроенных исходящих вебхуках также запускайте `php bin/webhooks.php` по короткому расписанию. При Long polling запускайте `php bin/telegram-poll.php` как постоянно работающий supervised process. На одну БД должны работать только один polling worker Telegram и один webhook-worker; recurrence защищена транзакционной блокировкой и переносит повторный запуск scheduler безопасно.

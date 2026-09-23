@@ -1,0 +1,173 @@
+[English](webhooks.md) | [Русский](webhooks.ru.md)
+
+# Webhooks
+
+TMS webhooks deliver durable domain events to external automation, monitoring and agent systems.
+
+Webhook subscriptions are **instance-wide administrator settings**. Ordinary users cannot create arbitrary outbound HTTP callbacks.
+
+## 1. Create a subscription
+
+Open **Administration → Webhooks** and provide:
+
+- a descriptive name;
+- an HTTP or HTTPS endpoint URL;
+- one or more domain event types;
+- whether the subscription is active.
+
+TMS generates a random signing secret. The plaintext secret is shown **once** immediately after creation or secret rotation. Store it in the receiving system at that time.
+
+The secret is stored encrypted by the same instance encryption key used for notification credentials.
+
+## 2. Event delivery
+
+A domain event is first written to the durable `domain_events` journal. Matching active webhook subscriptions then receive a durable row in `webhook_deliveries`.
+
+The webhook worker performs delivery asynchronously. A slow or unavailable external endpoint therefore does not block the user action that created the event.
+
+The Compose and Portainer templates run a dedicated `webhook-worker` service. Its default poll interval is 15 seconds and can be changed with:
+
+```dotenv
+WEBHOOK_INTERVAL_SECONDS=15
+```
+
+For native deployments, run:
+
+```bash
+php bin/webhooks.php
+```
+
+on a short recurring schedule. Run only one webhook worker per database.
+
+## 3. HTTP request
+
+TMS sends an HTTP `POST` with JSON body and does not follow redirects.
+
+Important headers:
+
+| Header | Meaning |
+| --- | --- |
+| `X-TMS-Webhook-Version` | Delivery protocol version, currently `1` |
+| `X-TMS-Delivery-Id` | Delivery-attempt record id |
+| `X-TMS-Event-Id` | Stable UUID of the domain event |
+| `X-TMS-Event-Type` | Event type such as `task.updated` |
+| `X-TMS-Timestamp` | Unix timestamp used in the signature |
+| `X-TMS-Signature` | `v1=<hex HMAC-SHA256>` |
+
+Example payload:
+
+```json
+{
+  "id": "11111111-2222-4333-8444-555555555555",
+  "type": "task.updated",
+  "schema_version": 1,
+  "occurred_at": "2026-09-23 12:34:56.123456",
+  "actor": {
+    "user_id": 7,
+    "username": "alice"
+  },
+  "subject": {
+    "task_id": 42,
+    "project_id": 10,
+    "comment_id": null
+  },
+  "visibility": {
+    "user_id": null,
+    "team_id": 3
+  },
+  "data": {
+    "subject_title": "Deploy TMS",
+    "changes": {
+      "status": {
+        "old": "Todo",
+        "new": "Done"
+      }
+    }
+  }
+}
+```
+
+The exact domain-event contract is documented in [DOMAIN_EVENTS.md](DOMAIN_EVENTS.md).
+
+## 4. Verify the signature
+
+The signature input is the exact UTF-8 request body prefixed by the timestamp:
+
+```text
+<TIMESTAMP>.<RAW_REQUEST_BODY>
+```
+
+Compute:
+
+```text
+hex(HMAC-SHA256(signing_secret, timestamp + "." + raw_body))
+```
+
+and compare it in constant time with the hexadecimal part of `X-TMS-Signature`.
+
+Pseudocode:
+
+```text
+expected = "v1=" + hmac_sha256_hex(secret, timestamp + "." + raw_body)
+constant_time_compare(expected, request_header["X-TMS-Signature"])
+```
+
+A receiver should also reject timestamps outside its chosen replay window and deduplicate processing by `X-TMS-Event-Id`.
+
+Do not parse and re-serialize JSON before signature verification; verify the exact raw body bytes received from TMS.
+
+## 5. Success, retry and failure
+
+Any HTTP status from `200` through `299` is successful.
+
+All transport failures and non-2xx HTTP responses enter retry with exponential-style backoff:
+
+1. 1 minute;
+2. 5 minutes;
+3. 15 minutes;
+4. 1 hour;
+5. 6 hours;
+6. 24 hours;
+7. 48 hours.
+
+The eighth failed attempt marks the delivery permanently `failed`.
+
+Administration → Webhooks shows recent delivery state, response status, last error and number of attempts. Permanently failed deliveries can be queued manually for another attempt.
+
+## 6. Recovery from enqueue failures
+
+The domain-event journal remains canonical. Before normal delivery, the worker reconciles active subscriptions against `domain_events` and recreates any missing `webhook_deliveries` rows that match the subscription since its current activation/configuration time.
+
+This means a transient synchronous enqueue failure does not permanently lose an event.
+
+## 7. Changing subscriptions
+
+Changing the endpoint or selected event types starts a new activation cursor and discards still-pending deliveries created for the previous delivery configuration. Historical completed/failed rows remain visible.
+
+Changing only the display name does not discard queued work.
+
+Disabling a subscription stops delivery and discards its queued pending/retry rows. Re-enabling it starts from the new activation time instead of replaying the entire historical journal.
+
+Secret rotation does not change the endpoint or event selection. Any later attempt uses the newly rotated secret.
+
+## 8. Security notes
+
+- webhook management is administrator-only;
+- credentials embedded in endpoint URLs are rejected;
+- signing secrets are generated by TMS and encrypted at rest;
+- TMS intentionally allows administrator-configured private/internal endpoints because self-hosted integrations and agents may live on the same network;
+- treat webhook administrators as trusted infrastructure operators;
+- use HTTPS when traffic leaves a trusted private network;
+- verify signatures and replay age before processing a request;
+- make receivers idempotent by event id.
+
+## 9. Supported events
+
+The selectable event list comes from the stable domain-event catalog:
+
+- task create/update/delete;
+- task checklist lifecycle;
+- project create/update/delete;
+- discussion comment create/update/delete.
+
+New additive event types may appear in later releases. Existing event names and payload compatibility follow the rules in [DOMAIN_EVENTS.md](DOMAIN_EVENTS.md).

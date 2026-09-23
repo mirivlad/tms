@@ -10,6 +10,7 @@ use Tms\Application\DomainEventBus;
 use Tms\Application\DomainEventPublisher;
 use Tms\Application\RecurringTaskRunner;
 use Tms\Application\TaskEventNotificationConsumer;
+use Tms\Application\WebhookEventConsumer;
 use Tms\Domain\Activity\ActivityRepository;
 use Tms\Domain\Event\DomainEventRepository;
 use Tms\Domain\Checklist\ChecklistRepository;
@@ -23,6 +24,8 @@ use Tms\Domain\Recurrence\RecurrenceSchedule;
 use Tms\Domain\Recurrence\TaskRecurrenceRepository;
 use Tms\Domain\Status\StatusRepository;
 use Tms\Domain\Task\TaskRepository;
+use Tms\Domain\Webhook\WebhookDeliveryRepository;
+use Tms\Domain\Webhook\WebhookSubscriptionRepository;
 use Tms\I18n\Translator;
 use Tms\Infrastructure\Database;
 use Tms\Infrastructure\NotificationSecretBoxFactory;
@@ -89,11 +92,17 @@ try {
         new Translator(dirname(__DIR__) . '/resources/i18n', $env('APP_LOCALE', 'en')),
         $required('APP_URL'),
     );
+    $webhookSubscriptions = new WebhookSubscriptionRepository($db, $secretBox);
+    $webhookDeliveries = new WebhookDeliveryRepository($db);
     $eventPublisher = new DomainEventPublisher(
         $db,
         new DomainEventBus(
             new DomainEventRepository($db),
-            [new ActivityEventConsumer($activity), $taskNotifications],
+            [
+                new ActivityEventConsumer($activity),
+                $taskNotifications,
+                new WebhookEventConsumer($webhookSubscriptions, $webhookDeliveries),
+            ],
         ),
         $appTimezone,
     );
