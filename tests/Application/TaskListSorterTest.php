@@ -72,6 +72,7 @@ final class TaskListSorterTest extends TestCase
             title: $title,
             description: '',
             deadline: null,
+            scheduledAt: null,
             statusId: $statusId,
             typeId: null,
             priority: 1,
