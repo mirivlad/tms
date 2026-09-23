@@ -4,10 +4,10 @@
 
 TMS is a lightweight, self-hosted task management system for people who want to keep tasks and data on infrastructure they control.
 
-> **Current stable release:** `v0.3.1`
+> **Current stable release:** `v0.3.5`
 
 ```text
-ghcr.io/mirivlad/tms:v0.3.1
+ghcr.io/mirivlad/tms:v0.3.5
 ```
 
 `latest` follows the newest stable release. For reproducible deployments, pin a versioned tag. CI-tested development builds from `main` are published as `edge` and immutable `sha-<commit>` tags.
@@ -27,6 +27,11 @@ ghcr.io/mirivlad/tms:v0.3.1
 - ordered task checklists with progress tracking;
 - private saved task views for reusable filters, sorting and project scope;
 - recurring task series with calendar schedules and N-days-after-completion mode;
+- separate planned work time (`scheduled_at`) and deadline semantics across tasks, filters, Saved Views, Calendar and recurring occurrences;
+- realtime in-app notification/invitation badges without full page reloads;
+- durable domain-event journal powering activity, notifications and integrations;
+- event-driven assignment/date/status/discussion notifications with in-app canonical history;
+- administrator-managed signed outbound webhooks with durable retry/recovery and delivery history;
 - per-user language, timezone and theme settings;
 - optional self-registration and administrator approval;
 - SMTP/email notifications;
@@ -42,6 +47,7 @@ ghcr.io/mirivlad/tms:v0.3.1
 | Installation, update, backup | [Installation](docs/INSTALLATION.md) | [Установка](docs/INSTALLATION.ru.md) |
 | Administration | [Administration](docs/ADMINISTRATION.md) | [Администрирование](docs/ADMINISTRATION.ru.md) |
 | User guide | [User guide](docs/USER_GUIDE.md) | [Руководство пользователя](docs/USER_GUIDE.ru.md) |
+| Handbook maintenance policy | [Policy](docs/DOCUMENTATION_POLICY.md) | — |
 | Notifications & Telegram | [Notifications](docs/notifications.md) | [Уведомления](docs/notifications.ru.md) |
 | Webhooks | [Webhooks](docs/webhooks.md) | [Вебхуки](docs/webhooks.ru.md) |
 | FAQ | [FAQ](docs/FAQ.md) | [FAQ](docs/FAQ.ru.md) |
@@ -50,6 +56,8 @@ ghcr.io/mirivlad/tms:v0.3.1
 | Project scope | [Project scope](docs/PROJECT_SCOPE.md) | — |
 | Roadmap | [Roadmap](docs/ROADMAP.md) | — |
 | Security policy | [Security](SECURITY.md) | — |
+
+The four handbook sources are also rendered by CI/release automation as English/Russian **HTML and PDF** user/admin manuals. Generated files are attached to each release; source Markdown remains canonical.
 
 ## Quick start with the published image
 
