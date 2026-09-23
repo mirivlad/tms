@@ -43,6 +43,6 @@ final class DomainEventCatalog
         }
         $result = array_keys($normalized);
         sort($result);
-        return array_values($result);
+        return $result;
     }
 }
