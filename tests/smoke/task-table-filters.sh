@@ -21,10 +21,10 @@ db "INSERT INTO customers (user_id,name) VALUES ($admin_id,'Filter 100% Acme'),(
 acme_id=$(db "SELECT id FROM customers WHERE user_id=$admin_id AND name='Filter 100% Acme' LIMIT 1")
 beta_id=$(db "SELECT id FROM customers WHERE user_id=$admin_id AND name='Filter Beta' LIMIT 1")
 
-db "INSERT INTO tasks (created_by,title,description,deadline,status_id,priority,customer_id,created_at,updated_at) VALUES
-($admin_id,'Filter open match','', '2026-06-15 12:00:00',$default_status,1,$acme_id,'2026-05-05 09:00:00','2026-05-05 09:00:00'),
-($admin_id,'Filter done match','', '2026-06-16 12:00:00',$completion_status,1,$acme_id,'2026-05-06 09:00:00','2026-05-06 09:00:00'),
-($admin_id,'Filter outside deadline','', '2026-07-10 12:00:00',$default_status,1,$beta_id,'2026-05-07 09:00:00','2026-05-07 09:00:00')"
+db "INSERT INTO tasks (created_by,title,description,deadline,scheduled_at,status_id,priority,customer_id,created_at,updated_at) VALUES
+($admin_id,'Filter open match','', '2026-06-15 12:00:00','2026-06-10 09:00:00',$default_status,1,$acme_id,'2026-05-05 09:00:00','2026-05-05 09:00:00'),
+($admin_id,'Filter done match','', '2026-06-16 12:00:00','2026-06-11 09:00:00',$completion_status,1,$acme_id,'2026-05-06 09:00:00','2026-05-06 09:00:00'),
+($admin_id,'Filter outside deadline','', '2026-07-10 12:00:00','2026-07-05 09:00:00',$default_status,1,$beta_id,'2026-05-07 09:00:00','2026-05-07 09:00:00')"
 
 curl --fail --silent --get --cookie "$cookies" \
   --data-urlencode 'q=Filter' \
@@ -49,6 +49,8 @@ curl --fail --silent --get --cookie "$cookies" \
   --data-urlencode 'q=Filter' \
   --data-urlencode 'deadline_from=2026-06-01' \
   --data-urlencode 'deadline_to=2026-06-30' \
+  --data-urlencode 'scheduled_from=2026-06-01' \
+  --data-urlencode 'scheduled_to=2026-06-30' \
   --data-urlencode 'created_from=2026-05-01' \
   --data-urlencode 'created_to=2026-05-31' \
   "$base_url/tasks" > /tmp/filter-dates.html
@@ -60,6 +62,7 @@ if grep -q 'Filter outside deadline' /tmp/filter-dates.html; then
 fi
 grep -q 'filter-chip' /tmp/filter-dates.html
 grep -q 'deadline_from=2026-06-01' /tmp/filter-dates.html
+grep -q 'scheduled_from=2026-06-01' /tmp/filter-dates.html
 
 values=''
 for i in $(seq -w 1 14); do
