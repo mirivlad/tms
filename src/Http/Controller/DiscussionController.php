@@ -8,6 +8,7 @@ use DomainException;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Tms\Application\DiscussionNotificationService;
+use Tms\Application\DomainEventPublisher;
 use Tms\Domain\Discussion\DiscussionRepository;
 use Tms\I18n\Translator;
 use Tms\Security\SessionManager;
@@ -19,6 +20,7 @@ final class DiscussionController
         private readonly SessionManager $sessions,
         private readonly DiscussionRepository $discussions,
         private readonly DiscussionNotificationService $notifications,
+        private readonly DomainEventPublisher $events,
         private readonly TaskDescriptionSanitizer $sanitizer,
         private readonly Translator $translator,
     ) {
@@ -173,6 +175,10 @@ final class DiscussionController
                 );
             }
             if ($commentId !== null) {
+                $context = $this->discussions->notificationContextForMember($userId, $commentId);
+                if ($context !== null) {
+                    $this->events->discussionComment($userId, 'discussion.comment.created', $context);
+                }
                 $this->processNotifications($userId, $commentId);
             }
             $this->notice('success', 'discussions.saved');
@@ -203,6 +209,10 @@ final class DiscussionController
                     ? $this->discussions->updateForTask($userId, $taskId, $commentId, $bodyHtml)
                     : false);
             if ($updated) {
+                $context = $this->discussions->notificationContextForMember($userId, $commentId);
+                if ($context !== null) {
+                    $this->events->discussionComment($userId, 'discussion.comment.updated', $context);
+                }
                 $this->processNotifications($userId, $commentId);
             }
             $this->notice($updated ? 'success' : 'error', $updated ? 'discussions.saved' : 'discussions.unavailable');
@@ -219,11 +229,17 @@ final class DiscussionController
         ?int $taskId,
         int $commentId,
     ): ResponseInterface {
+        $userId = $this->userId();
+        $context = $this->discussions->notificationContextForMember($userId, $commentId);
         $deleted = $projectId !== null
-            ? $this->discussions->deleteForProject($this->userId(), $projectId, $commentId)
+            ? $this->discussions->deleteForProject($userId, $projectId, $commentId)
             : ($taskId !== null
-                ? $this->discussions->deleteForTask($this->userId(), $taskId, $commentId)
+                ? $this->discussions->deleteForTask($userId, $taskId, $commentId)
                 : false);
+
+        if ($deleted && $context !== null) {
+            $this->events->discussionComment($userId, 'discussion.comment.deleted', $context);
+        }
 
         $this->notice($deleted ? 'success' : 'error', $deleted ? 'discussions.deleted' : 'discussions.unavailable');
         return $this->redirect($response, $projectId, $taskId);
