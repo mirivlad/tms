@@ -136,6 +136,17 @@ final class WebhookDeliveryRepository
         ]);
     }
 
+    public function discardQueuedForSubscription(int $subscriptionId): int
+    {
+        $stmt = $this->db->prepare(
+            'DELETE FROM webhook_deliveries
+             WHERE subscription_id = :subscription_id
+               AND status IN (\'pending\', \'retry\')'
+        );
+        $stmt->execute(['subscription_id' => $subscriptionId]);
+        return $stmt->rowCount();
+    }
+
     public function retry(int $id): bool
     {
         $stmt = $this->db->prepare(
