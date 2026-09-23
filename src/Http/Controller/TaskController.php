@@ -113,6 +113,8 @@ final class TaskController
         $overdue = ($query['overdue'] ?? null) === '1';
         $deadlineFrom = $this->queryDate($query, 'deadline_from');
         $deadlineTo = $this->queryDate($query, 'deadline_to');
+        $scheduledFrom = $this->queryDate($query, 'scheduled_from');
+        $scheduledTo = $this->queryDate($query, 'scheduled_to');
         $createdFrom = $this->queryDate($query, 'created_from');
         $createdTo = $this->queryDate($query, 'created_to');
 
@@ -129,6 +131,8 @@ final class TaskController
             overdue: $overdue,
             deadlineFrom: $deadlineFrom,
             deadlineTo: $deadlineTo,
+            scheduledFrom: $scheduledFrom,
+            scheduledTo: $scheduledTo,
             createdFrom: $createdFrom,
             createdTo: $createdTo,
             projectId: $projectId,
@@ -195,6 +199,8 @@ final class TaskController
             'overdue' => $overdue,
             'deadline_from' => $deadlineFrom,
             'deadline_to' => $deadlineTo,
+            'scheduled_from' => $scheduledFrom,
+            'scheduled_to' => $scheduledTo,
             'created_from' => $createdFrom,
             'created_to' => $createdTo,
             'project' => $projectFilter,
@@ -335,7 +341,9 @@ final class TaskController
             'assignee' => $assignee?->username,
             'assignee_id' => $task->assigneeUserId,
             'deadline' => $task->deadline,
-            'deadline_input' => $this->deadlineForForm($task->deadline),
+            'deadline_input' => $this->dateTimeForForm($task->deadline),
+            'scheduled_at' => $task->scheduledAt,
+            'scheduled_at_input' => $this->dateTimeForForm($task->scheduledAt),
             'created_at' => $task->createdAt,
             'updated_at' => $task->updatedAt,
             'custom_fields' => $custom,
@@ -376,8 +384,9 @@ final class TaskController
             $this->assertStatusForScope($userId, $statusId, $task->projectId);
             $description = is_string($body['description'] ?? null) ? (string) $body['description'] : '';
             $deadline = $this->normalizeDeadline($body['deadline'] ?? null);
+            $scheduledAt = $this->normalizeScheduledAt($body['scheduled_at'] ?? null);
 
-            if (!$this->tasks->quickUpdateForUser($userId, $taskId, $description, $deadline, $statusId)) {
+            if (!$this->tasks->quickUpdateForUser($userId, $taskId, $description, $deadline, $statusId, $scheduledAt)) {
                 return $this->json($response, ['error' => $this->translator->trans('task_preview.not_found')], 404);
             }
             $updated = $this->tasks->findForUser($userId, $taskId);
@@ -577,7 +586,8 @@ final class TaskController
         return $this->renderForm($request, $response, [
             'title' => $task->title,
             'description' => $task->description,
-            'deadline' => $this->deadlineForForm($task->deadline),
+            'deadline' => $this->dateTimeForForm($task->deadline),
+            'scheduled_at' => $this->dateTimeForForm($task->scheduledAt),
             'status_id' => $task->statusId,
             'type_id' => $task->typeId,
             'priority' => array_search($task->priority, self::PRIORITIES, true) ?: 'medium',
@@ -618,6 +628,7 @@ final class TaskController
                 $customerId,
                 $input['project_id'],
                 $input['assignee_user_id'],
+                $input['scheduled_at'],
             );
             $this->customValues->replaceForTask($userId, $taskId, $customInput);
             $created = $this->tasks->findForUser($userId, $taskId);
@@ -670,6 +681,7 @@ final class TaskController
                 $customerId,
                 $input['project_id'],
                 $input['assignee_user_id'],
+                $input['scheduled_at'],
             );
             $this->customValues->replaceForTask($userId, $taskId, $customInput);
             $updated = $this->tasks->findForUser($userId, $taskId);
@@ -767,7 +779,7 @@ final class TaskController
 
     /**
      * @param array<string, mixed> $body
-     * @return array{title:string,description:string,deadline:?string,status_id:int,type_id:?int,priority:int,customer:string,project_id:?int,assignee_user_id:?int}
+     * @return array{title:string,description:string,deadline:?string,scheduled_at:?string,status_id:int,type_id:?int,priority:int,customer:string,project_id:?int,assignee_user_id:?int}
      */
     private function taskInput(array $body): array
     {
@@ -797,6 +809,7 @@ final class TaskController
             'title' => $title,
             'description' => $description,
             'deadline' => $this->normalizeDeadline($body['deadline'] ?? null),
+            'scheduled_at' => $this->normalizeScheduledAt($body['scheduled_at'] ?? null),
             'status_id' => $statusId,
             'type_id' => $typeId,
             'priority' => self::PRIORITIES[$priorityName],
@@ -1195,6 +1208,16 @@ final class TaskController
 
     private function normalizeDeadline(mixed $value): ?string
     {
+        return $this->normalizeDateTime($value, 'validation.deadline_invalid');
+    }
+
+    private function normalizeScheduledAt(mixed $value): ?string
+    {
+        return $this->normalizeDateTime($value, 'validation.scheduled_at_invalid');
+    }
+
+    private function normalizeDateTime(mixed $value, string $validationKey): ?string
+    {
         if (!is_string($value) || trim($value) === '') {
             return null;
         }
@@ -1206,15 +1229,15 @@ final class TaskController
                 return $date->format('Y-m-d H:i:s');
             }
         }
-        throw new DomainException($this->translator->trans('validation.deadline_invalid'));
+        throw new DomainException($this->translator->trans($validationKey));
     }
 
-    private function deadlineForForm(?string $deadline): string
+    private function dateTimeForForm(?string $value): string
     {
-        if ($deadline === null || $deadline === '') {
+        if ($value === null || $value === '') {
             return '';
         }
-        $timestamp = strtotime($deadline);
+        $timestamp = strtotime($value);
         return $timestamp === false ? '' : date('Y-m-d\\TH:i', $timestamp);
     }
 
@@ -1356,7 +1379,7 @@ final class TaskController
     }
 
     /**
-     * @param array{status_id:?int,status_invert:bool,type_id:?int,priority:string,q:string,customer:string,overdue:bool,deadline_from:string,deadline_to:string,created_from:string,created_to:string,project:string} $filters
+     * @param array{status_id:?int,status_invert:bool,type_id:?int,priority:string,q:string,customer:string,overdue:bool,deadline_from:string,deadline_to:string,scheduled_from:string,scheduled_to:string,created_from:string,created_to:string,project:string} $filters
      * @param array<int, mixed> $customFilters
      * @return array<string, mixed>
      */
@@ -1375,7 +1398,7 @@ final class TaskController
         if ($filters['project'] !== 'none') {
             $params['project'] = $filters['project'];
         }
-        foreach (['priority', 'q', 'customer', 'deadline_from', 'deadline_to', 'created_from', 'created_to'] as $key) {
+        foreach (['priority', 'q', 'customer', 'deadline_from', 'deadline_to', 'scheduled_from', 'scheduled_to', 'created_from', 'created_to'] as $key) {
             if ($filters[$key] !== '') {
                 $params[$key] = $filters[$key];
             }
@@ -1390,7 +1413,7 @@ final class TaskController
     }
 
     /**
-     * @param array{status_id:?int,status_invert:bool,type_id:?int,priority:string,q:string,customer:string,overdue:bool,deadline_from:string,deadline_to:string,created_from:string,created_to:string,project:string} $filters
+     * @param array{status_id:?int,status_invert:bool,type_id:?int,priority:string,q:string,customer:string,overdue:bool,deadline_from:string,deadline_to:string,scheduled_from:string,scheduled_to:string,created_from:string,created_to:string,project:string} $filters
      * @param array<int, mixed> $customFilters
      * @param list<CustomFieldRecord> $fields
      * @param array<int, StatusRecord> $statusMap
@@ -1448,6 +1471,8 @@ final class TaskController
         foreach ([
             'deadline_from' => 'tasks.deadline_from',
             'deadline_to' => 'tasks.deadline_to',
+            'scheduled_from' => 'tasks.scheduled_from',
+            'scheduled_to' => 'tasks.scheduled_to',
             'created_from' => 'tasks.created_from',
             'created_to' => 'tasks.created_to',
         ] as $key => $translationKey) {
