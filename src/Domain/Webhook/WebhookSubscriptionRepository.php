@@ -102,10 +102,14 @@ final class WebhookSubscriptionRepository
         array $eventTypes,
         bool $isActive,
     ): bool {
-        if ($this->find($id) === null) {
+        $existing = $this->find($id);
+        if ($existing === null) {
             return false;
         }
         [$name, $endpointUrl, $eventTypes] = $this->validate($name, $endpointUrl, $eventTypes);
+        $resetActiveSince = (!$existing->isActive && $isActive)
+            || $existing->endpointUrl !== $endpointUrl
+            || $existing->eventTypes !== $eventTypes;
 
         $stmt = $this->db->prepare(
             'UPDATE webhook_subscriptions
@@ -113,7 +117,7 @@ final class WebhookSubscriptionRepository
                  endpoint_url = :endpoint_url,
                  event_types_json = :event_types_json,
                  is_active = :is_active,
-                 active_since = CASE WHEN :is_active_since = 1 THEN CURRENT_TIMESTAMP ELSE active_since END,
+                 active_since = CASE WHEN :reset_active_since = 1 THEN CURRENT_TIMESTAMP ELSE active_since END,
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = :id'
         );
@@ -126,7 +130,7 @@ final class WebhookSubscriptionRepository
                 JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE,
             ),
             'is_active' => $isActive ? 1 : 0,
-            'is_active_since' => $isActive ? 1 : 0,
+            'reset_active_since' => $resetActiveSince ? 1 : 0,
         ]);
         return true;
     }
