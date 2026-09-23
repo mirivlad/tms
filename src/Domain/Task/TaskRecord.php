@@ -12,6 +12,7 @@ final readonly class TaskRecord
         public string $title,
         public string $description,
         public ?string $deadline,
+        public ?string $scheduledAt,
         public ?int $statusId,
         public ?int $typeId,
         public int $priority,
