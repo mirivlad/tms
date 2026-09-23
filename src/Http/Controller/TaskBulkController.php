@@ -124,6 +124,7 @@ final class TaskBulkController
             if (!$this->tasks->deleteForUser($userId, $task->id)) {
                 continue;
             }
+            $this->events->taskEvent($userId, $task, 'task.deleted');
             ++$deleted;
             foreach ($stored as $attachment) {
                 if (!$this->storage->delete($attachment->storageName)) {
