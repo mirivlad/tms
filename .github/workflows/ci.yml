@@ -27,6 +27,41 @@ jobs:
       - run: composer install --no-interaction --prefer-dist
       - run: composer check
 
+  handbooks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: docs/handbook-requirements.txt
+      - name: Install handbook renderer
+        run: python3 -m pip install -r docs/handbook-requirements.txt
+      - name: Check handbook impact
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python3 scripts/check-handbook-impact.py "$BASE_SHA" "$HEAD_SHA"
+      - name: Build HTML and PDF handbooks
+        run: python3 scripts/build-handbooks.py --output build/handbooks
+      - name: Validate handbook artifacts
+        run: |
+          test "$(find build/handbooks -maxdepth 1 -name '*.html' | wc -l)" = "4"
+          test "$(find build/handbooks -maxdepth 1 -name '*.pdf' | wc -l)" = "4"
+          grep -q 'TMS User Handbook' build/handbooks/user-handbook-en.html
+          grep -q 'Руководство пользователя TMS' build/handbooks/user-handbook-ru.html
+          test -s build/handbooks/admin-handbook-en.pdf
+          test -s build/handbooks/admin-handbook-ru.pdf
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tms-handbooks-${{ github.sha }}
+          path: build/handbooks/*
+          if-no-files-found: error
+
   docker-smoke:
     runs-on: ubuntu-latest
     env:
