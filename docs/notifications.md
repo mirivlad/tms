@@ -6,16 +6,27 @@ TMS uses one notification engine for email and Telegram. System transports are c
 
 ## User notification rules
 
-Under **Settings → Notifications**, a user can enable email and/or Telegram and choose notifications for:
+The in-app inbox is the canonical notification channel. Email and Telegram are optional transports that carry the same work event after the in-app record has been created.
+
+Under **Settings → Notifications**, users can control event notifications for:
+
+- task assignment and reassignment;
+- changes to `scheduled_at` and deadline;
+- status changes (off by default to avoid noisy upgrades);
+- discussion replies and `@username` mentions.
+
+Scheduled reminder rules cover:
 
 - tasks due tomorrow;
-- upcoming deadlines with lead time by priority;
+- approaching `scheduled_at` and deadlines, with lead time by priority;
 - overdue tasks;
 - daily digest.
 
-Successful deliveries are journaled in `sent_notifications` with per-channel deduplication. A failure on one channel does not suppress another channel.
+Assignments and date-change notifications are enabled by default. Status-change notifications are disabled by default and can be enabled per user.
 
-The background scheduler currently evaluates configured send times in `APP_TIMEZONE`.
+Successful external deliveries are journaled in `sent_notifications` with per-channel deduplication. A failure on one external channel does not suppress another. Scheduled reminders are also deduplicated in the in-app inbox.
+
+The background scheduler evaluates configured send times in `APP_TIMEZONE`. It considers tasks that the user created or is currently assigned to, while respecting current task access and completion status.
 
 ## Encryption key
 
