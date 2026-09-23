@@ -16,7 +16,7 @@ final class TaskRepository
     public function findForUser(int $userId, int $taskId): ?TaskRecord
     {
         $stmt = $this->db->prepare(
-            'SELECT t.id, t.created_by, t.title, t.description, t.deadline, t.status_id, t.type_id,
+            'SELECT t.id, t.created_by, t.title, t.description, t.deadline, t.scheduled_at, t.status_id, t.type_id,
                     t.priority, t.customer_id, t.project_id, t.assignee_user_id, t.created_at, t.updated_at
              FROM tasks t
              WHERE t.id = :task_id
@@ -54,7 +54,7 @@ final class TaskRepository
         bool $withoutProject = false,
     ): array {
         $customerQuery = trim($customerQuery);
-        $sql = 'SELECT t.id, t.created_by, t.title, t.description, t.deadline, t.status_id, t.type_id,
+        $sql = 'SELECT t.id, t.created_by, t.title, t.description, t.deadline, t.scheduled_at, t.status_id, t.type_id,
                        t.priority, t.customer_id, t.project_id, t.assignee_user_id, t.created_at, t.updated_at
                 FROM tasks t';
         if ($overdue) {
@@ -165,7 +165,7 @@ final class TaskRepository
         }
 
         $customerQuery = trim($customerQuery);
-        $sql = 'SELECT t.id, t.created_by, t.title, t.description, t.deadline, t.status_id, t.type_id,
+        $sql = 'SELECT t.id, t.created_by, t.title, t.description, t.deadline, t.scheduled_at, t.status_id, t.type_id,
                        t.priority, t.customer_id, t.project_id, t.assignee_user_id, t.created_at, t.updated_at
                 FROM tasks t';
         if ($customerQuery !== '') {
@@ -265,6 +265,7 @@ final class TaskRepository
         ?int $customerId,
         ?int $projectId = null,
         ?int $assigneeUserId = null,
+        ?string $scheduledAt = null,
     ): int {
         $title = $this->validateTitle($title);
         $this->assertPriority($priority);
@@ -275,10 +276,10 @@ final class TaskRepository
 
         $stmt = $this->db->prepare(
             'INSERT INTO tasks (
-                created_by, title, description, deadline, status_id, type_id, priority, customer_id, project_id,
+                created_by, title, description, deadline, scheduled_at, status_id, type_id, priority, customer_id, project_id,
                 assignee_user_id, created_at, updated_at
              ) VALUES (
-                :user_id, :title, :description, :deadline, :status_id, :type_id, :priority, :customer_id, :project_id,
+                :user_id, :title, :description, :deadline, :scheduled_at, :status_id, :type_id, :priority, :customer_id, :project_id,
                 :assignee_user_id, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
              )'
         );
@@ -287,6 +288,7 @@ final class TaskRepository
             'title' => $title,
             'description' => trim($description),
             'deadline' => $deadline,
+            'scheduled_at' => $scheduledAt,
             'status_id' => $statusId,
             'type_id' => $typeId,
             'priority' => $priority,
@@ -310,6 +312,7 @@ final class TaskRepository
         ?int $customerId,
         ?int $projectId = null,
         ?int $assigneeUserId = null,
+        ?string $scheduledAt = null,
     ): bool {
         $existing = $this->findForUser($userId, $taskId);
         if ($existing === null) {
@@ -331,6 +334,7 @@ final class TaskRepository
              SET title = :title,
                  description = :description,
                  deadline = :deadline,
+                 scheduled_at = :scheduled_at,
                  status_id = :status_id,
                  type_id = :type_id,
                  priority = :priority,
@@ -371,6 +375,7 @@ final class TaskRepository
         string $description,
         ?string $deadline,
         int $statusId,
+        ?string $scheduledAt = null,
     ): bool {
         $task = $this->findForUser($userId, $taskId);
         if ($task === null) {
@@ -382,6 +387,7 @@ final class TaskRepository
             'UPDATE tasks
              SET description = :description,
                  deadline = :deadline,
+                 scheduled_at = :scheduled_at,
                  status_id = :status_id,
                  updated_at = CURRENT_TIMESTAMP
              WHERE id = :task_id'
@@ -837,6 +843,7 @@ final class TaskRepository
             title: (string) $row['title'],
             description: (string) ($row['description'] ?? ''),
             deadline: $row['deadline'] !== null ? (string) $row['deadline'] : null,
+            scheduledAt: $row['scheduled_at'] !== null ? (string) $row['scheduled_at'] : null,
             statusId: $row['status_id'] !== null ? (int) $row['status_id'] : null,
             typeId: $row['type_id'] !== null ? (int) $row['type_id'] : null,
             priority: (int) ($row['priority'] ?? 0),
