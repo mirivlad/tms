@@ -18,15 +18,16 @@ SPECS = (
 )
 
 
-def render_markdown(source: Path) -> str:
+def render_markdown(source: Path, lang: str, version: str) -> str:
     text = source.read_text(encoding="utf-8")
+    toc_title = "Содержание" if lang == "ru" else "Contents"
     rendered = markdown.markdown(
         text,
         extensions=["extra", "toc", "sane_lists"],
-        extension_configs={"toc": {"title": "Contents"}},
+        extension_configs={"toc": {"title": toc_title}},
         output_format="html5",
     )
-    base = "https://github.com/mirivlad/tms/blob/main/docs/"
+    base = f"https://github.com/mirivlad/tms/blob/v{version}/docs/"
     rendered = re.sub(
         r'href="(?!https?://|#)([^"]+\.md)(#[^"]*)?"',
         lambda m: f'href="{base}{html.escape(m.group(1), quote=True)}{m.group(2) or ""}"',
@@ -42,7 +43,7 @@ def build(output: Path) -> None:
 
     for source_rel, stem, lang, title in SPECS:
         source = ROOT / source_rel
-        body = render_markdown(source)
+        body = render_markdown(source, lang, version)
         document = f"""<!doctype html>
 <html lang="{lang}">
 <head>
