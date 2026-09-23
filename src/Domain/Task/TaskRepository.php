@@ -48,6 +48,8 @@ final class TaskRepository
         bool $overdue = false,
         string $deadlineFrom = '',
         string $deadlineTo = '',
+        string $scheduledFrom = '',
+        string $scheduledTo = '',
         string $createdFrom = '',
         string $createdTo = '',
         ?int $projectId = null,
@@ -111,6 +113,14 @@ final class TaskRepository
         if ($deadlineTo !== '') {
             $sql .= ' AND DATE(t.deadline) <= :deadline_to';
             $params['deadline_to'] = $deadlineTo;
+        }
+        if ($scheduledFrom !== '') {
+            $sql .= ' AND DATE(t.scheduled_at) >= :scheduled_from';
+            $params['scheduled_from'] = $scheduledFrom;
+        }
+        if ($scheduledTo !== '') {
+            $sql .= ' AND DATE(t.scheduled_at) <= :scheduled_to';
+            $params['scheduled_to'] = $scheduledTo;
         }
         if ($createdFrom !== '') {
             $sql .= ' AND DATE(t.created_at) >= :created_from';
