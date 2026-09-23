@@ -133,6 +133,27 @@ final class DomainEventPublisher
     }
 
     /**
+     * @param array<string, array{old:?string,new:?string}> $changes
+     */
+    public function projectEvent(int $actorUserId, ProjectRecord $project, string $eventType, array $changes = []): ?DomainEvent
+    {
+        if (!str_starts_with($eventType, 'project.')) {
+            return null;
+        }
+
+        return $this->publish(
+            actorUserId: $actorUserId,
+            type: $eventType,
+            taskId: null,
+            projectId: $project->id,
+            commentId: null,
+            visibilityUserId: $project->ownerUserId,
+            visibilityTeamId: $project->ownerTeamId,
+            payload: ['subject_title' => $project->name, 'changes' => $changes],
+        );
+    }
+
+    /**
      * @param array{
      *   comment_id:int,
      *   author_user_id:int,
