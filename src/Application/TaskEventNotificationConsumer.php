@@ -29,6 +29,15 @@ final class TaskEventNotificationConsumer implements DomainEventConsumer
 
     public function consume(DomainEvent $event): void
     {
+        try {
+            $this->consumeEvent($event);
+        } catch (\Throwable $error) {
+            error_log('TMS task event notification consumer failed: ' . $error->getMessage());
+        }
+    }
+
+    private function consumeEvent(DomainEvent $event): void
+    {
         if (!in_array($event->type, ['task.created', 'task.updated'], true)
             || $event->taskId === null) {
             return;
