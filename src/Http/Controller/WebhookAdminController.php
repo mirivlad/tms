@@ -57,6 +57,7 @@ final class WebhookAdminController
     public function update(ServerRequestInterface $request, ResponseInterface $response, array $args): ResponseInterface
     {
         $id = $this->id($args);
+        $before = $this->subscriptions->find($id);
         $body = $this->body($request);
         try {
             $updated = $this->subscriptions->update(
@@ -73,7 +74,13 @@ final class WebhookAdminController
             return $this->render($request, $response, $this->translator->trans('webhooks.not_found'), 404);
         }
 
-        $this->deliveries->discardQueuedForSubscription($id);
+        $after = $this->subscriptions->find($id);
+        if ($before !== null && $after !== null
+            && ($before->endpointUrl !== $after->endpointUrl
+                || $before->eventTypes !== $after->eventTypes
+                || ($before->isActive && !$after->isActive))) {
+            $this->deliveries->discardQueuedForSubscription($id);
+        }
         $_SESSION['_webhook_flash'] = $this->translator->trans('webhooks.saved');
         return $this->redirect($response);
     }
