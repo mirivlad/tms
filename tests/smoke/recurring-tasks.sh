@@ -35,10 +35,12 @@ test -n "$completion_status"
 test -n "$other_status"
 
 seed_deadline=$(TZ="$APP_TIMEZONE" date -d '25 hours ago' '+%Y-%m-%d %H:%M:00')
+seed_scheduled=$(TZ="$APP_TIMEZONE" date -d '27 hours ago' '+%Y-%m-%d %H:%M:00')
 expected_next=$(TZ="$APP_TIMEZONE" date -d '1 hour ago' '+%Y-%m-%d %H:%M:00')
+expected_next_scheduled=$(TZ="$APP_TIMEZONE" date -d '3 hours ago' '+%Y-%m-%d %H:%M:00')
 
-db "INSERT INTO tasks (created_by,title,description,deadline,status_id,priority,created_at,updated_at)
-    VALUES ($admin_id,'Recurring calendar smoke','calendar recurrence','$seed_deadline',$spawn_status,2,NOW(),NOW())"
+db "INSERT INTO tasks (created_by,title,description,deadline,scheduled_at,status_id,priority,created_at,updated_at)
+    VALUES ($admin_id,'Recurring calendar smoke','calendar recurrence','$seed_deadline','$seed_scheduled',$spawn_status,2,NOW(),NOW())"
 seed_id=$(db "SELECT id FROM tasks WHERE created_by=$admin_id AND title='Recurring calendar smoke' ORDER BY id DESC LIMIT 1")
 test -n "$seed_id"
 
@@ -74,6 +76,7 @@ test "$(db "SELECT COUNT(*) FROM task_recurrence_occurrences WHERE recurrence_id
 test "$(db "SELECT title FROM tasks WHERE id=$generated_id")" = "Recurring calendar smoke"
 test "$(db "SELECT status_id FROM tasks WHERE id=$generated_id")" = "$spawn_status"
 test "$(db "SELECT DATE_FORMAT(deadline,'%Y-%m-%d %H:%i:%s') FROM tasks WHERE id=$generated_id")" = "$expected_next"
+test "$(db "SELECT DATE_FORMAT(scheduled_at,'%Y-%m-%d %H:%i:%s') FROM tasks WHERE id=$generated_id")" = "$expected_next_scheduled"
 test "$(db "SELECT COUNT(*) FROM task_checklist_items WHERE task_id=$generated_id")" = "2"
 test "$(db "SELECT COUNT(*) FROM task_checklist_items WHERE task_id=$generated_id AND is_completed=1")" = "0"
 test "$(db "SELECT value FROM task_custom_field_values WHERE task_id=$generated_id AND field_id=$field_id")" = "copied value"
