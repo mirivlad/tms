@@ -172,10 +172,10 @@ final class TaskEventNotificationConsumer implements DomainEventConsumer
     /** @param array<string, mixed> $change */
     private function changePreview(array $change): string
     {
-        $old = isset($change['old']) && $change['old'] !== null && (string) $change['old'] !== ''
+        $old = isset($change['old']) && (string) $change['old'] !== ''
             ? (string) $change['old']
             : '—';
-        $new = isset($change['new']) && $change['new'] !== null && (string) $change['new'] !== ''
+        $new = isset($change['new']) && (string) $change['new'] !== ''
             ? (string) $change['new']
             : '—';
         return $this->translator->trans('notifications.change_preview', ['old' => $old, 'new' => $new]);
