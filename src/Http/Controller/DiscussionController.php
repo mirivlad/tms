@@ -210,7 +210,6 @@ final class DiscussionController
                 if ($context !== null) {
                     $this->events->discussionComment($userId, 'discussion.comment.updated', $context);
                 }
-                $this->processNotifications($userId, $commentId);
             }
             $this->notice($updated ? 'success' : 'error', $updated ? 'discussions.saved' : 'discussions.unavailable');
         } catch (DomainException $error) {
