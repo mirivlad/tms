@@ -137,6 +137,7 @@ jobs:
           - Overview summaries for projects, teams and unassigned work;
           - calendar day quick-add and customer autocomplete;
           - pre-v0.2.7 Kanban wheel handoff: scroll the active column vertically while possible, then continue across the board horizontally at the column boundary, with Shift-wheel available for immediate horizontal movement;
+          - continuous desktop Kanban wheel scrolling without CSS scroll-snap interference; mobile swipe snapping remains enabled;
           - conditional, color-distinct notification and invitation badges beside the username, rendered only when their counters are non-zero;
           - viewport-aware Kanban sizing that keeps the horizontal board scroller reachable when filters or selectors appear above it;
           - explicit expand/collapse state indication for the task-list Filters accordion;
