@@ -202,6 +202,7 @@ final class ActivityRepository
             'customer' => $this->label('customers', $task->customerId),
             'project' => $this->label('projects', $task->projectId),
             'assignee' => $this->label('users', $task->assigneeUserId, 'username'),
+            'scheduled_at' => $task->scheduledAt,
             'deadline' => $task->deadline,
         ];
     }
