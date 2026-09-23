@@ -161,6 +161,7 @@ return [
 
     'notifications.message.tomorrow' => 'Tasks for tomorrow',
     'notifications.message.upcoming' => 'Upcoming task',
+    'notifications.message.planned_upcoming' => 'Upcoming planned task',
     'notifications.message.overdue' => 'Overdue tasks',
     'notifications.message.digest' => 'Task digest',
     'notifications.message.none' => 'No matching tasks.',
