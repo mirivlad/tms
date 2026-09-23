@@ -63,6 +63,10 @@ final class DomainEventPublisher
             $changes = $this->redactPreviousContext($changes);
         }
 
+        $previousAssigneeUserId = $beforeVisibility === $afterVisibility
+            ? $before->assigneeUserId
+            : null;
+
         [$visibilityUserId, $visibilityTeamId] = $afterVisibility;
         return $this->publish(
             actorUserId: $actorUserId,
@@ -77,7 +81,7 @@ final class DomainEventPublisher
                 'changes' => $changes,
                 'owner_user_id' => $after->ownerId,
                 'assignee_user_id' => $after->assigneeUserId,
-                'previous_assignee_user_id' => $before->assigneeUserId,
+                'previous_assignee_user_id' => $previousAssigneeUserId,
             ],
         );
     }
