@@ -122,6 +122,9 @@ jobs:
           - isolated multi-user task data, metadata and attachments;
           - dashboard counters, status distribution, stale tasks and daily tips;
           - task list, Kanban board and calendar with advanced filtering;
+          - independent planned work time (scheduled_at) and deadline semantics across task forms, quick edit, filters, Saved Views, Calendar and recurring occurrences;
+          - realtime notification and invitation badges that refresh while the page is open without requiring a full reload;
+          - durable versioned domain-event journal powering activity history, notifications and external integrations;
           - append-only task and project activity history for meaningful changes;
           - ordered task checklists with progress tracking and activity events;
           - private saved task views for reusable filters, sorting, project scope and an optional default view;
@@ -154,7 +157,11 @@ jobs:
           - explicit expand/collapse state indication for the task-list Filters accordion;
           - optional self-registration with visual CAPTCHA, email verification and administrator approval;
           - administrator user management, direct account creation, quick user details and impersonation;
+          - event-driven in-app notifications for assignment/reassignment, planned/deadline changes, optional status changes, discussion replies and mentions, with email/Telegram as optional transports;
+          - scheduled reminders for both planned work and deadlines, including owner/assignee access checks and canonical in-app history;
           - SMTP/email and Telegram notification delivery with administrator-managed credentials, selectable Long polling/Webhook command delivery, independently saved HTTP/SOCKS proxy settings and per-user Telegram delivery testing;
+          - administrator-managed signed outbound webhooks with selectable domain events, encrypted signing secrets, durable queue recovery, HMAC verification, retry/backoff and delivery history;
+          - maintained English/Russian user and administrator handbooks generated as HTML/PDF and attached to each release;
           - Russian and English interface catalogs with count-aware pluralization for natural numeric UI labels;
           - MariaDB migrations, first-admin CLI bootstrap, Docker Compose and Portainer deployment.
 
