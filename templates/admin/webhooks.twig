@@ -63,7 +63,7 @@
             {% endfor %}
             </div>
           </fieldset>
-          <div class="inline-actions"><button type="submit">{{ t('common.save') }}</button></div>
+          <div class="inline-actions"><button type="submit">{{ t('webhooks.save') }}</button></div>
         </form>
         <div class="inline-actions webhook-destructive-actions">
           <form method="post" action="/admin/webhooks/{{ subscription.id }}/rotate-secret">
@@ -72,7 +72,7 @@
           </form>
           <form method="post" action="/admin/webhooks/{{ subscription.id }}/delete" onsubmit="return confirm('{{ t('webhooks.delete_confirm')|e('js') }}')">
             <input type="hidden" name="_csrf" value="{{ csrf_token }}">
-            <button class="danger" type="submit">{{ t('common.delete') }}</button>
+            <button class="danger" type="submit">{{ t('webhooks.delete') }}</button>
           </form>
         </div>
       </article>
