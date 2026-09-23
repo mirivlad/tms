@@ -69,6 +69,25 @@ def starts_with_any(path: str, prefixes: tuple[str, ...]) -> bool:
     return any(path == prefix or path.startswith(prefix) for prefix in prefixes)
 
 
+def only_portainer_image_pin_changed(path: str, base: str, head: str) -> bool:
+    if path != "compose.portainer.yaml":
+        return False
+    diff = subprocess.check_output(
+        ["git", "diff", "--unified=0", f"{base}...{head}", "--", path],
+        text=True,
+    )
+    changed_lines = [
+        line[1:].strip()
+        for line in diff.splitlines()
+        if line.startswith(("+", "-")) and not line.startswith(("+++", "---"))
+    ]
+    image_pin_marker = "image: &tms-image " + "$" + "{TMS_IMAGE:-ghcr.io/mirivlad/tms:v"
+    return bool(changed_lines) and all(
+        image_pin_marker in line
+        for line in changed_lines
+    )
+
+
 def main() -> int:
     if len(sys.argv) != 3:
         print("usage: check-handbook-impact.py <base-sha> <head-sha>", file=sys.stderr)
@@ -79,7 +98,11 @@ def main() -> int:
         starts_with_any(path, USER_PREFIXES) and not starts_with_any(path, USER_EXCLUDES)
         for path in changed
     )
-    admin_impact = any(starts_with_any(path, ADMIN_PREFIXES) for path in changed)
+    admin_impact = any(
+        starts_with_any(path, ADMIN_PREFIXES)
+        and not only_portainer_image_pin_changed(path, sys.argv[1], sys.argv[2])
+        for path in changed
+    )
 
     errors: list[str] = []
     if user_impact and not USER_DOCS.issubset(changed):
