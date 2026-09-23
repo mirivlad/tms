@@ -135,9 +135,8 @@ label { gap: 5px; }
     gap: 10px;
     height: var(--board-available-height, calc(100dvh - 138px));
     min-height: min(500px, var(--board-available-height, 500px));
-    scroll-snap-type: x proximity;
 }
-.board-column { border-radius: 10px; scroll-snap-align: start; }
+.board-column { border-radius: 10px; }
 .board-column-header { padding: 10px 11px; }
 .board-cards { gap: 8px; padding: 8px; }
 .task-card { padding: 10px; border-radius: 8px; }
@@ -521,7 +520,7 @@ label { gap: 5px; }
         padding-bottom: 8px;
         scroll-snap-type: x mandatory;
     }
-    .board-column { max-height: 72dvh; min-height: 360px; }
+    .board-column { max-height: 72dvh; min-height: 360px; scroll-snap-align: start; }
     .board-cards { overflow-y: auto; }
 
     .calendar-workspace { grid-template-columns: 1fr; }

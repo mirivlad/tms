@@ -35,4 +35,14 @@ final class NavigationAndBoardScriptTest extends TestCase
         );
         self::assertStringContainsString('board.scrollLeft += horizontalDelta;', $script);
     }
+    public function testDesktopKanbanAvoidsScrollSnapWhileMobileKeepsIt(): void
+    {
+        $css = (string) file_get_contents(dirname(__DIR__, 2) . '/public/assets/layout-v2.css');
+
+        self::assertSame(1, preg_match('/\.board\s*\{[^}]*grid-auto-columns:\s*300px;[^}]*\}/s', $css, $desktopBoard));
+        self::assertStringNotContainsString('scroll-snap-type', (string) ($desktopBoard[0] ?? ''));
+        self::assertStringContainsString('scroll-snap-type: x mandatory;', $css);
+        self::assertStringContainsString('scroll-snap-align: start;', $css);
+    }
+
 }
