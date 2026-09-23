@@ -132,6 +132,10 @@ final class ActivityRepository
             return;
         }
 
+        if ($this->hasSourceEvent($event->id)) {
+            return;
+        }
+
         $subjectTitle = $event->payload['subject_title'] ?? null;
         $rawChanges = $event->payload['changes'] ?? [];
         if (!is_string($subjectTitle) || !is_array($rawChanges)) {
@@ -197,6 +201,15 @@ final class ActivityRepository
             $projectId,
             max(1, min(1000, $limit)),
         );
+    }
+
+    private function hasSourceEvent(string $eventId): bool
+    {
+        $stmt = $this->db->prepare(
+            'SELECT 1 FROM activity_events WHERE source_event_id = :source_event_id LIMIT 1'
+        );
+        $stmt->execute(['source_event_id' => $eventId]);
+        return $stmt->fetchColumn() !== false;
     }
 
     /**
