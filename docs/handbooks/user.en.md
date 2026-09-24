@@ -23,23 +23,27 @@ The **Practical workflows** chapter is task-oriented: use it when you know what 
 1. Sign in and open **Profile settings**.
 2. Verify your timezone and interface language.
 3. Review personal **Statuses**; one should be the default and one should represent completion.
+
+<figure class="quick-figure">
+  <img src="assets/screenshots/en/profile.png" alt="Profile settings: timezone, language and personal preferences.">
+  <figcaption>Profile settings — check the timezone and personal preferences before relying on dates.</figcaption>
+</figure>
+
 4. Create your first task with **New task** or global quick add.
 5. Set **Planned for** when you know when you intend to work, and **Deadline** when there is a hard completion boundary.
+
+<figure class="quick-figure">
+  <img src="assets/screenshots/en/task-new.png" alt="New task form with project, status, assignee, priority and dates.">
+  <figcaption>Planned time and deadline are separate fields on the task form.</figcaption>
+</figure>
+
 6. View the same work in **Tasks**, **Board** and **Calendar**.
 7. In **Notification settings**, enable only useful work events and transports.
 8. If several tasks need shared context, create a project. If several people need it, create a team first.
 
 > **Planned for** answers “when do I intend to work on this?”, while **Deadline** answers “when must it be finished?”. They are independent fields.
 
-<figure>
-  <img src="assets/screenshots/en/profile.png" alt="Profile settings: timezone, language and personal preferences.">
-  <figcaption>Profile settings: timezone, language and personal preferences.</figcaption>
-</figure>
-
-<figure>
-  <img src="assets/screenshots/en/task-new.png" alt="New task form with project, status, assignee, priority and dates.">
-  <figcaption>New task form with project, status, assignee, priority and dates.</figcaption>
-</figure>
+<div class="section-break"></div>
 
 ## Interface map
 
@@ -55,21 +59,20 @@ The **Practical workflows** chapter is task-oriented: use it when you know what 
 | User menu | Profile, personal metadata, notifications and Projects/Teams |
 | Administration | Deployment controls visible only to administrators |
 
-<figure>
+<figure class="interface-map-figure">
   <img src="assets/screenshots/en/dashboard.png" alt="TMS dashboard and primary navigation after sign-in.">
-  <figcaption>TMS dashboard and primary navigation after sign-in.</figcaption>
+  <figcaption>The interface map in practice: the primary areas are available from the top navigation.</figcaption>
 </figure>
 
-<figure>
-  <img src="assets/screenshots/en/board.png" alt="Board presents the same work as a status-based Kanban.">
-  <figcaption>Board presents the same work as a status-based Kanban.</figcaption>
-</figure>
+<div class="chapter-break"></div>
 
 ## Complete feature reference
 
-The canonical TMS user guide is included automatically so feature documentation is maintained in one place.
+Use this chapter as a behavior reference for TMS: it collects the main views and the rules for tasks, projects, teams, discussions and notifications.
 
-{{include:../USER_GUIDE.md|shift=1|strip_nav}}
+{{include:../USER_GUIDE.md|shift=1|strip_nav|strip_title}}
+
+<div class="chapter-break"></div>
 
 ## Practical workflows
 

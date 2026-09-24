@@ -26,10 +26,10 @@ Use `python3 tools/build_handbooks.py --html-only` when a PDF-capable Chrome/Chr
 A handbook source can embed another Markdown file:
 
 ```text
-{{include:../USER_GUIDE.ru.md|shift=1|strip_nav}}
+{{include:../USER_GUIDE.ru.md|shift=1|strip_nav|strip_title}}
 ```
 
-`shift=N` demotes Markdown headings by `N` levels so an included topic becomes a subsection of the handbook. `strip_nav` removes the bilingual navigation line used by standalone topic guides.
+`shift=N` demotes Markdown headings by `N` levels so an included topic becomes a subsection of the handbook. `strip_nav` removes the bilingual navigation line used by standalone topic guides; `strip_title` removes the included H1 when the handbook already provides the chapter title.
 
 ## Screenshot workflow
 
