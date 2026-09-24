@@ -2,9 +2,11 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import hashlib
 import html
 import json
+import mimetypes
 import os
 import re
 import shutil
@@ -92,6 +94,7 @@ HANDBOOKS = (
 INCLUDE_RE = re.compile(r"^\{\{include:(.+)\}\}\s*$")
 HEADING_RE = re.compile(r"^(#{1,6})(\s+.+)$")
 LEADING_H1_RE = re.compile(r"^#\s+[^\n]+\n+")
+IMG_SRC_RE = re.compile(r'(<img\b[^>]*\bsrc=")([^"]+)(")', re.IGNORECASE)
 
 
 def parse_include(spec: str) -> tuple[str, int, bool]:
@@ -210,6 +213,33 @@ def rewrite_doc_links(body: str, revision: str) -> str:
     return pattern.sub(replace, body)
 
 
+def inline_local_images(body: str, source_dir: Path) -> tuple[str, list[Path]]:
+    dependencies: list[Path] = []
+
+    def replace(match: re.Match[str]) -> str:
+        prefix, src, suffix = match.groups()
+        if src.startswith(("data:", "http://", "https://", "/", "#")):
+            return match.group(0)
+
+        image_path = (source_dir / src).resolve()
+        try:
+            image_path.relative_to(ROOT)
+        except ValueError as exc:
+            raise RuntimeError(f"Handbook image escapes repository root: {src}") from exc
+        if not image_path.is_file():
+            raise FileNotFoundError(f"Handbook image not found: {image_path}")
+
+        mime, _ = mimetypes.guess_type(image_path.name)
+        if mime is None or not mime.startswith("image/"):
+            raise RuntimeError(f"Unsupported handbook image type: {image_path}")
+
+        dependencies.append(image_path)
+        encoded = base64.b64encode(image_path.read_bytes()).decode("ascii")
+        return f"{prefix}data:{mime};base64,{encoded}{suffix}"
+
+    return IMG_SRC_RE.sub(replace, body), dependencies
+
+
 def without_source_title(markdown_text: str) -> str:
     return LEADING_H1_RE.sub("", markdown_text, count=1).lstrip()
 
@@ -247,7 +277,8 @@ def render_html(
     css: str,
     revision: str,
     version: str,
-) -> str:
+    source_dir: Path,
+) -> tuple[str, list[Path]]:
     body = markdown.markdown(
         without_source_title(markdown_text),
         extensions=["fenced_code", "tables", "toc", "sane_lists"],
@@ -261,10 +292,11 @@ def render_html(
         output_format="html5",
     )
     body = rewrite_doc_links(body, revision)
+    body, image_dependencies = inline_local_images(body, source_dir)
     cover = render_cover(handbook, version, revision)
     title = html.escape(str(handbook["title"]))
     lang = html.escape(str(handbook["lang"]))
-    return f"""<!doctype html>
+    document = f"""<!doctype html>
 <html lang="{lang}">
 <head>
   <meta charset="utf-8">
@@ -289,6 +321,7 @@ def render_html(
 </body>
 </html>
 """
+    return document, image_dependencies
 
 
 def render_pdf(browser: str, html_path: Path, pdf_path: Path) -> None:
@@ -365,12 +398,13 @@ def main() -> int:
         html_path = output_dir / f"{filename}.html"
         pdf_path = output_dir / f"{filename}.pdf"
 
-        html_document = render_html(
+        html_document, image_dependencies = render_html(
             expanded,
             handbook=handbook,
             css=css,
             revision=revision,
             version=version,
+            source_dir=source.parent,
         )
         html_path.write_text(html_document, encoding="utf-8")
 
@@ -380,14 +414,18 @@ def main() -> int:
             render_pdf(browser, html_path, pdf_path)
             generated.append(pdf_path.name)
 
-        source_hash = hashlib.sha256(expanded.encode("utf-8")).hexdigest()
+        source_digest = hashlib.sha256(expanded.encode("utf-8"))
+        for image_path in unique_paths(image_dependencies):
+            source_digest.update(image_path.read_bytes())
+        source_hash = source_digest.hexdigest()
+        all_dependencies = unique_paths([*dependencies, *image_dependencies])
         manifest["handbooks"].append(
             {
                 "id": handbook["id"],
                 "language": handbook["lang"],
                 "source": str(source.relative_to(ROOT)),
                 "dependencies": [
-                    str(dep.relative_to(ROOT)) for dep in unique_paths(dependencies)
+                    str(dep.relative_to(ROOT)) for dep in all_dependencies
                 ],
                 "source_sha256": source_hash,
                 "generated": generated,
