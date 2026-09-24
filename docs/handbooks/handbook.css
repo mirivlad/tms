@@ -563,8 +563,24 @@ figcaption,
   }
 
   .toc {
+    padding: 3.5mm 4.5mm 3mm;
+    font-size: 8.65pt;
+    line-height: 1.28;
     break-inside: auto;
     page-break-inside: auto;
+  }
+
+  .toc > .toctitle {
+    margin-bottom: 2.2mm;
+    font-size: 11pt;
+  }
+
+  .toc ul {
+    margin: 0.8mm 0;
+  }
+
+  .toc li + li {
+    margin-top: 0.5mm;
   }
 
   .document-colophon {
