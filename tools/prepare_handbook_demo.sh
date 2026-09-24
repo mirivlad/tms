@@ -4,6 +4,7 @@ set -euo pipefail
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 PROJECT=${HANDBOOK_COMPOSE_PROJECT:-tms-handbook}
 PORT=${HANDBOOK_PORT:-18082}
+PORT_BIND=${HANDBOOK_PORT_BIND:-127.0.0.1:${PORT}}
 BASE_URL=${HANDBOOK_BASE_URL:-http://127.0.0.1:${PORT}}
 PASSWORD=${HANDBOOK_DEMO_PASSWORD:-documentation12}
 DB_PASSWORD=${HANDBOOK_DB_PASSWORD:-tmsdocs123}
@@ -16,7 +17,7 @@ APP_TIMEZONE=Europe/Moscow
 APP_LOCALE=en
 DB_PASS=${DB_PASSWORD}
 SESSION_SECURE=false
-TMS_PORT=${PORT}
+TMS_PORT=${PORT_BIND}
 REGISTRATION_ENABLED=true
 REGISTRATION_AUTO_APPROVE_AFTER_EMAIL=false
 NOTIFICATION_INTERVAL_SECONDS=3600
@@ -26,7 +27,7 @@ EOF
 cd "$ROOT"
 echo "Resetting isolated Compose project: $PROJECT"
 docker compose --env-file "$ENV_FILE" -p "$PROJECT" down -v --remove-orphans >/dev/null 2>&1 || true
-docker compose --env-file "$ENV_FILE" -p "$PROJECT" up -d db app
+docker compose --env-file "$ENV_FILE" -p "$PROJECT" up -d --build db app
 
 for attempt in $(seq 1 60); do
     if curl --fail --silent "$BASE_URL/health" | grep -q '"status":"ok"'; then
