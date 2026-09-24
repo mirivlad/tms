@@ -264,6 +264,17 @@ li {
   widows: 3;
 }
 
+.handbook-content p,
+.handbook-content li {
+  -webkit-hyphens: manual;
+  hyphens: manual;
+}
+
+.handbook-content p {
+  text-align: justify;
+  text-justify: inter-word;
+}
+
 strong {
   color: #101820;
 }
@@ -586,6 +597,12 @@ figure.reference-figure + figure.reference-figure {
   figure,
   img {
     break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .handbook-content p,
+  .handbook-content li {
+    break-inside: avoid-page;
     page-break-inside: avoid;
   }
 

@@ -12,14 +12,16 @@ import re
 import shutil
 import subprocess
 import sys
+from html.parser import HTMLParser
 from pathlib import Path
 from typing import Iterable
 
 try:
     import markdown
+    import pyphen
 except ImportError as exc:
     raise SystemExit(
-        "Python-Markdown is required. Install it with: "
+        "Handbook build dependencies are missing. Install them with: "
         "python3 -m pip install -r docs/handbooks/requirements.txt"
     ) from exc
 
@@ -238,6 +240,77 @@ def handbook_version() -> str:
     return "development"
 
 
+HYPHENATABLE_WORD_RE = re.compile(r"[A-Za-zА-Яа-яЁё]{6,}")
+HYPHENATION_LANGS = {
+    "ru": "ru_RU",
+    "en": "en_US",
+}
+
+
+class ProseHyphenator(HTMLParser):
+    """Insert soft hyphen opportunities into prose without touching code or links."""
+
+    PROSE_TAGS = {"p", "li"}
+    EXCLUDED_TAGS = {"a", "code", "kbd", "pre", "samp", "script", "style"}
+
+    def __init__(self, dictionary: pyphen.Pyphen) -> None:
+        super().__init__(convert_charrefs=False)
+        self.dictionary = dictionary
+        self.output: list[str] = []
+        self.prose_depth = 0
+        self.excluded_depth = 0
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.output.append(self.get_starttag_text() or f"<{tag}>")
+        if tag in self.PROSE_TAGS:
+            self.prose_depth += 1
+        if tag in self.EXCLUDED_TAGS:
+            self.excluded_depth += 1
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        self.output.append(self.get_starttag_text() or f"<{tag}>")
+
+    def handle_endtag(self, tag: str) -> None:
+        self.output.append(f"</{tag}>")
+        if tag in self.EXCLUDED_TAGS:
+            self.excluded_depth = max(0, self.excluded_depth - 1)
+        if tag in self.PROSE_TAGS:
+            self.prose_depth = max(0, self.prose_depth - 1)
+
+    def handle_data(self, data: str) -> None:
+        if self.prose_depth and not self.excluded_depth:
+            data = HYPHENATABLE_WORD_RE.sub(
+                lambda match: self.dictionary.inserted(match.group(0), hyphen="\u00ad"),
+                data,
+            )
+        self.output.append(data)
+
+    def handle_entityref(self, name: str) -> None:
+        self.output.append(f"&{name};")
+
+    def handle_charref(self, name: str) -> None:
+        self.output.append(f"&#{name};")
+
+    def handle_comment(self, data: str) -> None:
+        self.output.append(f"<!--{data}-->")
+
+    def handle_decl(self, decl: str) -> None:
+        self.output.append(f"<!{decl}>")
+
+    def handle_pi(self, data: str) -> None:
+        self.output.append(f"<?{data}>")
+
+
+def hyphenate_prose(body: str, lang: str) -> str:
+    dictionary_name = HYPHENATION_LANGS.get(lang)
+    if dictionary_name is None:
+        return body
+    parser = ProseHyphenator(pyphen.Pyphen(lang=dictionary_name))
+    parser.feed(body)
+    parser.close()
+    return "".join(parser.output)
+
+
 def rewrite_doc_links(body: str, revision: str) -> str:
     repository = os.environ.get(
         "HANDBOOK_REPOSITORY_URL",
@@ -370,6 +443,7 @@ def render_html(
         output_format="html5",
     )
     body = inject_reference_figures(body, str(handbook["id"]))
+    body = hyphenate_prose(body, str(handbook["lang"]))
     body = rewrite_doc_links(body, revision)
     body, image_dependencies = inline_local_images(body, source_dir)
     cover = render_cover(handbook, version, revision)
