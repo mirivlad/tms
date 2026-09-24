@@ -3,6 +3,10 @@
   margin: 18mm 17mm 20mm;
 }
 
+@page:first {
+  margin: 0;
+}
+
 :root {
   color-scheme: light;
   --paper: #ffffff;
@@ -332,6 +336,10 @@ blockquote p:last-child {
   margin-bottom: 0;
 }
 
+html[lang="ru"] blockquote::before {
+  content: "ВАЖНО";
+}
+
 table {
   width: 100%;
   margin: 1.45rem 0 1.85rem;
@@ -500,8 +508,8 @@ figcaption,
   }
 
   .cover {
-    min-height: 259mm;
-    margin: -18mm -17mm -20mm;
+    min-height: 297mm;
+    margin: 0;
     padding: 34mm 27mm 25mm;
     break-after: page;
     page-break-after: always;
@@ -526,11 +534,6 @@ figcaption,
   .handbook-content > h2 {
     break-before: page;
     page-break-before: always;
-  }
-
-  .handbook-content > h2:first-of-type {
-    break-before: auto;
-    page-break-before: auto;
   }
 
   h2 {
