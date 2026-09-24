@@ -31,6 +31,24 @@ A handbook source can embed another Markdown file:
 
 `shift=N` demotes Markdown headings by `N` levels so an included topic becomes a subsection of the handbook. `strip_nav` removes the bilingual navigation line used by standalone topic guides.
 
+## Screenshot workflow
+
+The User handbook uses a deterministic demo installation instead of production data. The demo runs as the isolated Compose project `tms-handbook` on port `18082`; preparing it destroys only that project's containers and volumes.
+
+```bash
+tools/prepare_handbook_demo.sh
+python3 -m pip install -r docs/handbooks/screenshots-requirements.txt
+python3 tools/capture_handbook_screenshots.py
+```
+
+The seed data lives in `docs/handbooks/demo/seed.sql`. It creates matched RU/EN projects, tasks, teams, discussions, reminders, checklists and recurrence examples. Screenshot assets are written to `docs/handbooks/assets/screenshots/{ru,en}/`.
+
+Use `HANDBOOK_DEMO_PASSWORD`, `HANDBOOK_BASE_URL`, `HANDBOOK_PORT` and `HANDBOOK_CHROME` when the defaults do not fit the local environment. The screenshots must remain paired: the Russian handbook shows the Russian UI and the English handbook shows the English UI for the same scenario wherever practical.
+
+Handbook images are embedded as data URIs during the HTML build. This keeps released HTML files standalone while the original PNG files remain explicit handbook dependencies in `manifest.json`.
+
 ## Maintenance rule
 
 Behavior and configuration changes are incomplete until the relevant handbook source or one of its included canonical topic guides is updated. Pull requests must declare documentation impact, CI rebuilds the handbooks, and version releases attach the generated HTML/PDF files.
+
+When a UI change materially affects a handbook screenshot, regenerate the localized screenshot pair and inspect both the standalone HTML and A4 PDF output before release.

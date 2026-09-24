@@ -7,6 +7,7 @@ TMS treats user and administrator documentation as part of shipped behavior, not
 - End-user behavior: `docs/USER_GUIDE.md`, `docs/USER_GUIDE.ru.md` and focused user-facing topic guides.
 - Administration and deployment: `docs/ADMINISTRATION*.md`, `docs/INSTALLATION*.md`, `docs/notifications*.md`, `docs/webhooks*.md`, `docs/ACCOUNT_RECOVERY*.md`.
 - Handbook composition and practical runbooks: `docs/handbooks/user.*.md` and `docs/handbooks/admin.*.md`.
+- Handbook screenshots: `docs/handbooks/assets/screenshots/{ru,en}/`, generated only from the isolated documentation demo dataset.
 - Generated HTML/PDF files are build/release artifacts and are not edited by hand.
 
 The handbook sources include canonical topic guides with `{{include:...}}`, so a correction to a focused guide propagates into the distributable manual.
@@ -56,4 +57,6 @@ Reviewers should verify:
 3. New environment variables, workers, deployment steps, secrets, backup requirements or troubleshooting paths are reflected in the administrator handbook.
 4. Examples use current UI names and supported commands.
 5. Both RU and EN sources remain meaningfully aligned.
-6. Generated manuals build successfully in CI.
+6. UI changes that make a handbook screenshot materially stale regenerate the matching RU/EN screenshot pair from the documentation demo environment.
+7. Screenshots contain only fictional documentation data and use the same interface language as their handbook.
+8. Generated manuals build successfully in CI and screenshot-heavy PDFs remain readable at normal A4 scale.

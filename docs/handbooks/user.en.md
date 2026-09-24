@@ -31,6 +31,16 @@ The **Practical workflows** chapter is task-oriented: use it when you know what 
 
 > **Planned for** answers “when do I intend to work on this?”, while **Deadline** answers “when must it be finished?”. They are independent fields.
 
+<figure>
+  <img src="assets/screenshots/en/profile.png" alt="Profile settings: timezone, language and personal preferences.">
+  <figcaption>Profile settings: timezone, language and personal preferences.</figcaption>
+</figure>
+
+<figure>
+  <img src="assets/screenshots/en/task-new.png" alt="New task form with project, status, assignee, priority and dates.">
+  <figcaption>New task form with project, status, assignee, priority and dates.</figcaption>
+</figure>
+
 ## Interface map
 
 | Area | Purpose |
@@ -44,6 +54,16 @@ The **Practical workflows** chapter is task-oriented: use it when you know what 
 | Notifications | Canonical in-app feed of work events |
 | User menu | Profile, personal metadata, notifications and Projects/Teams |
 | Administration | Deployment controls visible only to administrators |
+
+<figure>
+  <img src="assets/screenshots/en/dashboard.png" alt="TMS dashboard and primary navigation after sign-in.">
+  <figcaption>TMS dashboard and primary navigation after sign-in.</figcaption>
+</figure>
+
+<figure>
+  <img src="assets/screenshots/en/board.png" alt="Board presents the same work as a status-based Kanban.">
+  <figcaption>Board presents the same work as a status-based Kanban.</figcaption>
+</figure>
 
 ## Complete feature reference
 
@@ -66,6 +86,11 @@ Assume a report must be sent Friday by 18:00, while you intend to work on it Thu
 
 Moving only planned time does not change the deadline; moving only the deadline does not remove the planned work slot.
 
+<figure>
+  <img src="assets/screenshots/en/calendar.png" alt="Project calendar: planned work and deadlines share one time context.">
+  <figcaption>Project calendar: planned work and deadlines share one time context.</figcaption>
+</figure>
+
 ### Workflow 2. Process incoming personal work quickly
 
 1. Open **Tasks → No project**.
@@ -75,6 +100,11 @@ Moving only planned time does not change the deadline; moving only the deadline 
 5. Change status, description, planned time or deadline directly in the dialog.
 6. Save the filters as a personal Saved View if you use them repeatedly.
 
+<figure>
+  <img src="assets/screenshots/en/tasks.png" alt="Project task list with filters, Saved Views, priorities, statuses and assignees.">
+  <figcaption>Project task list with filters, Saved Views, priorities, statuses and assignees.</figcaption>
+</figure>
+
 ### Workflow 3. Create a project
 
 1. Create a project with a clear outcome description.
@@ -83,6 +113,11 @@ Moving only planned time does not change the deadline; moving only the deadline 
 4. Create tasks in the project or assign existing tasks to it.
 5. Use Overview, Files, Discussion and Activity as one working context.
 6. Selecting the project in the global task list switches the status filter to that project workflow.
+
+<figure>
+  <img src="assets/screenshots/en/project.png" alt="Project overview combines task state, workflow, files and current discussion.">
+  <figcaption>Project overview combines task state, workflow, files and current discussion.</figcaption>
+</figure>
 
 ### Workflow 4. Organize team work
 
@@ -95,6 +130,11 @@ Moving only planned time does not change the deadline; moving only the deadline 
 
 Membership grants access; **assignee** expresses responsibility only.
 
+<figure>
+  <img src="assets/screenshots/en/team-members.png" alt="Team members, roles and a pending invitation.">
+  <figcaption>Team members, roles and a pending invitation.</figcaption>
+</figure>
+
 ### Workflow 5. Keep decisions next to the work
 
 1. Open a task or project discussion.
@@ -105,6 +145,11 @@ Membership grants access; **assignee** expresses responsibility only.
 
 Email and Telegram are notification transports, not the canonical decision store.
 
+<figure>
+  <img src="assets/screenshots/en/project-discussion.png" alt="Project discussion keeps working context next to the project itself.">
+  <figcaption>Project discussion keeps working context next to the project itself.</figcaption>
+</figure>
+
 ### Workflow 6. Configure a recurring task
 
 1. Create a normal task that acts as the occurrence template.
@@ -114,6 +159,16 @@ Email and Telegram are notification transports, not the canonical decision store
 5. After generation, verify the next occurrence's deadline, planned time, project, metadata and checklist.
 
 Each occurrence is a separate task; previous occurrences and their history remain intact.
+
+<figure>
+  <img src="assets/screenshots/en/recurrence.png" alt="Weekly recurrence configuration and the next deadline.">
+  <figcaption>Weekly recurrence configuration and the next deadline.</figcaption>
+</figure>
+
+<figure>
+  <img src="assets/screenshots/en/checklist.png" alt="Checklist inside a task with completed and remaining steps.">
+  <figcaption>Checklist inside a task with completed and remaining steps.</figcaption>
+</figure>
 
 ### Workflow 7. Build a Saved View
 
@@ -136,6 +191,16 @@ Ad-hoc filter changes do not silently rewrite the stored preset.
 6. Send a Telegram test after linking.
 7. Treat the TMS inbox as canonical history.
 
+<figure>
+  <img src="assets/screenshots/en/notification-settings.png" alt="User notification settings and reminder rules.">
+  <figcaption>User notification settings and reminder rules.</figcaption>
+</figure>
+
+<figure>
+  <img src="assets/screenshots/en/notifications.png" alt="TMS inbox with unread work events.">
+  <figcaption>TMS inbox with unread work events.</figcaption>
+</figure>
+
 ### Workflow 9. Hand work to another person
 
 1. Open a task in a team-owned project.
@@ -145,6 +210,11 @@ Ad-hoc filter changes do not silently rewrite the stored preset.
 5. Activity records the reassignment.
 
 If the person is not yet a team member, invite them first and wait for acceptance.
+
+<figure>
+  <img src="assets/screenshots/en/task-edit.png" alt="Editing a team-project task: project, status, assignee, priority and dates.">
+  <figcaption>Editing a team-project task: project, status, assignee, priority and dates.</figcaption>
+</figure>
 
 ### Workflow 10. Recover account access
 
