@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import html
 import json
 import os
 import re
@@ -23,40 +24,74 @@ except ImportError as exc:
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_OUTPUT = ROOT / "build" / "handbooks"
 CSS_PATH = ROOT / "docs" / "handbooks" / "handbook.css"
+VERSION_PATH = ROOT / "VERSION"
 
 HANDBOOKS = (
     {
         "id": "user-ru",
         "source": ROOT / "docs" / "handbooks" / "user.ru.md",
         "lang": "ru",
-        "title": "TMS - Руководство пользователя",
+        "title": "TMS — Руководство пользователя",
+        "cover_kicker": "Руководство пользователя",
+        "cover_title": "Работа в TMS",
+        "cover_subtitle": (
+            "Практическое руководство по задачам, проектам, командам, "
+            "календарю, обсуждениям и уведомлениям."
+        ),
+        "edition": "Русское издание",
+        "toc_title": "Содержание",
         "filename": "tms-user-handbook-ru",
     },
     {
         "id": "user-en",
         "source": ROOT / "docs" / "handbooks" / "user.en.md",
         "lang": "en",
-        "title": "TMS - User handbook",
+        "title": "TMS — User handbook",
+        "cover_kicker": "User handbook",
+        "cover_title": "Working with TMS",
+        "cover_subtitle": (
+            "A practical guide to tasks, projects, teams, calendar planning, "
+            "discussions and notifications."
+        ),
+        "edition": "English edition",
+        "toc_title": "Contents",
         "filename": "tms-user-handbook-en",
     },
     {
         "id": "admin-ru",
         "source": ROOT / "docs" / "handbooks" / "admin.ru.md",
         "lang": "ru",
-        "title": "TMS - Руководство администратора",
+        "title": "TMS — Руководство администратора",
+        "cover_kicker": "Руководство администратора",
+        "cover_title": "Эксплуатация TMS",
+        "cover_subtitle": (
+            "Установка, обновление, безопасность, резервное копирование, "
+            "уведомления, интеграции и диагностика."
+        ),
+        "edition": "Русское издание",
+        "toc_title": "Содержание",
         "filename": "tms-admin-handbook-ru",
     },
     {
         "id": "admin-en",
         "source": ROOT / "docs" / "handbooks" / "admin.en.md",
         "lang": "en",
-        "title": "TMS - Administrator handbook",
+        "title": "TMS — Administrator handbook",
+        "cover_kicker": "Administrator handbook",
+        "cover_title": "Operating TMS",
+        "cover_subtitle": (
+            "Installation, upgrades, security, backups, notifications, "
+            "integrations and troubleshooting."
+        ),
+        "edition": "English edition",
+        "toc_title": "Contents",
         "filename": "tms-admin-handbook-en",
     },
 )
 
 INCLUDE_RE = re.compile(r"^\{\{include:(.+)\}\}\s*$")
 HEADING_RE = re.compile(r"^(#{1,6})(\s+.+)$")
+LEADING_H1_RE = re.compile(r"^#\s+[^\n]+\n+")
 
 
 def parse_include(spec: str) -> tuple[str, int, bool]:
@@ -153,6 +188,14 @@ def git_revision() -> str:
     return "main"
 
 
+def handbook_version() -> str:
+    if VERSION_PATH.is_file():
+        value = VERSION_PATH.read_text(encoding="utf-8").strip()
+        if value:
+            return value
+    return "development"
+
+
 def rewrite_doc_links(body: str, revision: str) -> str:
     repository = os.environ.get(
         "HANDBOOK_REPOSITORY_URL",
@@ -167,24 +210,66 @@ def rewrite_doc_links(body: str, revision: str) -> str:
     return pattern.sub(replace, body)
 
 
-def render_html(markdown_text: str, title: str, lang: str, css: str, revision: str) -> str:
+def without_source_title(markdown_text: str) -> str:
+    return LEADING_H1_RE.sub("", markdown_text, count=1).lstrip()
+
+
+def render_cover(handbook: dict[str, object], version: str, revision: str) -> str:
+    def esc(value: object) -> str:
+        return html.escape(str(value))
+
+    short_revision = revision[:10] if revision not in {"main", "development"} else revision
+    return f"""
+  <section class="cover">
+    <div class="cover-top">
+      <div class="cover-brand">TMS Documentation</div>
+    </div>
+    <div class="cover-main">
+      <div class="cover-kicker">{esc(handbook["cover_kicker"])}</div>
+      <h1 class="cover-title">{esc(handbook["cover_title"])}</h1>
+      <p class="cover-subtitle">{esc(handbook["cover_subtitle"])}</p>
+      <div class="cover-meta">
+        <span>TMS v{esc(version)}</span>
+        <span>{esc(handbook["edition"])}</span>
+      </div>
+    </div>
+    <div class="cover-bottom">
+      <div class="cover-edition">{esc(handbook["title"])}</div>
+      <div class="cover-mark">rev {html.escape(short_revision)}</div>
+    </div>
+  </section>
+"""
+
+
+def render_html(
+    markdown_text: str,
+    handbook: dict[str, object],
+    css: str,
+    revision: str,
+    version: str,
+) -> str:
     body = markdown.markdown(
-        markdown_text,
+        without_source_title(markdown_text),
         extensions=["fenced_code", "tables", "toc", "sane_lists"],
         extension_configs={
             "toc": {
                 "permalink": False,
                 "toc_depth": "2-4",
+                "title": str(handbook["toc_title"]),
             }
         },
         output_format="html5",
     )
     body = rewrite_doc_links(body, revision)
+    cover = render_cover(handbook, version, revision)
+    title = html.escape(str(handbook["title"]))
+    lang = html.escape(str(handbook["lang"]))
     return f"""<!doctype html>
 <html lang="{lang}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="generator" content="TMS handbook builder">
   <title>{title}</title>
   <style>
 {css}
@@ -192,7 +277,14 @@ def render_html(markdown_text: str, title: str, lang: str, css: str, revision: s
 </head>
 <body>
   <main class="handbook">
+{cover}
+    <article class="handbook-content">
 {body}
+    </article>
+    <footer class="document-colophon">
+      <strong>{title}</strong><br>
+      TMS v{html.escape(version)} · source revision {html.escape(revision)}
+    </footer>
   </main>
 </body>
 </html>
@@ -255,10 +347,12 @@ def main() -> int:
         )
 
     revision = git_revision()
+    version = handbook_version()
 
     manifest: dict[str, object] = {
         "schema": 1,
         "revision": revision,
+        "version": version,
         "generated_files": [],
         "handbooks": [],
     }
@@ -273,10 +367,10 @@ def main() -> int:
 
         html_document = render_html(
             expanded,
-            title=str(handbook["title"]),
-            lang=str(handbook["lang"]),
+            handbook=handbook,
             css=css,
             revision=revision,
+            version=version,
         )
         html_path.write_text(html_document, encoding="utf-8")
 

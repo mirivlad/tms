@@ -4,6 +4,20 @@ This is the practical handbook for day-to-day work in TMS. It is intended for re
 
 [TOC]
 
+## How to use this handbook
+
+You do not need to read the handbook from beginning to end before using TMS. Choose the route that matches what you are doing now.
+
+| If you are… | Start with | Continue with |
+| --- | --- | --- |
+| New to TMS | **Ten-minute quick start** | Interface map, then Practical workflows |
+| Organizing personal work | Tasks, Board and Calendar in the feature reference | Workflows 1, 2, 6 and 7 |
+| Leading a team or project | Projects, Teams and Discussions | Workflows 3, 4, 5 and 9 |
+| Tuning your daily routine | Notifications and Saved Views | Workflows 7 and 8 |
+| Looking for an exact rule | **Complete feature reference** | Everyday rules worth remembering |
+
+The **Practical workflows** chapter is task-oriented: use it when you know what you want to accomplish but do not yet know which TMS screens are involved.
+
 ## Ten-minute quick start
 
 1. Sign in and open **Profile settings**.
