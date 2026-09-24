@@ -4,10 +4,10 @@
 
 TMS — лёгкая self-hosted система управления задачами для тех, кто хочет хранить задачи и данные на собственной инфраструктуре.
 
-> **Текущий стабильный релиз:** `v0.3.1`
+> **Текущий стабильный релиз:** `v0.4.0`
 
 ```text
-ghcr.io/mirivlad/tms:v0.3.1
+ghcr.io/mirivlad/tms:v0.4.0
 ```
 
 Тег `latest` указывает на последний стабильный релиз. Для воспроизводимой установки рекомендуется фиксировать конкретную версию. Проверенные CI сборки из `main` публикуются как `edge` и неизменяемые теги `sha-<commit>`.
@@ -52,6 +52,19 @@ ghcr.io/mirivlad/tms:v0.3.1
 | Границы проекта | — | [Project scope](docs/PROJECT_SCOPE.md) |
 | Roadmap | — | [Roadmap](docs/ROADMAP.md) |
 | Политика безопасности | — | [Security](SECURITY.md) |
+
+## Готовые учебники
+
+Полные руководства текущего стабильного релиза можно открыть прямо из GitHub Release:
+
+| Руководство | HTML | PDF |
+| --- | --- | --- |
+| Руководство пользователя — Русский | [Открыть HTML](https://github.com/mirivlad/tms/releases/download/v0.4.0/tms-user-handbook-ru.html) | [Скачать PDF](https://github.com/mirivlad/tms/releases/download/v0.4.0/tms-user-handbook-ru.pdf) |
+| Руководство пользователя — English | [Open HTML](https://github.com/mirivlad/tms/releases/download/v0.4.0/tms-user-handbook-en.html) | [Download PDF](https://github.com/mirivlad/tms/releases/download/v0.4.0/tms-user-handbook-en.pdf) |
+| Руководство администратора — Русский | [Открыть HTML](https://github.com/mirivlad/tms/releases/download/v0.4.0/tms-admin-handbook-ru.html) | [Скачать PDF](https://github.com/mirivlad/tms/releases/download/v0.4.0/tms-admin-handbook-ru.pdf) |
+| Руководство администратора — English | [Open HTML](https://github.com/mirivlad/tms/releases/download/v0.4.0/tms-admin-handbook-en.html) | [Download PDF](https://github.com/mirivlad/tms/releases/download/v0.4.0/tms-admin-handbook-en.pdf) |
+
+[Открыть релиз v0.4.0](https://github.com/mirivlad/tms/releases/tag/v0.4.0) с описанием изменений и всеми вложениями.
 
 ## Быстрый запуск готового образа
 
