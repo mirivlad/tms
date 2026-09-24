@@ -475,6 +475,38 @@ figcaption,
   text-align: center;
 }
 
+.chapter-break,
+.section-break {
+  height: 0;
+  margin: 0;
+}
+
+figure.quick-figure,
+figure.interface-map-figure,
+figure.reference-figure {
+  margin: 1.2rem auto 1.7rem;
+}
+
+figure.quick-figure {
+  max-width: 66%;
+}
+
+figure.quick-figure figcaption {
+  margin: 0.35rem auto 0.8rem;
+}
+
+figure.interface-map-figure {
+  max-width: 78%;
+}
+
+figure.reference-figure {
+  max-width: 82%;
+}
+
+figure.reference-figure + figure.reference-figure {
+  margin-top: -0.2rem;
+}
+
 .document-colophon {
   margin: 0 4.6rem 3.5rem;
   padding-top: 1rem;
@@ -531,11 +563,6 @@ figcaption,
     font-size: 11.5pt;
   }
 
-  .handbook-content > h2 {
-    break-before: page;
-    page-break-before: always;
-  }
-
   h2 {
     font-size: 17pt;
   }
@@ -581,6 +608,19 @@ figcaption,
 
   .toc li + li {
     margin-top: 0.5mm;
+  }
+
+  .chapter-break,
+  .section-break {
+    break-before: page;
+    page-break-before: always;
+  }
+
+  figure.quick-figure,
+  figure.interface-map-figure,
+  figure.reference-figure {
+    break-inside: avoid;
+    page-break-inside: avoid;
   }
 
   .document-colophon {

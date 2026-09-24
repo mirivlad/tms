@@ -97,27 +97,66 @@ LEADING_H1_RE = re.compile(r"^#\s+[^\n]+\n+")
 IMG_SRC_RE = re.compile(r'(<img\b[^>]*\bsrc=")([^"]+)(")', re.IGNORECASE)
 
 
-def parse_include(spec: str) -> tuple[str, int, bool]:
+REFERENCE_FIGURES: dict[str, tuple[dict[str, str], ...]] = {
+    "user-ru": (
+        {"heading": "Основные представления", "image": "assets/screenshots/ru/board.png", "caption": "Доска показывает тот же набор задач как Kanban по статусам."},
+        {"heading": "Создание и редактирование задач", "image": "assets/screenshots/ru/task-edit.png", "caption": "Полная форма редактирования задачи: проект, статус, ответственный, приоритет и даты."},
+        {"heading": "Плановое время и срок", "image": "assets/screenshots/ru/calendar.png", "caption": "Календарь сводит плановое время и сроки в один временной контекст."},
+        {"heading": "Чек-листы", "image": "assets/screenshots/ru/checklist.png", "caption": "Чек-лист остаётся частью задачи и показывает прогресс по коротким шагам."},
+        {"heading": "Сохранённые представления задач", "image": "assets/screenshots/ru/tasks.png", "caption": "Фильтры и Saved Views находятся прямо над плотным списком задач."},
+        {"heading": "Повторяющиеся задачи", "image": "assets/screenshots/ru/recurrence.png", "caption": "Настройка повторения хранится рядом с обычными параметрами задачи."},
+        {"heading": "Проекты", "image": "assets/screenshots/ru/project.png", "caption": "Обзор проекта объединяет состояние задач, workflow, файлы и обсуждения."},
+        {"heading": "Команды", "image": "assets/screenshots/ru/team-members.png", "caption": "Состав команды, роли и ожидающие приглашения управляются в одном месте."},
+        {"heading": "Обсуждения", "image": "assets/screenshots/ru/project-discussion.png", "caption": "Обсуждение проекта хранит рабочий контекст рядом с самим проектом."},
+        {"heading": "Уведомления", "image": "assets/screenshots/ru/notification-settings.png", "caption": "Настройки определяют, какие рабочие события и напоминания действительно нужны."},
+    ),
+    "user-en": (
+        {"heading": "Main views", "image": "assets/screenshots/en/board.png", "caption": "Board presents the same work as a status-based Kanban."},
+        {"heading": "Creating and editing tasks", "image": "assets/screenshots/en/task-edit.png", "caption": "The full task editor keeps project, status, assignee, priority and dates together."},
+        {"heading": "Planned time and deadline", "image": "assets/screenshots/en/calendar.png", "caption": "Calendar brings planned work and deadlines into one time context."},
+        {"heading": "Checklists", "image": "assets/screenshots/en/checklist.png", "caption": "A checklist stays inside the task and tracks short execution steps."},
+        {"heading": "Saved task views", "image": "assets/screenshots/en/tasks.png", "caption": "Filters and Saved Views sit directly above the dense task list."},
+        {"heading": "Recurring tasks", "image": "assets/screenshots/en/recurrence.png", "caption": "Recurrence settings live alongside the task's ordinary fields."},
+        {"heading": "Projects", "image": "assets/screenshots/en/project.png", "caption": "Project overview combines task state, workflow, files and discussions."},
+        {"heading": "Teams", "image": "assets/screenshots/en/team-members.png", "caption": "Team membership, roles and pending invitations are managed together."},
+        {"heading": "Discussions", "image": "assets/screenshots/en/project-discussion.png", "caption": "Project discussion keeps work context next to the project itself."},
+        {"heading": "Notifications", "image": "assets/screenshots/en/notification-settings.png", "caption": "Notification settings decide which work events and reminders are useful."},
+    ),
+}
+
+
+def parse_include(spec: str) -> tuple[str, int, bool, bool]:
     parts = [part.strip() for part in spec.split("|")]
     path = parts[0]
     shift = 0
     strip_nav = False
+    strip_title = False
     for option in parts[1:]:
         if option.startswith("shift="):
             shift = int(option.split("=", 1)[1])
         elif option == "strip_nav":
             strip_nav = True
+        elif option == "strip_title":
+            strip_title = True
         elif option:
             raise ValueError(f"Unknown include option: {option}")
-    return path, shift, strip_nav
+    return path, shift, strip_nav, strip_title
 
 
-def transform_markdown(text: str, shift: int, strip_nav: bool) -> str:
+def transform_markdown(text: str, shift: int, strip_nav: bool, strip_title: bool) -> str:
     lines = text.splitlines()
     if strip_nav:
         while lines and not lines[0].strip():
             lines.pop(0)
         if lines and lines[0].lstrip().startswith("[English]"):
+            lines.pop(0)
+            while lines and not lines[0].strip():
+                lines.pop(0)
+
+    if strip_title:
+        while lines and not lines[0].strip():
+            lines.pop(0)
+        if lines and re.match(r"^#\s+", lines[0]):
             lines.pop(0)
             while lines and not lines[0].strip():
                 lines.pop(0)
@@ -158,11 +197,11 @@ def expand_source(path: Path, stack: tuple[Path, ...] = ()) -> tuple[str, list[P
             output.append(line)
             continue
 
-        rel_path, shift, strip_nav = parse_include(match.group(1))
+        rel_path, shift, strip_nav, strip_title = parse_include(match.group(1))
         include_path = (path.parent / rel_path).resolve()
         included, nested = expand_source(include_path, (*stack, path))
         dependencies.extend(nested)
-        output.append(transform_markdown(included, shift, strip_nav))
+        output.append(transform_markdown(included, shift, strip_nav, strip_title))
 
     return "\n".join(output).rstrip() + "\n", dependencies
 
@@ -240,6 +279,45 @@ def inline_local_images(body: str, source_dir: Path) -> tuple[str, list[Path]]:
     return IMG_SRC_RE.sub(replace, body), dependencies
 
 
+
+def inject_reference_figures(body: str, handbook_id: str) -> str:
+    """Place handbook screenshots at the end of the canonical section they explain."""
+    entries = REFERENCE_FIGURES.get(handbook_id, ())
+    for entry in entries:
+        heading = entry["heading"]
+        heading_re = re.compile(
+            r'<h3\b[^>]*>\s*' + re.escape(heading) + r'\s*</h3>',
+            re.IGNORECASE,
+        )
+        match = heading_re.search(body)
+        if match is None:
+            raise RuntimeError(
+                f"Reference figure target heading not found for {handbook_id}: {heading}"
+            )
+
+        section_tail = body[match.end():]
+        next_heading = re.search(r'\n<h[23]\b', section_tail, re.IGNORECASE)
+        section_end = next_heading.start() if next_heading else len(section_tail)
+        section_body = section_tail[:section_end]
+        block_ends = [
+            found.end()
+            for pattern in (r"</p>", r"</ul>", r"</ol>")
+            if (found := re.search(pattern, section_body, re.IGNORECASE))
+        ]
+        relative_insert = min(block_ends) if block_ends else 0
+        insert_at = match.end() + relative_insert
+        caption = html.escape(entry["caption"])
+        src = html.escape(entry["image"], quote=True)
+        figure = (
+            '\n<figure class="reference-figure">\n'
+            f'  <img src="{src}" alt="{caption}">\n'
+            f'  <figcaption>{caption}</figcaption>\n'
+            '</figure>\n'
+        )
+        body = body[:insert_at] + figure + body[insert_at:]
+    return body
+
+
 def without_source_title(markdown_text: str) -> str:
     return LEADING_H1_RE.sub("", markdown_text, count=1).lstrip()
 
@@ -291,6 +369,7 @@ def render_html(
         },
         output_format="html5",
     )
+    body = inject_reference_figures(body, str(handbook["id"]))
     body = rewrite_doc_links(body, revision)
     body, image_dependencies = inline_local_images(body, source_dir)
     cover = render_cover(handbook, version, revision)

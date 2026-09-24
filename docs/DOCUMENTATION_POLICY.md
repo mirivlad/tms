@@ -60,3 +60,4 @@ Reviewers should verify:
 6. UI changes that make a handbook screenshot materially stale regenerate the matching RU/EN screenshot pair from the documentation demo environment.
 7. Screenshots contain only fictional documentation data and use the same interface language as their handbook.
 8. Generated manuals build successfully in CI and screenshot-heavy PDFs remain readable at normal A4 scale.
+9. Screenshots are placed next to the instruction or reference text they explain; standalone screenshot-only pages are avoided unless they are an intentional, visibly designed chapter opener.
