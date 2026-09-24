@@ -91,6 +91,7 @@ HANDBOOKS = (
 
 INCLUDE_RE = re.compile(r"^\{\{include:(.+)\}\}\s*$")
 HEADING_RE = re.compile(r"^(#{1,6})(\s+.+)$")
+LEADING_H1_RE = re.compile(r"^#\s+[^\n]+\n+")
 
 
 def parse_include(spec: str) -> tuple[str, int, bool]:
