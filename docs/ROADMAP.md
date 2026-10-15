@@ -4,6 +4,8 @@ This file records the near-term product direction for TMS. Shipped behavior belo
 
 ## v0.5 — Agents as first-class collaborators
 
+[Русская версия дорожной карты v0.5](ROADMAP_V0.5.ru.md)
+
 **Status:** planned; not yet implemented. The current stable baseline remains v0.4.1.
 
 ### Product goal and design invariants
