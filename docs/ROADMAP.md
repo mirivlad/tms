@@ -2,6 +2,106 @@
 
 This file records the near-term product direction for TMS. Shipped behavior belongs in the user documentation; this file only describes the next agreed product steps.
 
+## v0.5 — Agents as first-class collaborators
+
+**Status:** planned; not yet implemented. The current stable baseline remains v0.4.1.
+
+### Product goal and design invariants
+
+External AI agents (Claude Code, Codex CLI, local agents and other MCP clients) participate in TMS as identifiable team members: they can access authorized tasks, contribute to the *same* task/project discussions as humans, mention each other, receive notifications and report real work results.
+
+- Keep TMS a self-hosted **system of record**, not an LLM host, chat-model router, mandatory agent runtime or CI platform. Integration does **not** require a model-provider API key or inference billing within TMS; agents use their own external authentication.
+- Preserve the User → Team → Project → Task hierarchy, team membership ACLs and isolation of personal tasks/projects. Task assignment is **responsibility**, not authorization.
+- Reuse the existing project/task discussions (including one-level replies), @mentions, user notification inbox, domain events, webhook queue and audit/history. Do not build a parallel "AI chat".
+- An agent is a distinct actor in all edits, mentions, events and history. Never attribute agent actions to its human creator.
+- Interactive MCP access (agent already running) and autonomous execution (external dispatcher activates an available agent) are separate, optional layers.
+- Use migrations and additive compatibility contracts; keep RU/EN docs and HTML/PDF handbooks in sync with released behavior.
+
+### Stage A — Agent identity, membership and API credentials
+
+1. Add an explicit human/agent account type with stable user ID. Migrate all existing accounts to human without changing IDs or ownership.
+2. Create and manage agents through authorized administrators. Agent accounts do not need password login, browser sessions, self-registration or email verification.
+3. Join/leave teams under the existing membership model; a team lead must approve team access. No implicit cross-team access; no automatic team-lead/system-admin privileges for agents.
+4. Keep the human manager of an agent distinct from the agent principal and from its team memberships. Agent deactivation immediately disables its effective access.
+5. Support named, individually revocable bearer tokens. Reveal secret once, store only a strong verifier plus principal, issuer, scopes, expiry, last use and revocation metadata. Provide rotation.
+6. Enforce least-privilege scopes: read tasks/projects, write task/checklist, read/write discussion, read/ack notifications (precise scope contract to be defined). Effective rights are the **intersection** of token scope, account state and current team/project ACL.
+7. Humans' personal projects/tasks do not become visible to agents merely because the human created them or assigned a task ID. Explicit private delegation is not part of 0.5.
+
+**Acceptance:** expired/revoked tokens and disabled agents cannot access TMS; assignment alone never grants access; audit shows the agent identity, not its creator.
+
+### Stage B — Authenticated REST API v1
+
+Expose /api/v1 through shared domain services and repositories, without controller-local bypasses of scoped data access.
+
+- Read: current identity/capabilities, available teams/projects, filtered tasks and detail, project-specific statuses/types/custom fields, checklists, discussion history and replies, notifications and activity history.
+- Write: permitted task creation/updates/assignment, checklist changes, create/reply/edit/delete *own* discussion comments and @mentions, notification acknowledgement. Other project/team operations must follow existing role authorization.
+- Stable JSON schemas, documented filters/pagination/timezones, revision and concurrency preconditions, idempotency keys for retryable operations, clear validation/errors, structured request IDs and canonical resource URLs.
+- Project-aware statuses and custom fields are mandatory; an agent must discover valid options for the chosen project rather than guessing a global status name.
+- Preserve the same sanitization, attachments ACL, event emissions, visibility and immutable audit semantics as the web UI. Ensure private ID enumeration cannot reveal another user's objects.
+- Isolate bearer auth from cookie sessions; retain CSRF for browser routes. Enforce TLS, rate/body limits and credential redaction in logs.
+
+**Acceptance:** UI and API enforce equivalent rules; cross-user/team/task/attachment negative tests pass; concurrent retries cannot silently duplicate a write.
+
+### Stage C — MCP access for external agents
+
+1. Offer tools for searching/listing projects/tasks, fetching full task/project context, discovering allowed statuses, creating/updating/assigning tasks, working with checklists, reading/posting/replying/editing own discussion comments, reading/acknowledging notifications and inspecting permitted history.
+2. Ship a documented local stdio MCP adapter calling the REST API, suitable for Claude Code, Codex CLI and other clients. A secure authenticated Streamable HTTP endpoint for remote clients may be delivered with tested client/auth compatibility.
+3. MCP must not reimplement application ACL or state transition rules. Return bounded/paginated context instead of dumping unrelated project history.
+4. Treat task descriptions, attachments, comments and tool results as **untrusted content**, not as elevated instructions to the language model.
+
+**Acceptance:** two independent CLI clients using existing provider subscriptions, with distinct TMS identities/tokens, can complete a shared task workflow without model-provider API keys.
+
+### Stage D — Full use of existing team discussions
+
+- Agents read/post/reply/edit/delete their own comments in the **same** task/project discussion timeline as humans, with identical sanitation, reply depth, author rules and team-lead moderation.
+- @mention lookup includes authorized human and agent team members and must not disclose or mention invisible identities.
+- Preserve ordinary discussion events and inbox notifications for agent-authored comments and replies. Deduplicate notifications after delivery retries and honor existing self-mention rules.
+- Show a small AI-agent identity marker in UI while keeping stable original authorship/timestamps after deactivation.
+- A non-assignee agent can discuss any task **its team membership permits**.
+
+**Acceptance:** a human mentions Claude in a task; Claude answers and mentions Codex; Codex reads the entire discussion and answers; all three see the same thread and notifications.
+
+### Stage E — Durable agent inbox and webhook routing
+
+1. Expose unread-notification listing, context retrieval and explicit acknowledgment/mark-read. Only acknowledge after successful handling; retain unread while the agent/executor is offline.
+2. Reuse the current canonical in-app inbox, task-assignment events and discussion mention/reply events. Extend payloads additively and preserve the DOMAIN_EVENTS contract.
+3. Route relevant events to optional external dispatchers via existing signed webhook delivery, with authorization checks, signature/timestamp verification and event-ID deduplication.
+4. Add bounded per-conversation loop protection against agent ↔ agent mention storms and duplicated auto-replies (chain budget, cooldown, human handoff). Do not impose arbitrary limits on normal meaningful discussions.
+
+**Acceptance:** offline agents catch up later without losing notifications; repeat deliveries cause no double reply; cyclic agent mentions stop with visible diagnostics.
+
+### Stage F — Optional reference external dispatcher
+
+- Specify and provide a small self-hosted reference integration receiving signed TMS events and launching/resuming a locally authenticated Claude Code, Codex CLI or other executor. Keep it external to TMS core.
+- Track event ID, agent principal, task ID and execution ID; provide durable idempotent queue, per-agent concurrency caps, timeout/cancellation, retries and failure escalation.
+- Fetch the freshest authorized context via TMS API/MCP before work. Never embed model-provider credentials in tasks, webhooks or database records.
+- Report genuine results back as normal agent-authored comments and authorized status/checklist changes. A delivered webhook does *not* mean the task was completed.
+- Make an offline executor safe: work stays pending/unread rather than being falsely marked done; document subscription-backed CLI limitations on headless automation.
+
+**Acceptance:** an external configured agent can react to assignment/@mention without human copy/paste, or reliably defer until available.
+
+### Stage G — Human-facing UI and operations
+
+- Add Administration → AI agents: create/disable, manage tokens and scope metadata, revoke credentials and inspect audit. Do not redisplay secrets.
+- Show agents in team membership, task-assignee and discussion @mention selectors with a discreet AI badge; reuse existing responsive layout and localization.
+- Show last observed activity, relevant task runs/errors and clear offline/unknown states. Never claim that "agent enabled" means an executor is online; presence requires real dispatcher telemetry.
+
+### Stage H — Tests, migration, documentation
+
+- Permission matrix: human/agent × personal/team × member/lead × token scope × enabled/revoked/expired, including denied access to comments, files, private projects and task IDs.
+- Exercise races/retries, duplicate event/mention deliveries, agent shutdown during execution, revocation mid-run, concurrent writes, and bot-to-bot loops.
+- Threat-model prompt injection and exfiltration through task descriptions, comments, attachments and tool output.
+- End-to-end fixture: one human, two independent agents and one shared project; create/assign task, discuss with @mentions, update checklist/status, survive offline interval and reject unauthorized operations.
+- Document REST API/OpenAPI and MCP contracts, token administration, CLI setup (without inference API keys), external dispatcher and troubleshooting. Maintain English/Russian User/Admin manuals and screenshot pairs; validate HTML/PDF builds in CI.
+
+### Stable v0.5 release gate
+
+Stages A–H accepted; new-install plus migration path from v0.4.1 tested; Docker/Portainer smoke pass; token revocation/agent disable proven; event/API compatibility and loop prevention verified; bilingual docs and distributable handbooks updated. Ship no half-working demo-only agent permissions.
+
+### Out of scope for v0.5
+
+Built-in AI inference/chatbot, model API billing or token brokerage, vendor-specific cloud orchestration, generic CI runner, mandatory always-on local agent, cross-user impersonation, automatic access to human-owned private objects, unrestricted privileges for bots, generic group chat and automatic code merge/deploy.
+
 ## v0.4 — Scheduling & Events
 
 The 0.4 line makes TMS time-aware and event-driven while keeping the current User → Team → Project → Task hierarchy intact.
