@@ -9,13 +9,16 @@ RUN composer install \
     --prefer-dist \
     --optimize-autoloader
 
-FROM php:8.3-apache
+FROM php:8.3.36-apache-bookworm
 
 LABEL org.opencontainers.image.source="https://github.com/mirivlad/tms"
 LABEL org.opencontainers.image.licenses="AGPL-3.0-or-later"
 
 RUN docker-php-ext-install pdo_mysql opcache \
     && a2enmod headers
+
+# PHP2Shell (CVE-2026-109618 / CVE-2026-109619): refuse vulnerable runtimes.
+RUN php -r 'exit(version_compare(PHP_VERSION, "8.3.36", ">=") ? 0 : 1);'
 
 WORKDIR /var/www/html
 
