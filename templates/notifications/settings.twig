@@ -1,5 +1,14 @@
 {% extends "app_layout.twig" %}
-{% block title %}{{ t('notifications.title') }} · TMS{% endblock %}
+{% block title %}{{ t('notifications.title') }} · TMS{% if chimeport_push_available %}
+<section class="content-card notification-card" id="tms-push" data-csrf="{{ csrf_token }}">
+  <h2>Push-уведомления</h2>
+  <p class="muted">Получайте уведомления о задачах, сроках и сообщениях на этом устройстве. Отдельная регистрация не нужна.</p>
+  <p class="field-help" data-tms-push-status>Проверка поддержки браузера…</p>
+  <button type="button" class="secondary" data-tms-push-toggle>Включить уведомления на этом устройстве</button>
+</section>
+<script src="/assets/chimeport-push.js" defer></script>
+{% endif %}
+{% endblock %}
 {% block styles %}<link rel="stylesheet" href="/assets/notifications.css">{% endblock %}
 {% block content %}
 <div class="page-header compact-page-header">

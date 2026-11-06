@@ -35,6 +35,10 @@ ghcr.io/mirivlad/tms:v0.4.2
 - MariaDB migrations, Docker Compose and Portainer deployment templates;
 - `linux/amd64` and `linux/arm64` container images.
 
+## ChimePort (optional)
+
+TMS can forward user-scoped notifications from its own inbox to a trusted ChimePort application. No separate ChimePort accounts are required for TMS users; login and Web Push remain under the TMS origin. [Setup and security](docs/CHIMEPORT_BRIDGE.md).
+
 ## Documentation
 
 | Topic | English | Русский |

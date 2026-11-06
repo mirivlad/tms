@@ -52,6 +52,8 @@ services:
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
       TELEGRAM_PROXY_ENABLED: ${TELEGRAM_PROXY_ENABLED:-false}
       TELEGRAM_PROXY_URL: ${TELEGRAM_PROXY_URL:-}
+      CHIMEPORT_BRIDGE_URL: ${CHIMEPORT_BRIDGE_URL:-}
+      CHIMEPORT_BRIDGE_TOKEN: ${CHIMEPORT_BRIDGE_TOKEN:-}
     volumes:
       - tms-attachments:/var/www/html/var/storage/attachments
       - tms-secrets:/var/www/html/var/secrets

@@ -6,6 +6,7 @@ declare(strict_types=1);
 use Dotenv\Dotenv;
 use GuzzleHttp\Client;
 use Tms\Application\NotificationRunner;
+use Tms\Application\ChimePortBridgeRunner;
 use Tms\Domain\Notification\InternalNotificationRepository;
 use Tms\Domain\Notification\NotificationSettingsRepository;
 use Tms\Domain\Notification\NotificationTaskRepository;
@@ -72,6 +73,19 @@ try {
         dirname(__DIR__) . '/resources/i18n',
         $env('APP_LOCALE', 'en'),
     );
+    // The trusted-app bridge is a service-wide transport, not a per-user login.
+    // Initialize before generating reminders to preserve first-run events.
+    $chimePort = null;
+    if ($env('CHIMEPORT_BRIDGE_URL') !== '' || $env('CHIMEPORT_BRIDGE_TOKEN') !== '') {
+        $chimePort = new ChimePortBridgeRunner(
+            $db,
+            new Client(),
+            $required('CHIMEPORT_BRIDGE_URL'),
+            $required('CHIMEPORT_BRIDGE_TOKEN'),
+            $required('APP_URL'),
+        );
+        $chimePort->run();
+    }
     $runner = new NotificationRunner(
         new NotificationSettingsRepository($db),
         new NotificationTaskRepository($db),
@@ -83,6 +97,16 @@ try {
         $translator,
     );
     $stats = $runner->run();
+    if ($chimePort !== null) {
+        $bridgeStats = $chimePort->run();
+        fwrite(STDOUT, sprintf(
+            "ChimePort bridge: attempted=%d sent=%d failed=%d skipped=%d\n",
+            $bridgeStats['attempted'],
+            $bridgeStats['sent'],
+            $bridgeStats['failed'],
+            $bridgeStats['skipped'],
+        ));
+    }
     fwrite(STDOUT, sprintf(
         "Notification run: users=%d attempted=%d sent=%d\n",
         $stats['users'],

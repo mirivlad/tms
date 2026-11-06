@@ -28,6 +28,7 @@ final class NotificationSettingsController
         private readonly Translator $translator,
         private readonly TelegramConfigurationProvider $telegramConfiguration,
         private readonly string $deploymentTimezone,
+        private readonly bool $chimePortEnabled = false,
     ) {
     }
 
@@ -118,6 +119,7 @@ final class NotificationSettingsController
             'bot_name' => $telegram->botName,
             'telegram_available' => $telegram->botName !== '' && $telegram->botToken !== '' && $telegram->webhookSecret !== '',
             'deployment_timezone' => $this->deploymentTimezone,
+            'chimeport_push_available' => $this->chimePortEnabled,
             'telegram_link_command' => is_string($command) ? $command : null,
             'message' => $message ?? (is_string($flash) ? $flash : null),
             'error' => $error,

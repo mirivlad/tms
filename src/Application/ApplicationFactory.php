@@ -56,6 +56,8 @@ use Tms\Http\Controller\AttachmentController;
 use Tms\Http\Controller\AuthController;
 use Tms\Http\Controller\CalendarController;
 use Tms\Http\Controller\ChecklistController;
+use Tms\Http\Controller\ChimePortPushController;
+use Tms\Http\Controller\ChimePortMobileController;
 use Tms\Http\Controller\CustomerSearchController;
 use Tms\Http\Controller\CustomFieldController;
 use Tms\Http\Controller\DashboardController;
@@ -100,6 +102,7 @@ use Tms\Infrastructure\AttachmentStorage;
 use Tms\Infrastructure\Database;
 use Tms\Infrastructure\NativeSessionIdRegenerator;
 use Tms\Infrastructure\NotificationSecretBoxFactory;
+use Tms\Infrastructure\ChimePortPushBridge;
 use Tms\Infrastructure\SmtpEmailSender;
 use Tms\Infrastructure\TelegramBotSender;
 use Tms\Infrastructure\TelegramConfigurationProvider;
@@ -377,6 +380,26 @@ final class ApplicationFactory
             $webhookDeliveries,
             $translator,
         );
+        $chimePortConfigured = $this->env('CHIMEPORT_BRIDGE_URL', '') !== ''
+            && $this->env('CHIMEPORT_BRIDGE_TOKEN', '') !== '';
+        $chimePortPushController = null;
+        $chimePortMobileController = null;
+        if ($chimePortConfigured) {
+            $bridge = new ChimePortPushBridge(
+                new Client(),
+                $this->env('CHIMEPORT_BRIDGE_URL', ''),
+                $this->env('CHIMEPORT_BRIDGE_TOKEN', ''),
+            );
+            $chimePortPushController = new ChimePortPushController($sessions, $bridge);
+            $chimePortMobileController = new ChimePortMobileController(
+                $passwordAuthenticator,
+                $bridge,
+                $db,
+                $this->env('CHIMEPORT_BRIDGE_TOKEN', ''),
+                $this->env('CHIMEPORT_BRIDGE_URL', ''),
+                $appUrl,
+            );
+        }
         $notificationController = new NotificationSettingsController(
             $twig,
             $sessions,
@@ -386,6 +409,7 @@ final class ApplicationFactory
             $translator,
             $telegramConfiguration,
             $appTimezone,
+            $chimePortConfigured,
         );
         $notificationAdminController = new NotificationAdminController(
             $twig,
@@ -566,6 +590,15 @@ final class ApplicationFactory
         $app->post('/settings/profile', [$profileController, 'save'])->add($requireAuth);
         $app->get('/settings/notifications', [$notificationController, 'show'])->add($requireAuth);
         $app->post('/settings/notifications', [$notificationController, 'save'])->add($requireAuth);
+        if ($chimePortPushController !== null) {
+            $app->get('/api/notifications/push/config', [$chimePortPushController, 'config'])->add($requireAuth);
+            $app->post('/api/notifications/push/subscription', [$chimePortPushController, 'subscribe'])->add($requireAuth);
+            $app->delete('/api/notifications/push/subscription', [$chimePortPushController, 'unsubscribe'])->add($requireAuth);
+        }
+        if ($chimePortMobileController !== null) {
+            $app->get('/.well-known/chimeport.json', [$chimePortMobileController, 'discovery']);
+            $app->post('/api/notifications/mobile/login', [$chimePortMobileController, 'login']);
+        }
         $app->post('/settings/notifications/telegram-link', [$notificationController, 'generateTelegramLink'])->add($requireAuth);
         $app->post('/settings/notifications/telegram-test', [$notificationController, 'testTelegram'])->add($requireAuth);
         $app->post('/settings/notifications/telegram-disconnect', [$notificationController, 'disconnectTelegram'])->add($requireAuth);
@@ -598,7 +631,7 @@ final class ApplicationFactory
         $app->post('/admin/notifications/telegram-webhook', [$notificationAdminController, 'setupTelegramWebhook'])->add($requireAdmin)->add($requireAuth);
         $app->post('/telegram/webhook', [$telegramWebhookController, 'handle']);
 
-        $app->add(new CsrfMiddleware($app->getResponseFactory(), $translator, ['/telegram/webhook']));
+        $app->add(new CsrfMiddleware($app->getResponseFactory(), $translator, ['/telegram/webhook', '/api/notifications/mobile/login']));
         $app->add(TwigMiddleware::create($app, $twig));
         $app->add(new UserTimezoneMiddleware($sessions, $preferences, $appTimezone));
         $app->add(new UserActivityMiddleware($sessions, $users));
