@@ -99,3 +99,8 @@ After a valid link, the bot replies with confirmation and TMS stores that chat f
 The Docker/Portainer `notifier` service runs `php bin/notify.php` every `NOTIFICATION_INTERVAL_SECONDS` seconds (60 by default).
 
 For a native installation, use cron for `bin/notify.php`. Do not run multiple notifier strategies unnecessarily; deduplication protects successful records, but concurrent workers may still race before success is journaled.
+
+
+## Optional ChimePort push transport
+
+The service administrator may enable `CHIMEPORT_BRIDGE_URL` and `CHIMEPORT_BRIDGE_TOKEN` (a trusted-application source token issued by ChimePort). TMS then forwards new canonical inbox notifications, addressed by immutable TMS user ID, through its existing notifier worker. User accounts, passwords and password hashes are never mirrored to ChimePort. Users may opt in to browser push in **Settings → Notifications**, or connect the ChimePort Android application by entering the TMS URL and logging in with TMS credentials. The browser subscribes under the TMS origin and requires permission. Full setup, backup/migration notes and security limitations: [ChimePort bridge](CHIMEPORT_BRIDGE.md).
