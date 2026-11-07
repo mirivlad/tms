@@ -15,6 +15,7 @@ use Tms\Domain\Notification\SmtpSettingsRepository;
 use Tms\Domain\Notification\TelegramSystemSettingsRepository;
 use Tms\I18n\Translator;
 use Tms\Infrastructure\Database;
+use Tms\Infrastructure\ChimePortBridgeConfig;
 use Tms\Infrastructure\NotificationSecretBoxFactory;
 use Tms\Infrastructure\SmtpEmailSender;
 use Tms\Infrastructure\TelegramBotSender;
@@ -76,12 +77,13 @@ try {
     // The trusted-app bridge is a service-wide transport, not a per-user login.
     // Initialize before generating reminders to preserve first-run events.
     $chimePort = null;
-    if ($env('CHIMEPORT_BRIDGE_URL') !== '' || $env('CHIMEPORT_BRIDGE_TOKEN') !== '') {
+    $bridgeConfig = ChimePortBridgeConfig::resolve($env);
+    if ($bridgeConfig['enabled']) {
         $chimePort = new ChimePortBridgeRunner(
             $db,
             new Client(),
-            $required('CHIMEPORT_BRIDGE_URL'),
-            $required('CHIMEPORT_BRIDGE_TOKEN'),
+            $bridgeConfig['url'],
+            $bridgeConfig['token'],
             $required('APP_URL'),
         );
         $chimePort->run();

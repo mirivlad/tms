@@ -105,6 +105,7 @@ use Tms\Infrastructure\Database;
 use Tms\Infrastructure\NativeSessionIdRegenerator;
 use Tms\Infrastructure\NotificationSecretBoxFactory;
 use Tms\Infrastructure\ChimePortPushBridge;
+use Tms\Infrastructure\ChimePortBridgeConfig;
 use Tms\Infrastructure\SmtpEmailSender;
 use Tms\Infrastructure\TelegramBotSender;
 use Tms\Infrastructure\TelegramConfigurationProvider;
@@ -316,13 +317,13 @@ final class ApplicationFactory
             rtrim(rtrim(number_format($attachmentPolicy->maxBytes() / 1_048_576, 1, '.', ''), '0'), '.'),
         );
 
-        $chimePortConfigured = $this->env('CHIMEPORT_BRIDGE_URL', '') !== ''
-            && $this->env('CHIMEPORT_BRIDGE_TOKEN', '') !== '';
+        $bridgeConfig = ChimePortBridgeConfig::resolve(fn(string $key): string => $this->env($key, ''));
+        $chimePortConfigured = $bridgeConfig['enabled'];
         $chimePortDevices = null;
         $chimePortBridge = null;
         if ($chimePortConfigured) {
             $chimePortDevices = new ChimePortDeviceRepository(
-                $db, $users, $this->env('CHIMEPORT_BRIDGE_TOKEN', ''),
+                $db, $users, $bridgeConfig['token'],
             );
             $users->setNotificationDeviceRevoker(
                 static function(int $userId) use ($chimePortDevices): void {
@@ -331,8 +332,8 @@ final class ApplicationFactory
             );
             $chimePortBridge = new ChimePortPushBridge(
                 new Client(),
-                $this->env('CHIMEPORT_BRIDGE_URL', ''),
-                $this->env('CHIMEPORT_BRIDGE_TOKEN', ''),
+                $bridgeConfig['url'],
+                $bridgeConfig['token'],
             );
         }
         $authController = new AuthController($twig, $passwordAuthenticator, $sessions, $persistentLogin, $cookiePolicy, $rememberLifetime, $rememberCookieName, $translator, $chimePortDevices);
@@ -413,13 +414,13 @@ final class ApplicationFactory
                 $chimePortBridge,
                 $chimePortDevices,
                 $db,
-                $this->env('CHIMEPORT_BRIDGE_TOKEN', ''),
-                $this->env('CHIMEPORT_BRIDGE_URL', ''),
+                $bridgeConfig['token'],
+                $bridgeConfig['url'],
                 $appUrl,
             );
             $chimePortIdentityController = new ChimePortIdentityController(
                 $chimePortDevices, $sessions,
-                $this->env('CHIMEPORT_BRIDGE_TOKEN', ''),
+                $bridgeConfig['token'],
                 $chimePortBridge,
             );
         }
