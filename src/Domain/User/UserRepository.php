@@ -12,6 +12,22 @@ use RuntimeException;
 
 final class UserRepository
 {
+    /** @var ?\Closure(int):void */
+    private ?\Closure $revokeNotificationDevices = null;
+
+    /** TMS device authorization is persisted independently of ChimePort uptime. */
+    public function setNotificationDeviceRevoker(?\Closure $callback): void
+    {
+        $this->revokeNotificationDevices = $callback;
+    }
+
+    private function revokeNotificationDevices(int $userId): void
+    {
+        if ($this->revokeNotificationDevices !== null) {
+            ($this->revokeNotificationDevices)($userId);
+        }
+    }
+
     public function __construct(private readonly PDO $db)
     {
     }
@@ -109,6 +125,7 @@ final class UserRepository
             'password_hash' => $passwordHash,
             'id' => $userId,
         ]);
+        $this->revokeNotificationDevices($userId);
     }
 
     /** @return list<UserRecord> */
@@ -226,6 +243,9 @@ final class UserRepository
             'is_active' => $isActive ? 1 : 0,
             'id' => $userId,
         ]);
+        if ($current->isActive && !$isActive) {
+            $this->revokeNotificationDevices($userId);
+        }
         return true;
     }
 
@@ -235,6 +255,9 @@ final class UserRepository
             'UPDATE users SET approved_at = :approved_at, updated_at = CURRENT_TIMESTAMP WHERE id = :id'
         );
         $stmt->execute(['approved_at' => $approved ? gmdate('Y-m-d H:i:s') : null, 'id' => $userId]);
+        if (!$approved) {
+            $this->revokeNotificationDevices($userId);
+        }
         return $stmt->rowCount() === 1;
     }
 

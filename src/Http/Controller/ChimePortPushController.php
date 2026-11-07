@@ -7,6 +7,7 @@ namespace Tms\Http\Controller;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Tms\Infrastructure\ChimePortPushBridge;
+use Tms\Domain\Notification\ChimePortDeviceRepository;
 use Tms\Security\SessionManager;
 use Throwable;
 
@@ -15,7 +16,15 @@ final class ChimePortPushController
     public function __construct(
         private readonly SessionManager $sessions,
         private readonly ChimePortPushBridge $bridge,
+        private readonly ChimePortDeviceRepository $devices,
     ) {
+    }
+
+    public function state(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        return $this->json($response,[
+            'active'=>$this->devices->browserActive($this->userId(),session_id()),
+        ]);
     }
 
     public function config(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
@@ -34,7 +43,9 @@ final class ChimePortPushController
             return $this->json($response, ['error' => 'Invalid push subscription.'], 400);
         }
         try {
-            $this->bridge->subscribe($this->userId(), [
+            $deviceId = $this->devices->registerBrowser($this->userId(),session_id(),
+                'Browser — ' . substr((string)$request->getHeaderLine('User-Agent'),0,70));
+            $this->bridge->subscribe($this->userId(), $deviceId, [
                 'endpoint' => $body['endpoint'],
                 'keys' => [
                     'p256dh' => $body['keys']['p256dh'],
@@ -56,7 +67,8 @@ final class ChimePortPushController
             return $this->json($response, ['error' => 'Invalid push endpoint.'], 400);
         }
         try {
-            $this->bridge->unsubscribe($this->userId(), $endpoint);
+            // Revoking the browser grant immediately denies push even if CP is offline.
+            $this->devices->revokeBrowserSession($this->userId(),session_id());
             return $this->json($response, ['subscribed' => false]);
         } catch (Throwable) {
             return $this->json($response, ['error' => 'Could not disable push notifications.'], 502);

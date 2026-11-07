@@ -8,6 +8,7 @@ use PDO;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Tms\Infrastructure\ChimePortPushBridge;
+use Tms\Domain\Notification\ChimePortDeviceRepository;
 use Tms\Security\PasswordAuthenticator;
 use Throwable;
 
@@ -20,6 +21,7 @@ final class ChimePortMobileController
     public function __construct(
         private readonly PasswordAuthenticator $authenticator,
         private readonly ChimePortPushBridge $bridge,
+        private readonly ChimePortDeviceRepository $devices,
         private readonly PDO $db,
         private readonly string $appToken,
         private readonly string $chimePortUrl,
@@ -69,9 +71,17 @@ final class ChimePortMobileController
             // Successful password verification clears the per-account failure bucket.
             $stmt = $this->db->prepare('DELETE FROM chimeport_mobile_login_attempts WHERE identifier = :id');
             $stmt->execute(['id' => $userBucket]);
-            $ticket = $this->bridge->issueDeviceTicket($user->id, $challenge);
+            $deviceId = $this->devices->registerAndroid($user->id,
+                is_string($body['device_name'] ?? null) ? (string) $body['device_name'] : 'Android');
+            try {
+                $ticket = $this->bridge->issueDeviceTicket($user->id, $deviceId, $challenge);
+            } catch (Throwable) {
+                $this->devices->revoke($user->id, $deviceId);
+                throw new \RuntimeException('Unable to issue device ticket.');
+            }
             return $this->json($response, [
                 'ticket' => $ticket,
+                'device_id' => $deviceId,
                 'recipient' => (string) $user->id,
                 'username' => $user->username,
                 'chimeport_url' => $this->chimePortUrl,

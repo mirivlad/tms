@@ -42,15 +42,15 @@ final class ChimePortPushBridge
     }
 
     /** @param array{endpoint:string,keys:array{p256dh:string,auth:string}} $subscription */
-    public function subscribe(int $userId, array $subscription): void
+    public function subscribe(int $userId, string $deviceId, array $subscription): void
     {
-        $token = $this->deviceToken($userId);
+        $token = $this->deviceToken($userId,$deviceId);
         $this->call('POST', '/api/v1/external/webpush/subscriptions', $token, $subscription);
     }
 
-    public function unsubscribe(int $userId, string $endpoint): void
+    public function unsubscribe(int $userId, string $deviceId, string $endpoint): void
     {
-        $token = $this->deviceToken($userId);
+        $token = $this->deviceToken($userId,$deviceId);
         $this->call('DELETE', '/api/v1/external/webpush/subscriptions', $token, ['endpoint' => $endpoint]);
     }
 
@@ -58,13 +58,15 @@ final class ChimePortPushBridge
      * Delegated device login: TMS authenticated the user, and the client
      * supplied a PKCE challenge. Only the client knows the verifier.
      */
-    public function issueDeviceTicket(int $userId, string $challenge): string
+    public function issueDeviceTicket(int $userId, string $deviceId, string $challenge): string
     {
-        if ($userId <= 0 || preg_match('/^[A-Za-z0-9_-]{43}$/D', $challenge) !== 1) {
+        if ($userId <= 0 || preg_match('/^[a-f0-9]{32}$/D', $deviceId) !== 1
+            || preg_match('/^[A-Za-z0-9_-]{43}$/D', $challenge) !== 1) {
             throw new \InvalidArgumentException('Invalid user or PKCE challenge.');
         }
         $data = $this->call('POST', '/api/v1/external/tickets', $this->applicationToken, [
             'recipient' => (string) $userId,
+            'device_id' => $deviceId,
             'code_challenge' => $challenge,
         ]);
         $ticket = $data['ticket'] ?? null;
@@ -74,7 +76,22 @@ final class ChimePortPushBridge
         return $ticket;
     }
 
-    private function deviceToken(int $userId): string
+    /** Server-side cleanup only; authorization is denied by TMS even if unreachable. */
+    public function revokeDevice(int $userId, string $deviceId): void
+    {
+        $this->call('POST', '/api/v1/external/devices/revoke', $this->applicationToken, [
+            'recipient' => (string) $userId, 'device_id' => $deviceId,
+        ]);
+    }
+
+    public function revokeRecipient(int $userId): void
+    {
+        $this->call('POST', '/api/v1/external/recipients/revoke', $this->applicationToken, [
+            'recipient' => (string) $userId,
+        ]);
+    }
+
+    private function deviceToken(int $userId,string $deviceId): string
     {
         if ($userId <= 0) {
             throw new \InvalidArgumentException('Authenticated TMS user ID required.');
@@ -84,7 +101,7 @@ final class ChimePortPushBridge
         $verifier = rtrim(strtr(base64_encode(random_bytes(32)), '+/', '-_'), '=');
         $challenge = rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=');
 
-        $ticket = $this->issueDeviceTicket($userId, $challenge);
+        $ticket = $this->issueDeviceTicket($userId, $deviceId, $challenge);
 
         $session = $this->call('POST', '/api/v1/external/exchange', null, [
             'ticket' => $ticket,

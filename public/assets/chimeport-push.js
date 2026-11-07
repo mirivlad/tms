@@ -6,10 +6,11 @@
   const status = root.querySelector('[data-tms-push-status]');
   const csrf = root.dataset.csrf || '';
   const say = text => { status.textContent = text; };
+  const phrase = key => root.dataset['txt' + key.charAt(0).toUpperCase() + key.slice(1)] || key;
   const available = 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
   if (!available || !window.isSecureContext) {
     button.disabled = true;
-    say('Этот браузер не поддерживает push-уведомления или соединение не защищено.');
+    say(phrase("unsupported"));
     return;
   }
 
@@ -33,9 +34,10 @@
   const refresh = async () => {
     registration = await navigator.serviceWorker.register('/chimeport-sw.js', { scope: '/' });
     const subscription = await registration.pushManager.getSubscription();
-    active = !!subscription;
-    button.textContent = active ? 'Отключить уведомления на этом устройстве' : 'Включить уведомления на этом устройстве';
-    say(active ? 'Push-уведомления включены в этом браузере.' : 'Push-уведомления пока не включены.');
+    const state = await request('/api/notifications/push/state');
+    active = !!subscription && state.active === true;
+    button.textContent = active ? phrase("disable") : phrase("enable");
+    say(active ? phrase("enabled") : phrase("disabled"));
   };
 
   button.addEventListener('click', async () => {
@@ -53,14 +55,15 @@
       } else {
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') {
-          say('Разрешение на уведомления не выдано.');
+          say(phrase("permission"));
           return;
         }
         const config = await request('/api/notifications/push/config');
-        const subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: keyBytes(config.public_key)
-        });
+        const subscription = (await registration.pushManager.getSubscription()) ||
+          (await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: keyBytes(config.public_key)
+          }));
         const json = subscription.toJSON();
         try {
           await request('/api/notifications/push/subscription', {
@@ -74,13 +77,13 @@
       }
       await refresh();
     } catch (error) {
-      say('Не удалось изменить подписку. Проверьте соединение и попробуйте ещё раз.');
+      say(phrase("failed"));
     } finally {
       button.disabled = false;
     }
   });
 
   refresh().catch(() => {
-    say('Не удалось проверить состояние push-уведомлений.');
+    say(phrase("stateFailed"));
   });
 })();

@@ -11,6 +11,7 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Slim\Views\Twig;
 use Tms\Domain\Notification\NotificationSettingsRepository;
+use Tms\Domain\Notification\ChimePortDeviceRepository;
 use Tms\Domain\Notification\TelegramLinkTokenRepository;
 use Tms\I18n\Translator;
 use Tms\Infrastructure\TelegramConfigurationProvider;
@@ -29,6 +30,7 @@ final class NotificationSettingsController
         private readonly TelegramConfigurationProvider $telegramConfiguration,
         private readonly string $deploymentTimezone,
         private readonly bool $chimePortEnabled = false,
+        private readonly ?ChimePortDeviceRepository $chimePortDevices = null,
     ) {
     }
 
@@ -120,6 +122,7 @@ final class NotificationSettingsController
             'telegram_available' => $telegram->botName !== '' && $telegram->botToken !== '' && $telegram->webhookSecret !== '',
             'deployment_timezone' => $this->deploymentTimezone,
             'chimeport_push_available' => $this->chimePortEnabled,
+            'chimeport_devices' => $this->chimePortDevices?->listForUser($this->userId()) ?? [],
             'telegram_link_command' => is_string($command) ? $command : null,
             'message' => $message ?? (is_string($flash) ? $flash : null),
             'error' => $error,

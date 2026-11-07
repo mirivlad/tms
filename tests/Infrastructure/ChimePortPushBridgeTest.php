@@ -28,7 +28,7 @@ final class ChimePortPushBridgeTest extends TestCase
             new Client(['handler' => $handler]), 'https://chime.example.org', 'cp_a_secret',
         );
         self::assertSame('vapid-sample', $bridge->publicKey());
-        $bridge->subscribe(42, [
+        $bridge->subscribe(42, str_repeat('a', 32), [
             'endpoint' => 'https://updates.push.services.mozilla.com/wpush/v2/abc',
             'keys' => ['p256dh' => 'public', 'auth' => 'auth'],
         ]);
@@ -37,6 +37,7 @@ final class ChimePortPushBridgeTest extends TestCase
         $ticket = json_decode((string) $history[1]['request']->getBody(), true);
         $exchange = json_decode((string) $history[2]['request']->getBody(), true);
         self::assertSame('42', $ticket['recipient']);
+        self::assertSame(str_repeat('a',32), $ticket['device_id']);
         self::assertArrayNotHasKey('password', $ticket);
         $verifier = $exchange['code_verifier'];
         $challenge = rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=');

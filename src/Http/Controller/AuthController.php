@@ -15,6 +15,7 @@ use Tms\I18n\Translator;
 use Tms\Security\PasswordAuthenticator;
 use Tms\Security\PersistentLoginService;
 use Tms\Security\SessionManager;
+use Tms\Domain\Notification\ChimePortDeviceRepository;
 
 final class AuthController
 {
@@ -27,6 +28,7 @@ final class AuthController
         private readonly DateInterval $rememberLifetime,
         private readonly string $rememberCookieName,
         private readonly Translator $translator,
+        private readonly ?ChimePortDeviceRepository $chimePortDevices = null,
     ) {
     }
 
@@ -63,6 +65,7 @@ final class AuthController
         // state. The locale is the one benign preference explicitly restored after
         // the session id is rotated.
         $locale = $this->translator->locale();
+        $this->chimePortDevices?->revokeBrowserSessionAny(session_id());
         $this->sessions->establish($user);
         $this->translator->setLocale($locale);
 
@@ -95,6 +98,10 @@ final class AuthController
 
         setcookie($this->rememberCookieName, '', $this->cookiePolicy->expired());
         $locale = $this->translator->locale();
+        $userId = $this->sessions->currentUserId();
+        if ($userId !== null) {
+            $this->chimePortDevices?->revokeBrowserSession($userId,session_id());
+        }
         $this->sessions->clear();
         $this->translator->setLocale($locale);
 
