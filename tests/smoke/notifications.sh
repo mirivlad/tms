@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+trap 'echo "Notification smoke failed at line $LINENO" >&2' ERR
 
 base_url="${APP_URL:?APP_URL is required}"
 fallback_webhook_secret="${TELEGRAM_WEBHOOK_SECRET:?TELEGRAM_WEBHOOK_SECRET is required for notification smoke}"
