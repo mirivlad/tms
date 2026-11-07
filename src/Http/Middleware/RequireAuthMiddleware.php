@@ -10,12 +10,14 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Tms\Domain\User\UserRepository;
 use Tms\Security\SessionManager;
+use Tms\Domain\Notification\ChimePortDeviceRepository;
 
 final class RequireAuthMiddleware implements MiddlewareInterface
 {
     public function __construct(
         private readonly SessionManager $sessions,
         private readonly UserRepository $users,
+        private readonly ?ChimePortDeviceRepository $chimePortDevices = null,
     ) {
     }
 
@@ -33,6 +35,7 @@ final class RequireAuthMiddleware implements MiddlewareInterface
         }
 
         $this->sessions->refreshIdentity($user);
+        $this->chimePortDevices?->touchBrowserSession($user->id,session_id());
         return $handler->handle($request);
     }
 

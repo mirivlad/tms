@@ -17,7 +17,7 @@ services:
       start_period: 20s
 
   app:
-    image: &tms-image ${TMS_IMAGE:-ghcr.io/mirivlad/tms:v0.4.2}
+    image: &tms-image ${TMS_IMAGE:-ghcr.io/mirivlad/tms:v0.4.3}
     restart: unless-stopped
     depends_on:
       db:
@@ -51,6 +51,8 @@ services:
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
       TELEGRAM_PROXY_ENABLED: ${TELEGRAM_PROXY_ENABLED:-false}
       TELEGRAM_PROXY_URL: ${TELEGRAM_PROXY_URL:-}
+      CHIMEPORT_BRIDGE_URL: ${CHIMEPORT_BRIDGE_URL:-}
+      CHIMEPORT_BRIDGE_TOKEN: ${CHIMEPORT_BRIDGE_TOKEN:-}
     volumes:
       - tms-attachments:/var/www/html/var/storage/attachments
       - tms-secrets:/var/www/html/var/secrets

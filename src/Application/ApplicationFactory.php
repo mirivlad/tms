@@ -29,6 +29,7 @@ use Tms\Domain\Discussion\DiscussionRepository;
 use Tms\Domain\Event\DomainEventRepository;
 use Tms\Domain\Notification\InternalNotificationRepository;
 use Tms\Domain\Notification\NotificationSettingsRepository;
+use Tms\Domain\Notification\ChimePortDeviceRepository;
 use Tms\Domain\Notification\SmtpSettingsRepository;
 use Tms\Domain\Notification\TelegramLinkTokenRepository;
 use Tms\Domain\Notification\TelegramSystemSettingsRepository;
@@ -56,6 +57,9 @@ use Tms\Http\Controller\AttachmentController;
 use Tms\Http\Controller\AuthController;
 use Tms\Http\Controller\CalendarController;
 use Tms\Http\Controller\ChecklistController;
+use Tms\Http\Controller\ChimePortPushController;
+use Tms\Http\Controller\ChimePortMobileController;
+use Tms\Http\Controller\ChimePortIdentityController;
 use Tms\Http\Controller\CustomerSearchController;
 use Tms\Http\Controller\CustomFieldController;
 use Tms\Http\Controller\DashboardController;
@@ -100,6 +104,7 @@ use Tms\Infrastructure\AttachmentStorage;
 use Tms\Infrastructure\Database;
 use Tms\Infrastructure\NativeSessionIdRegenerator;
 use Tms\Infrastructure\NotificationSecretBoxFactory;
+use Tms\Infrastructure\ChimePortPushBridge;
 use Tms\Infrastructure\SmtpEmailSender;
 use Tms\Infrastructure\TelegramBotSender;
 use Tms\Infrastructure\TelegramConfigurationProvider;
@@ -311,7 +316,26 @@ final class ApplicationFactory
             rtrim(rtrim(number_format($attachmentPolicy->maxBytes() / 1_048_576, 1, '.', ''), '0'), '.'),
         );
 
-        $authController = new AuthController($twig, $passwordAuthenticator, $sessions, $persistentLogin, $cookiePolicy, $rememberLifetime, $rememberCookieName, $translator);
+        $chimePortConfigured = $this->env('CHIMEPORT_BRIDGE_URL', '') !== ''
+            && $this->env('CHIMEPORT_BRIDGE_TOKEN', '') !== '';
+        $chimePortDevices = null;
+        $chimePortBridge = null;
+        if ($chimePortConfigured) {
+            $chimePortDevices = new ChimePortDeviceRepository(
+                $db, $users, $this->env('CHIMEPORT_BRIDGE_TOKEN', ''),
+            );
+            $users->setNotificationDeviceRevoker(
+                static function(int $userId) use ($chimePortDevices): void {
+                    $chimePortDevices->revokeAll($userId);
+                },
+            );
+            $chimePortBridge = new ChimePortPushBridge(
+                new Client(),
+                $this->env('CHIMEPORT_BRIDGE_URL', ''),
+                $this->env('CHIMEPORT_BRIDGE_TOKEN', ''),
+            );
+        }
+        $authController = new AuthController($twig, $passwordAuthenticator, $sessions, $persistentLogin, $cookiePolicy, $rememberLifetime, $rememberCookieName, $translator, $chimePortDevices);
         $passwordRecoveryController = new PasswordRecoveryController($twig, $passwordRecovery, $translator);
         $publicController = new PublicController($twig);
         $registrationController = new RegistrationController($twig, $registration, $sessions, $registrationCaptcha, $translator, $registrationEnabled);
@@ -377,6 +401,28 @@ final class ApplicationFactory
             $webhookDeliveries,
             $translator,
         );
+        $chimePortPushController = null;
+        $chimePortMobileController = null;
+        $chimePortIdentityController = null;
+        if ($chimePortConfigured) {
+            $chimePortPushController = new ChimePortPushController(
+                $sessions, $chimePortBridge, $chimePortDevices,
+            );
+            $chimePortMobileController = new ChimePortMobileController(
+                $passwordAuthenticator,
+                $chimePortBridge,
+                $chimePortDevices,
+                $db,
+                $this->env('CHIMEPORT_BRIDGE_TOKEN', ''),
+                $this->env('CHIMEPORT_BRIDGE_URL', ''),
+                $appUrl,
+            );
+            $chimePortIdentityController = new ChimePortIdentityController(
+                $chimePortDevices, $sessions,
+                $this->env('CHIMEPORT_BRIDGE_TOKEN', ''),
+                $chimePortBridge,
+            );
+        }
         $notificationController = new NotificationSettingsController(
             $twig,
             $sessions,
@@ -386,6 +432,8 @@ final class ApplicationFactory
             $translator,
             $telegramConfiguration,
             $appTimezone,
+            $chimePortConfigured,
+            $chimePortDevices,
         );
         $notificationAdminController = new NotificationAdminController(
             $twig,
@@ -410,7 +458,7 @@ final class ApplicationFactory
             $telegramUpdateHandler,
             $telegramConfiguration,
         );
-        $requireAuth = new RequireAuthMiddleware($sessions, $users);
+        $requireAuth = new RequireAuthMiddleware($sessions, $users, $chimePortDevices);
         $requireAdmin = new RequireAdminMiddleware($sessions, $app->getResponseFactory(), $translator);
         $sanitizeTaskDescription = new SanitizeTaskDescriptionMiddleware($descriptionSanitizer);
 
@@ -566,6 +614,23 @@ final class ApplicationFactory
         $app->post('/settings/profile', [$profileController, 'save'])->add($requireAuth);
         $app->get('/settings/notifications', [$notificationController, 'show'])->add($requireAuth);
         $app->post('/settings/notifications', [$notificationController, 'save'])->add($requireAuth);
+        if ($chimePortPushController !== null) {
+            $app->get('/api/notifications/push/config', [$chimePortPushController, 'config'])->add($requireAuth);
+            $app->get('/api/notifications/push/state', [$chimePortPushController, 'state'])->add($requireAuth);
+            $app->post('/api/notifications/push/subscription', [$chimePortPushController, 'subscribe'])->add($requireAuth);
+            $app->delete('/api/notifications/push/subscription', [$chimePortPushController, 'unsubscribe'])->add($requireAuth);
+        }
+        if ($chimePortMobileController !== null) {
+            $app->get('/.well-known/chimeport.json', [$chimePortMobileController, 'discovery']);
+            $app->post('/api/notifications/mobile/login', [$chimePortMobileController, 'login']);
+        }
+        if ($chimePortIdentityController !== null) {
+            $app->post('/api/notifications/chimeport/introspect', [$chimePortIdentityController, 'introspect']);
+            $app->post('/settings/notifications/devices/{device:[a-f0-9]{32}}/revoke',
+                [$chimePortIdentityController, 'revoke'])->add($requireAuth);
+            $app->post('/settings/notifications/devices/revoke-all',
+                [$chimePortIdentityController, 'revokeAll'])->add($requireAuth);
+        }
         $app->post('/settings/notifications/telegram-link', [$notificationController, 'generateTelegramLink'])->add($requireAuth);
         $app->post('/settings/notifications/telegram-test', [$notificationController, 'testTelegram'])->add($requireAuth);
         $app->post('/settings/notifications/telegram-disconnect', [$notificationController, 'disconnectTelegram'])->add($requireAuth);
@@ -598,7 +663,7 @@ final class ApplicationFactory
         $app->post('/admin/notifications/telegram-webhook', [$notificationAdminController, 'setupTelegramWebhook'])->add($requireAdmin)->add($requireAuth);
         $app->post('/telegram/webhook', [$telegramWebhookController, 'handle']);
 
-        $app->add(new CsrfMiddleware($app->getResponseFactory(), $translator, ['/telegram/webhook']));
+        $app->add(new CsrfMiddleware($app->getResponseFactory(), $translator, ['/telegram/webhook', '/api/notifications/mobile/login', '/api/notifications/chimeport/introspect']));
         $app->add(TwigMiddleware::create($app, $twig));
         $app->add(new UserTimezoneMiddleware($sessions, $preferences, $appTimezone));
         $app->add(new UserActivityMiddleware($sessions, $users));

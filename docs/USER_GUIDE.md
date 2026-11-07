@@ -114,3 +114,8 @@ Use **Forgot password** on the login page. Depending on deployment configuration
 - use a completion status so overdue calculations know what is finished;
 - use custom fields for structured data you actually filter or sort by;
 - use a versioned browser bookmark to the normal TMS URL — no special admin URL is required for daily work.
+
+
+## Push notifications through your TMS account
+
+If the administrator configured the optional ChimePort delivery service, open **Settings → Notifications** in TMS and click **Enable notifications on this device**. Allow notifications in your browser. You do not need a second account: notification access and message recipients are verified by TMS. On Android, the ChimePort app can also accept your **TMS server address** and existing TMS login and password; the password is sent only to TMS. A browser may delay delivery while asleep or offline; the in-app TMS inbox remains the canonical history.
