@@ -104,3 +104,7 @@ For a native installation, use cron for `bin/notify.php`. Do not run multiple no
 ## Optional ChimePort push transport
 
 The service administrator may enable `CHIMEPORT_BRIDGE_URL` and `CHIMEPORT_BRIDGE_TOKEN` (a trusted-application source token issued by ChimePort). TMS then forwards new canonical inbox notifications, addressed by immutable TMS user ID, through its existing notifier worker. User accounts, passwords and password hashes are never mirrored to ChimePort. Users may opt in to browser push in **Settings → Notifications**, or connect the ChimePort Android application by entering the TMS URL and logging in with TMS credentials. The browser subscribes under the TMS origin and requires permission. Full setup, backup/migration notes and security limitations: [ChimePort bridge](CHIMEPORT_BRIDGE.md).
+
+### Secure Portainer deployment
+
+Since v0.4.4 the ChimePort trusted application key and server origin may be supplied as protected files on the persistent named `tms_chimeport_bridge` Docker volume. Compose mounts it read-only at `/run/secrets/chimeport`; place the `issuer` and `token` files there, using private permissions (for example `0640` with the web server's group). This avoids storing the `cp_a_` secret in Portainer environment variables and preserves the integration when recreating the stack. Existing `CHIMEPORT_BRIDGE_URL` and `CHIMEPORT_BRIDGE_TOKEN` environment overrides remain supported. See [the bridge runbook](CHIMEPORT_BRIDGE.md).
