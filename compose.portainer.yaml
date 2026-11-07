@@ -17,7 +17,7 @@ services:
       start_period: 20s
 
   app:
-    image: &tms-image ${TMS_IMAGE:-ghcr.io/mirivlad/tms:v0.4.3}
+    image: &tms-image ${TMS_IMAGE:-ghcr.io/mirivlad/tms:v0.4.4}
     restart: unless-stopped
     depends_on:
       db:
@@ -53,9 +53,12 @@ services:
       TELEGRAM_PROXY_URL: ${TELEGRAM_PROXY_URL:-}
       CHIMEPORT_BRIDGE_URL: ${CHIMEPORT_BRIDGE_URL:-}
       CHIMEPORT_BRIDGE_TOKEN: ${CHIMEPORT_BRIDGE_TOKEN:-}
+      CHIMEPORT_BRIDGE_URL_FILE: ${CHIMEPORT_BRIDGE_URL_FILE:-/run/secrets/chimeport/issuer}
+      CHIMEPORT_BRIDGE_TOKEN_FILE: ${CHIMEPORT_BRIDGE_TOKEN_FILE:-/run/secrets/chimeport/token}
     volumes:
       - tms-attachments:/var/www/html/var/storage/attachments
       - tms-secrets:/var/www/html/var/secrets
+      - chimeport-bridge:/run/secrets/chimeport:ro
     healthcheck:
       test: ["CMD", "php", "-r", "exit(@file_get_contents('http://127.0.0.1/health') === false ? 1 : 0);"]
       interval: 30s
@@ -75,6 +78,7 @@ services:
       NOTIFICATION_INTERVAL_SECONDS: ${NOTIFICATION_INTERVAL_SECONDS:-60}
     volumes:
       - tms-secrets:/var/www/html/var/secrets
+      - chimeport-bridge:/run/secrets/chimeport:ro
     command: ["sh", "-c", "while true; do php /var/www/html/bin/recurring.php; php /var/www/html/bin/notify.php; sleep ${NOTIFICATION_INTERVAL_SECONDS:-60}; done"]
 
   webhook-worker:
@@ -89,6 +93,7 @@ services:
       WEBHOOK_INTERVAL_SECONDS: ${WEBHOOK_INTERVAL_SECONDS:-15}
     volumes:
       - tms-secrets:/var/www/html/var/secrets
+      - chimeport-bridge:/run/secrets/chimeport:ro
     command: ["sh", "-c", "while true; do php /var/www/html/bin/webhooks.php; sleep ${WEBHOOK_INTERVAL_SECONDS:-15}; done"]
 
   telegram-poller:
@@ -102,9 +107,12 @@ services:
       TMS_SKIP_MIGRATIONS: "true"
     volumes:
       - tms-secrets:/var/www/html/var/secrets
+      - chimeport-bridge:/run/secrets/chimeport:ro
     command: ["php", "/var/www/html/bin/telegram-poll.php"]
 
 volumes:
   tms-db:
   tms-attachments:
   tms-secrets:
+  chimeport-bridge:
+    name: tms_chimeport_bridge
