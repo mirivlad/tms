@@ -14,6 +14,13 @@ final class ChecklistRepository
     {
     }
 
+    private function rollbackOwnedTransaction(): void
+    {
+        if ($this->db->inTransaction()) {
+            $this->db->rollBack();
+        }
+    }
+
     /** @return list<ChecklistItemRecord> */
     public function listForTask(int $userId, int $taskId): array
     {
@@ -144,7 +151,8 @@ final class ChecklistRepository
         $current = $items[$index];
         $other = $items[$target];
 
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             $stmt = $this->db->prepare(
                 'UPDATE task_checklist_items SET sort_order = :sort_order, updated_at = CURRENT_TIMESTAMP
@@ -160,11 +168,9 @@ final class ChecklistRepository
                 'id' => $other->id,
                 'task_id' => $taskId,
             ]);
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
         } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             throw $error;
         }
 

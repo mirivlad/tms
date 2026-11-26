@@ -346,3 +346,22 @@ User
 ```
 
 Discussions attach to Project and Task once team collaboration exists.
+
+## MCP capability expansion (approved November 2026)
+
+TMS already offers vendor-neutral Streamable HTTP MCP with per-user Bearer tokens.
+The following releases expand capabilities, not the number of supported AI vendors.
+Administrative actions and token management stay outside ordinary agent scopes.
+
+| Release | Planned scope |
+| --- | --- |
+| 0.5.3 | Personal/team projects (create, read, edit, lifecycle), task assignment and project moves, task type/customer selection, checklist editing/reordering/deletion. |
+| 0.5.4 | Recurrence, reference data, custom fields, advanced filters, atomic bulk edits, history and reporting. |
+| 0.5.5 | Teams, invitations, discussions, attachments and collaboration. |
+| 0.6.0 | Audit functional parity with the ordinary user interface; close missing workflows, document interoperable MCP clients and harden tests. |
+| 0.6.1 | OAuth authorization for compatible MCP clients, without removing existing Bearer tokens. |
+
+Every release must preserve existing tool contracts, enforce the existing access
+model, use transactional idempotency receipts, validate destructive operations,
+and include cross-user/team tests, migration tests and EN/RU documentation.
+Update the ChatGPT Sites adapter only after the planned server-side expansion.

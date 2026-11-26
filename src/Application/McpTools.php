@@ -8,6 +8,13 @@ use DateTimeImmutable;
 use DateTimeZone;
 use DomainException;
 use Tms\Domain\Checklist\ChecklistRepository;
+use Tms\Domain\Project\ProjectRecord;
+use Tms\Domain\Project\ProjectCustomFieldRepository;
+use Tms\Domain\CustomField\CustomFieldRepository;
+use Tms\Domain\CustomField\TaskCustomFieldValueRepository;
+use Tms\Domain\Customer\CustomerRepository;
+use Tms\Domain\TaskType\TaskTypeRepository;
+use Tms\Domain\Team\TeamRepository;
 use Tms\Domain\Attachment\AttachmentRepository;
 use Tms\Infrastructure\AttachmentStorage;
 use Tms\Domain\Project\ProjectRepository;
@@ -30,6 +37,12 @@ final class McpTools
         private readonly string $timezone,
         private readonly AttachmentRepository $attachments,
         private readonly AttachmentStorage $storage,
+        private readonly TaskTypeRepository $taskTypes,
+        private readonly CustomerRepository $customers,
+        private readonly TeamRepository $teams,
+        private readonly CustomFieldRepository $customFields,
+        private readonly ProjectCustomFieldRepository $projectCustomFields,
+        private readonly TaskCustomFieldValueRepository $customValues,
     ) {}
 
     /**
@@ -45,8 +58,20 @@ final class McpTools
             'description'=>['type'=>'string','maxLength'=>30000],
             'deadline'=>$date,'scheduled_at'=>$date,'priority'=>['type'=>'integer','minimum'=>0,'maximum'=>3],
             'status_id'=>$id];
+        $nullableId = ['type'=>['integer','null'],'minimum'=>1];
+        $metadata = ['type_id'=>$nullableId,'customer_id'=>$nullableId,'assignee_user_id'=>$nullableId];
+        $projectFields = [
+            'name'=>['type'=>'string','minLength'=>1,'maxLength'=>160],
+            'description'=>['type'=>'string','maxLength'=>20000],
+            'lifecycle_status'=>['type'=>'string','enum'=>ProjectRepository::LIFECYCLE_STATUSES],
+        ];
         $defs = [
             self::tool('list_projects','List accessible personal and team projects.', [], [], true),
+            self::tool('get_project','Read an accessible project and its statuses.', ['project_id'=>$id], ['project_id'], true),
+            self::tool('list_teams','List teams of which the caller is a member, with current role.', [], [], true),
+            self::tool('list_project_assignees','List eligible team members for an accessible project; returns user IDs, names and roles only.', ['project_id'=>$id], ['project_id'], true),
+            self::tool('list_task_types','List caller-owned personal task types.', [], [], true),
+            self::tool('list_customers','List caller-owned personal customers.', [], [], true),
             self::tool('list_statuses','List statuses for a project, or personal statuses when omitted.', ['project_id'=>$id], [], true),
             self::tool('list_tasks','Find accessible tasks by text, project, status or overdue flag. Returns a page of results.', [
                 'query'=>$str,'project_id'=>$id,'status_id'=>$id,'overdue'=>['type'=>'boolean'],
@@ -57,15 +82,20 @@ final class McpTools
         ];
         if ($write) {
             $defs[] = self::tool('create_task','Create a task, optionally with checklist items. Search existing tasks first. Dates require an explicit offset.',
-                $fields + ['project_id'=>$id,'request_key'=>$key,'checklist'=>['type'=>'array','maxItems'=>50,'items'=>['type'=>'string','minLength'=>1,'maxLength'=>500]]],
+                $fields + $metadata + ['project_id'=>$id,'request_key'=>$key,'checklist'=>['type'=>'array','maxItems'=>50,'items'=>['type'=>'string','minLength'=>1,'maxLength'=>500]]],
                 ['title','request_key'], false);
-            $defs[] = self::tool('update_task','Update specified fields only; omitted fields remain unchanged.', $fields + ['task_id'=>$id,'request_key'=>$key], ['task_id','request_key'], false);
+            $defs[] = self::tool('update_task','Update supplied fields only. Moving a task selects the destination default status unless status_id is supplied. Clear incompatible metadata explicitly; tasks with custom field values must be moved in the web UI.', $fields + $metadata + ['project_id'=>$nullableId,'task_id'=>$id,'request_key'=>$key], ['task_id','request_key'], false);
+            $defs[] = self::tool('create_project','Create a personal project or a team project (team lead only). Search accessible projects first.', $projectFields + ['team_id'=>$id,'request_key'=>$key], ['name','request_key'], false);
+            $defs[] = self::tool('update_project','Edit name, description or lifecycle of an accessible manageable project. Ownership is unchanged.', $projectFields + ['project_id'=>$id,'request_key'=>$key], ['project_id','request_key'], false);
+            $defs[] = self::tool('update_checklist_item','Rename a checklist item.', ['task_id'=>$id,'item_id'=>$id,'text'=>['type'=>'string','minLength'=>1,'maxLength'=>500],'request_key'=>$key], ['task_id','item_id','text','request_key'], false);
+            $defs[] = self::tool('move_checklist_item','Move a checklist item one position up or down.', ['task_id'=>$id,'item_id'=>$id,'direction'=>['type'=>'string','enum'=>['up','down']],'request_key'=>$key], ['task_id','item_id','direction','request_key'], false);
             $defs[] = self::tool('complete_task','Move a task to its configured completion status.', ['task_id'=>$id,'request_key'=>$key], ['task_id','request_key'], false);
             $defs[] = self::tool('add_checklist_item','Add a checklist item to an accessible task.', ['task_id'=>$id,'text'=>['type'=>'string','minLength'=>1,'maxLength'=>500],'request_key'=>$key], ['task_id','text','request_key'], false);
             $defs[] = self::tool('set_checklist_completed','Set a checklist item completion state.', ['task_id'=>$id,'item_id'=>$id,'completed'=>['type'=>'boolean'],'request_key'=>$key], ['task_id','item_id','completed','request_key'], false);
         }
         if ($write && $delete) {
             $confirm = ['type'=>'boolean','description'=>'Must be true only after explicit user approval of these exact tasks.'];
+            $defs[] = self::tool('delete_checklist_item','Permanently remove a specific checklist item. Show the task and item IDs and obtain explicit user approval first.', ['task_id'=>$id,'item_id'=>$id,'confirmed'=>$confirm,'request_key'=>$key], ['task_id','item_id','confirmed','request_key'], false);
             $defs[] = self::tool('delete_task','Permanently delete one accessible task and its attachments. Show the task and obtain explicit user approval before calling.',
                 ['task_id'=>$id,'confirmed'=>$confirm,'request_key'=>$key], ['task_id','confirmed','request_key'], false);
             $defs[] = self::tool('delete_tasks','Permanently delete 1–100 accessible tasks by explicit IDs, atomically. Show the exact selection and obtain explicit user approval before calling. Never delete by wildcard.',
@@ -83,7 +113,7 @@ final class McpTools
     private static function tool(string $name, string $description, array $properties, array $required, bool $read): array
     {
         return ['name'=>$name,'description'=>$description,'inputSchema'=>['type'=>'object','properties'=>(object)$properties,'required'=>$required,'additionalProperties'=>false],
-            'annotations'=>['readOnlyHint'=>$read,'destructiveHint'=>in_array($name,['update_task','complete_task','set_checklist_completed','delete_task','delete_tasks'],true),'idempotentHint'=>true,'openWorldHint'=>false]];
+            'annotations'=>['readOnlyHint'=>$read,'destructiveHint'=>in_array($name,['update_task','complete_task','set_checklist_completed','delete_task','delete_tasks','update_project','update_checklist_item','move_checklist_item','delete_checklist_item'],true),'idempotentHint'=>true,'openWorldHint'=>false]];
     }
 
     /**
@@ -97,6 +127,11 @@ final class McpTools
             throw new DomainException('Project not found or inaccessible.');
         }
         return match($name) {
+            'get_project'=>$this->projectDetail($uid,$this->requiredInt($args,'project_id')),
+            'list_teams'=>['teams'=>$this->teams->listForUser($uid)],
+            'list_project_assignees'=>['assignees'=>$this->assignees($uid,$this->requiredInt($args,'project_id'))],
+            'list_task_types'=>['task_types'=>$this->taskTypes->listForUser($uid)],
+            'list_customers'=>['customers'=>$this->customers->listAllForUser($uid)],
             'list_projects'=>['projects'=>$this->projects->listForUser($uid)],
             'list_statuses'=>['statuses'=>$this->scopeStatuses($uid,$project)],
             'get_task'=>$this->detail($uid,$this->requiredInt($args,'task_id')),
@@ -126,6 +161,64 @@ final class McpTools
         return ['task'=>$this->task($uid,$id),'checklist'=>$this->checklists->listForTask($uid,$id),'timezone'=>$this->timezone];
     }
 
+    /** @return array<string,mixed> */
+    public function projectDetail(int $uid, int $id): array
+    {
+        $project = $this->project($uid,$id);
+        return ['project'=>$project,'statuses'=>$this->scopeStatuses($uid,$id),
+            'can_manage'=>$this->projects->canManageForUser($uid,$id),'timezone'=>$this->timezone];
+    }
+
+    private function project(int $uid,int $id): ProjectRecord
+    {
+        return $this->projects->findForUser($uid,$id) ?? throw new DomainException('Project not found or inaccessible.');
+    }
+
+    /** @return list<array{user_id:int,username:string,role:string}> */
+    private function assignees(int $uid,int $projectId): array
+    {
+        $team = $this->project($uid,$projectId)->ownerTeamId;
+        if ($team === null) { return []; }
+        return array_map(static fn ($m) => ['user_id'=>$m->userId,'username'=>$m->username,'role'=>$m->role],
+            $this->teams->listMembers($uid,$team));
+    }
+
+    /** @param array<string,mixed> $args */
+    public function mutateProject(int $uid,string $name,array $args): int
+    {
+        if ($name === 'create_project') {
+            $team = $this->optionalInt($args,'team_id');
+            $title = $this->string($args,'name');
+            $description = $this->string($args,'description','');
+            $lifecycle = $this->string($args,'lifecycle_status','active');
+            $id = $team === null
+                ? $this->projects->createForUser($uid,$title,$description,$lifecycle)
+                : $this->projects->createForTeam($uid,$team,$title,$description,$lifecycle);
+            $this->events->projectCreated($uid,$this->project($uid,$id));
+            return $id;
+        }
+        $id = $this->requiredInt($args,'project_id');
+        $before = $this->projects->findManageableForUser($uid,$id,true)
+            ?? throw new DomainException('Project not found or not manageable.');
+        if (!$this->projects->updateForUser($uid,$id,
+            $this->string($args,'name',$before->name),
+            $this->string($args,'description',$before->description),
+            $this->string($args,'lifecycle_status',$before->lifecycleStatus))) {
+            throw new DomainException('Project unavailable.');
+        }
+        $this->events->projectChanged($uid,$before,$this->project($uid,$id));
+        return $id;
+    }
+
+    private function ensureNoRequiredFields(int $uid,?int $project): void
+    {
+        $fields = $project === null ? $this->customFields->listForUser($uid)
+            : $this->projectCustomFields->listForProject($uid,$project);
+        foreach ($fields as $field) {
+            if ($field->isRequired) { throw new DomainException('This scope has required custom fields. Use the web form until MCP custom field support is available.'); }
+        }
+    }
+
     /**
      * @param array<string,mixed> $args
      */
@@ -133,9 +226,11 @@ final class McpTools
     {
         if ($name === 'create_task') {
             $project = $this->optionalInt($args,'project_id');
+            if ($project !== null) { $this->project($uid,$project); }
+            $this->ensureNoRequiredFields($uid,$project);
             $status = $this->optionalInt($args,'status_id') ?? $this->configuredStatus($uid,$project,false);
             $id = $this->tasks->createForUser($uid,$this->string($args,'title'),$this->description($this->string($args,'description','')),
-                $this->date($args['deadline'] ?? null),$status,null,$this->optionalInt($args,'priority') ?? 1,null,$project,null,$this->date($args['scheduled_at'] ?? null));
+                $this->date($args['deadline'] ?? null),$status,$this->optionalInt($args,'type_id'),$this->optionalInt($args,'priority') ?? 1,$this->optionalInt($args,'customer_id'),$project,$this->optionalInt($args,'assignee_user_id'),$this->date($args['scheduled_at'] ?? null));
             $task = $this->task($uid,$id);
             $this->events->taskCreated($uid,$task);
             $items = $args['checklist'] ?? [];
@@ -147,15 +242,25 @@ final class McpTools
             return $id;
         }
         $id = $this->requiredInt($args,'task_id');
-        $before = $this->task($uid,$id);
+        $before = $this->tasks->findForUser($uid,$id,true) ?? throw new DomainException('Task not found or inaccessible.');
         switch($name) {
             case 'update_task':
-                $status = $this->optionalInt($args,'status_id') ?? $before->statusId ?? $this->configuredStatus($uid,$before->projectId,false);
+                $project = $this->changedId($args,'project_id',$before->projectId);
+                if ($project !== null) { $this->project($uid,$project); }
+                $moving = $project !== $before->projectId;
+                if ($moving) {
+                    if ($this->customValues->listForTask($uid,$id) !== []) {
+                        throw new DomainException('Task has custom field values; move it in the web interface to preserve field mapping.');
+                    }
+                    $this->ensureNoRequiredFields($uid,$project);
+                }
+                $status = $this->optionalInt($args,'status_id')
+                    ?? ($moving ? null : $before->statusId) ?? $this->configuredStatus($uid,$project,false);
                 if (!$this->tasks->updateForUser($uid,$id,$this->string($args,'title',$before->title),
                     array_key_exists('description',$args)?$this->description($this->string($args,'description')):$before->description,
                     array_key_exists('deadline',$args)?$this->date($args['deadline']):$before->deadline,
-                    $status,$before->typeId,$this->optionalInt($args,'priority')??$before->priority,$before->customerId,
-                    $before->projectId,$before->assigneeUserId,array_key_exists('scheduled_at',$args)?$this->date($args['scheduled_at']):$before->scheduledAt)) {
+                    $status,$this->changedId($args,'type_id',$before->typeId),$this->optionalInt($args,'priority')??$before->priority,$this->changedId($args,'customer_id',$before->customerId),
+                    $project,$this->changedId($args,'assignee_user_id',$before->assigneeUserId),array_key_exists('scheduled_at',$args)?$this->date($args['scheduled_at']):$before->scheduledAt)) {
                     throw new DomainException('Task unavailable.');
                 }
                 $this->events->taskChanged($uid,$before,$this->task($uid,$id));
@@ -178,6 +283,30 @@ final class McpTools
                 if ($item->isCompleted !== $done) {
                     if (!$this->checklists->setCompleted($uid,$id,$itemId,$done)) { throw new DomainException('Checklist item unavailable.'); }
                     $this->events->taskEvent($uid,$before,$done?'task.checklist_completed':'task.checklist_reopened',['checklist_item'=>['old'=>null,'new'=>$item->text]]);
+                }
+                break;
+            case 'update_checklist_item':
+            case 'move_checklist_item':
+            case 'delete_checklist_item':
+                $itemId = $this->requiredInt($args,'item_id');
+                $item = $this->checklists->findForTask($uid,$id,$itemId)
+                    ?? throw new DomainException('Checklist item unavailable.');
+                if ($name === 'update_checklist_item') {
+                    if (!$this->checklists->updateText($uid,$id,$itemId,$this->string($args,'text'))) {
+                        throw new DomainException('Checklist item unavailable.');
+                    }
+                    $after = $this->checklists->findForTask($uid,$id,$itemId);
+                    if ($after->text !== $item->text) {
+                        $this->events->taskEvent($uid,$before,'task.checklist_updated',['checklist_item'=>['old'=>$item->text,'new'=>$after->text]]);
+                    }
+                } elseif ($name === 'move_checklist_item') {
+                    if ($this->checklists->move($uid,$id,$itemId,$this->string($args,'direction'))) {
+                        $this->events->taskEvent($uid,$before,'task.checklist_reordered',['checklist_item'=>['old'=>null,'new'=>$item->text]]);
+                    }
+                } else {
+                    if (($args['confirmed'] ?? false) !== true) { throw new DomainException('Explicit deletion confirmation required.'); }
+                    if (!$this->checklists->delete($uid,$id,$itemId)) { throw new DomainException('Checklist item unavailable.'); }
+                    $this->events->taskEvent($uid,$before,'task.checklist_deleted',['checklist_item'=>['old'=>$item->text,'new'=>null]]);
                 }
                 break;
             default: throw new DomainException('Unknown write tool.');
@@ -314,6 +443,12 @@ final class McpTools
     /**
      * @param array<string,mixed> $args
      */
+    private function changedId(array $args,string $key,?int $previous): ?int
+    {
+        return array_key_exists($key,$args) ? $this->optionalInt($args,$key) : $previous;
+    }
+
+    /** @param array<string,mixed> $args */
     private function requiredInt(array $args,string $key): int
     {
         return $this->optionalInt($args,$key)??throw new DomainException('Missing '.$key);

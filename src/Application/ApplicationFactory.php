@@ -464,7 +464,7 @@ final class ApplicationFactory
         $sanitizeTaskDescription = new SanitizeTaskDescriptionMiddleware($descriptionSanitizer);
 
         $mcpTokens = new \Tms\Domain\Mcp\McpTokenRepository($db);
-        $mcpTools = new McpTools($tasks, $projects, $statuses, $projectStatuses, $checklists, $eventPublisher, $descriptionSanitizer, $appTimezone, $attachments, $attachmentStorage);
+        $mcpTools = new McpTools($tasks, $projects, $statuses, $projectStatuses, $checklists, $eventPublisher, $descriptionSanitizer, $appTimezone, $attachments, $attachmentStorage, $taskTypes, $customers, $teams, $customFields, $projectCustomFields, $customValues);
         $mcpController = new \Tms\Http\Controller\McpController($db, $mcpTokens, $mcpTools);
         $app->map(['POST', 'GET', 'DELETE'], '/mcp', [$mcpController, 'handle']);
 
