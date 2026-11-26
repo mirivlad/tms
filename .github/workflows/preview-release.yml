@@ -163,6 +163,7 @@ jobs:
           - MCP AI integration at /mcp: stateless Streamable HTTP, task/project/status discovery, task creation and editing, completion and checklist management;
           - per-client expiring or permanent read-only or read/write Bearer credentials (0 days means no expiration, default 30 days), password-confirmed issuance and revocation in Profile, transactional mutation replay protection and audit;
           - opt-in single and atomic batch task deletion (up to 100 explicit IDs), with user confirmation, a separate deletion-enabled Bearer scope, transactional receipts and post-commit attachment cleanup; existing tokens retain their original permissions;
+          - expanded MCP project lifecycle management, task assignment and movement, type/customer lookup and selection, checklist editing and reordering; 9/18/21 dynamically discovered tools by token scope;
           - existing user/team access rules and notification events remain in effect for MCP operations; OAuth and direct ChatGPT connectivity are not yet included;
           - MariaDB migrations, first-admin CLI bootstrap, Docker Compose and Portainer deployment.
 

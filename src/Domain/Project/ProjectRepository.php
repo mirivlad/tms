@@ -17,6 +17,13 @@ final class ProjectRepository
     {
     }
 
+    private function rollbackOwnedTransaction(): void
+    {
+        if ($this->db->inTransaction()) {
+            $this->db->rollBack();
+        }
+    }
+
     /** @return list<ProjectRecord> */
     public function listForUser(int $userId): array
     {
@@ -80,7 +87,7 @@ final class ProjectRepository
         return is_array($row) ? $this->hydrate($row) : null;
     }
 
-    public function findManageableForUser(int $userId, int $projectId): ?ProjectRecord
+    public function findManageableForUser(int $userId, int $projectId, bool $lock = false): ?ProjectRecord
     {
         $stmt = $this->db->prepare(
             'SELECT p.id, p.owner_user_id, p.owner_team_id, p.created_by, p.name, p.description,
@@ -95,7 +102,7 @@ final class ProjectRepository
                     OR
                     (p.owner_user_id IS NULL AND p.owner_team_id IS NOT NULL AND tm.role = \'lead\')
                )
-             LIMIT 1'
+             LIMIT 1' . ($lock ? ' FOR UPDATE' : '')
         );
         $stmt->execute([
             'id' => $projectId,
@@ -145,7 +152,8 @@ final class ProjectRepository
         $description = $this->normalizeDescription($description);
         $lifecycleStatus = $this->normalizeLifecycleStatus($lifecycleStatus);
 
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             $stmt = $this->db->prepare(
                 'INSERT INTO projects (
@@ -193,12 +201,10 @@ final class ProjectRepository
             );
             $cloneFields->execute(['project_id' => $projectId, 'user_id' => $userId]);
 
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
             return $projectId;
         } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             throw $error;
         }
     }
@@ -213,7 +219,7 @@ final class ProjectRepository
         $lead = $this->db->prepare(
             "SELECT 1 FROM team_members
              WHERE team_id = :team_id AND user_id = :user_id AND role = 'lead'
-             LIMIT 1"
+             LIMIT 1" . ($this->db->inTransaction() ? " FOR UPDATE" : "")
         );
         $lead->execute(['team_id' => $teamId, 'user_id' => $userId]);
         if ($lead->fetchColumn() === false) {
@@ -224,7 +230,8 @@ final class ProjectRepository
         $description = $this->normalizeDescription($description);
         $lifecycleStatus = $this->normalizeLifecycleStatus($lifecycleStatus);
 
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             $stmt = $this->db->prepare(
                 'INSERT INTO projects (
@@ -272,12 +279,10 @@ final class ProjectRepository
             );
             $cloneFields->execute(['project_id' => $projectId, 'user_id' => $userId]);
 
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
             return $projectId;
         } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             throw $error;
         }
     }

@@ -1,0 +1,3 @@
+ALTER TABLE mcp_mutations
+    MODIFY task_id BIGINT UNSIGNED NULL,
+    ADD COLUMN project_id BIGINT UNSIGNED NULL AFTER task_id;

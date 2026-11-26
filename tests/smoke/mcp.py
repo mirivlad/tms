@@ -45,8 +45,8 @@ rpc("tools/list", token="", expected=401)
 rpc("tools/list", origin="https://untrusted.invalid", expected=403)
 assert rpc("initialize", {"protocolVersion": "2025-11-25"})["result"]["protocolVersion"] == "2025-11-25"
 rpc("notifications/initialized", expected=202, notification=True)
-assert len(rpc("tools/list", token=read)["result"]["tools"]) == 4
-assert len(rpc("tools/list")["result"]["tools"]) == 9
+assert len(rpc("tools/list", token=read)["result"]["tools"]) == 9
+assert len(rpc("tools/list")["result"]["tools"]) == 18
 call("list_projects", {})
 call("list_statuses", {})
 args = {"title": "MCP smoke test", "description": "<script>alert(1)</script>", "priority": 2,
@@ -107,7 +107,7 @@ if os.environ.get("MCP_TEST_USER"):
     page("/settings/mcp", {"label": "browser token", "scope": "read", "days": "1", "password": os.environ["MCP_TEST_PASSWORD"]}, 403)
     created, headers = page("/settings/mcp", {"label": "browser token", "scope": "read", "days": "1", "password": os.environ["MCP_TEST_PASSWORD"], "_csrf": csrf(settings)})
     secret = re.search(r'tms_mcp_[0-9a-f]{64}', created).group(0)
-    assert len(rpc("tools/list", token=secret)["result"]["tools"]) == 4
+    assert len(rpc("tools/list", token=secret)["result"]["tools"]) == 9
     refreshed, _ = page("/settings/mcp")
     assert secret not in refreshed
     print("MCP browser token issuance, CSRF and one-time disclosure passed")
@@ -116,7 +116,7 @@ if os.environ.get("MCP_TEST_USER"):
     created, _ = page("/settings/mcp", permanent_form)
     permanent = re.search(r'tms_mcp_[0-9a-f]{64}', created).group(0)
     assert "No expiration" in created or "Бессрочно" in created
-    assert len(rpc("tools/list", token=permanent)["result"]["tools"]) == 4
+    assert len(rpc("tools/list", token=permanent)["result"]["tools"]) == 9
     row = next(row for row in re.findall(r"<tr>.*?</tr>", created, re.S) if "permanent-browser-token" in row)
     revoke_path = re.search(r'action="(/settings/mcp/[0-9]+/revoke)"', row).group(1)
     page(revoke_path, {"_csrf": csrf(created)})
@@ -131,11 +131,11 @@ if os.environ.get("MCP_TEST_USER"):
     created, _ = page("/settings/mcp", deletion_form)
     deletion_token = re.search(r'tms_mcp_[0-9a-f]{64}', created).group(0)
     tools = {t["name"]: t for t in rpc("tools/list", token=deletion_token)["result"]["tools"]}
-    assert len(tools) == 11
+    assert len(tools) == 21
     assert tools["delete_task"]["annotations"]["destructiveHint"]
     assert tools["delete_tasks"]["annotations"]["destructiveHint"]
     assert not tools["delete_tasks"]["annotations"]["readOnlyHint"]
-    assert len(rpc("tools/list")["result"]["tools"]) == 9
+    assert len(rpc("tools/list")["result"]["tools"]) == 18
     print("MCP opt-in scope issuance and tool discovery passed")
 
     # Every fixture is created by this smoke test; the production API is not used.
@@ -199,3 +199,122 @@ if os.environ.get("MCP_TEST_USER"):
     assert call("get_task", {"task_id": outsider}, foreign)["task"]["id"] == outsider
     assert call("get_task", {"task_id": task_id})["task"]["id"] == task_id
     print("MCP disposal of fixtures: authorization, atomicity, confirmation and replay passed")
+
+# Project lifecycle and idempotent project receipts.
+project_args = {"name": "MCP fixture project", "description": "Project fixture", "request_key": "project-create"}
+call("create_project", project_args, read, error=True)
+p = call("create_project", project_args)
+pid = p["project_id"]
+assert p["project"]["name"] == project_args["name"] and p["can_manage"]
+assert p["statuses"] and not p["replayed"]
+assert call("create_project", project_args)["project_id"] == pid
+assert call("create_project", project_args)["replayed"]
+call("create_project", dict(project_args, name="Different name"), error=True)
+call("get_project", {"project_id": pid}, foreign, error=True)
+call("update_project", {"project_id": pid, "name": "Forbidden", "request_key": "project-foreign"}, foreign, error=True)
+changed_project = call("update_project", {"project_id": pid, "lifecycle_status": "archived", "request_key": "project-archive"})
+assert changed_project["project"]["lifecycleStatus"] == "archived"
+assert changed_project["project"]["description"] == project_args["description"]
+call("update_project", {"project_id": pid, "lifecycle_status": "invalid", "request_key": "project-invalid"}, error=True)
+assert call("get_project", {"project_id": pid}, read)["project"]["lifecycleStatus"] == "archived"
+call("update_project", {"project_id": pid, "lifecycle_status": "active", "request_key": "project-active"})
+assert call("list_project_assignees", {"project_id": pid})["assignees"] == []
+call("list_teams", {})
+call("list_task_types", {})
+call("list_customers", {})
+
+# Moving a task must switch status scope, not discard the task or its checklist.
+args = {"title": "MCP fixture move", "checklist": ["First", "Second"], "request_key": "project-task"}
+moving = call("create_task", args)
+tid = moving["task_id"]
+move = {"task_id": tid, "project_id": pid, "request_key": "move-to-project"}
+moved = call("update_task", move)
+assert moved["task"]["projectId"] == pid
+assert moved["task"]["statusId"] in [s["id"] for s in p["statuses"]]
+assert len(moved["checklist"]) == 2
+assert call("update_task", move)["replayed"]
+call("update_task", {"task_id": tid, "assignee_user_id": 1, "request_key": "personal-assignee"}, error=True)
+call("update_task", {"task_id": tid, "project_id": 2147483647, "request_key": "invalid-move"}, error=True)
+assert call("get_task", {"task_id": tid})["task"]["projectId"] == pid
+back = call("update_task", {"task_id": tid, "project_id": None, "request_key": "move-to-personal"})
+assert back["task"]["projectId"] is None
+first, second = (i["id"] for i in back["checklist"])
+renamed = call("update_checklist_item", {"task_id": tid, "item_id": first, "text": "Renamed", "request_key": "item-rename"})
+assert renamed["checklist"][0]["text"] == "Renamed"
+shift = {"task_id": tid, "item_id": second, "direction": "up", "request_key": "item-move"}
+assert call("move_checklist_item", shift)["checklist"][0]["id"] == second
+assert call("move_checklist_item", shift)["replayed"]
+assert call("get_task", {"task_id": tid})["checklist"][0]["id"] == second
+if os.environ.get("MCP_TEST_USER"):
+    remove = {"task_id": tid, "item_id": second, "confirmed": True, "request_key": "item-remove"}
+    call("delete_checklist_item", remove, error=True)
+    call("delete_checklist_item", dict(remove, confirmed=False), deletion_token, error=True)
+    remaining = call("delete_checklist_item", remove, deletion_token)
+    assert [i["id"] for i in remaining["checklist"]] == [first]
+    assert call("delete_checklist_item", remove, deletion_token)["replayed"]
+print("MCP projects, task moves and checklist changes passed")
+
+if os.environ.get("MCP_TEST_USER"):
+    metadata, _ = page("/metadata")
+    page("/metadata/types", {"_csrf": csrf(metadata), "name": "MCP fixture type", "description": ""})
+    metadata, _ = page("/metadata")
+    page("/metadata/customers", {"_csrf": csrf(metadata), "name": "MCP fixture customer"})
+    typ = next(t["id"] for t in call("list_task_types", {})["task_types"] if t["name"] == "MCP fixture type")
+    customer = next(t["id"] for t in call("list_customers", {})["customers"] if t["name"] == "MCP fixture customer")
+    call("update_task", {"task_id": tid, "type_id": typ, "customer_id": customer, "request_key": "metadata-set"})
+    meta = call("get_task", {"task_id": tid})["task"]
+    assert meta["typeId"] == typ and meta["customerId"] == customer
+    assert all(t["id"] != typ for t in call("list_task_types", {}, foreign)["task_types"])
+    assert all(t["id"] != customer for t in call("list_customers", {}, foreign)["customers"])
+    cleared = call("update_task", {"task_id": tid, "type_id": None, "customer_id": None, "request_key": "metadata-clear"})["task"]
+    assert cleared["typeId"] is None and cleared["customerId"] is None
+    print("MCP personal metadata and isolation passed")
+
+if os.environ.get("MCP_TEST_USER") and os.environ.get("MCP_FOREIGN_USER"):
+    teams_page, _ = page("/teams")
+    page("/teams", {"_csrf": csrf(teams_page), "name": "MCP fixture team", "description": "Disposable team"})
+    team = next(t for t in call("list_teams", {})["teams"] if t["name"] == "MCP fixture team")
+    team_id = team["id"]
+    assert team["currentUserRole"] == "lead"
+    assert all(t["id"] != team_id for t in call("list_teams", {}, foreign)["teams"])
+    team_args = {"name": "MCP team project", "team_id": team_id, "request_key": "team-project"}
+    call("create_project", team_args, foreign, error=True)
+    team_project = call("create_project", team_args)
+    shared = team_project["project_id"]
+    call("get_project", {"project_id": shared}, foreign, error=True)
+    assert call("create_project", team_args)["project_id"] == shared
+    members, _ = page(f"/teams/{team_id}/members")
+    page(f"/teams/{team_id}/invitations", {"_csrf": csrf(members), "identifier": os.environ["MCP_FOREIGN_USER"]})
+    lead_opener = opener
+    opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(http.cookiejar.CookieJar()))
+    login, _ = page("/login")
+    page("/login", {"_csrf": csrf(login), "username": os.environ["MCP_FOREIGN_USER"], "password": os.environ["MCP_FOREIGN_PASSWORD"]})
+    invitations, _ = page("/invitations")
+    accept = re.search(r'action="(/invitations/[0-9]+/accept)"', invitations).group(1)
+    page(accept, {"_csrf": csrf(invitations)})
+    opener = lead_opener
+    assert not call("get_project", {"project_id": shared}, foreign)["can_manage"]
+    call("create_project", dict(team_args, request_key="member-project"), foreign, error=True)
+    call("update_project", {"project_id": shared, "name": "Forbidden", "request_key": "member-edit"}, foreign, error=True)
+    assignees = call("list_project_assignees", {"project_id": shared}, foreign)["assignees"]
+    member_id = next(m["user_id"] for m in assignees if m["username"] == os.environ["MCP_FOREIGN_USER"])
+    assert all("email" not in m for m in assignees)
+    shared_task = call("create_task", {"title": "MCP collaborative fixture", "project_id": shared,
+                                      "assignee_user_id": member_id, "request_key": "collaborative-task"}, foreign)
+    shared_id = shared_task["task_id"]
+    assert call("get_task", {"task_id": shared_id})["task"]["assigneeUserId"] == member_id
+    call("update_task", {"task_id": shared_id, "project_id": pid, "assignee_user_id": None, "request_key": "foreign-move"}, error=True)
+    call("update_task", {"task_id": shared_id, "assignee_user_id": 2147483647, "request_key": "bad-assignee"}, error=True)
+    call("update_task", {"task_id": shared_id, "type_id": typ, "request_key": "team-type"}, error=True)
+    assert call("update_task", {"task_id": shared_id, "assignee_user_id": None, "request_key": "unassign"})["task"]["assigneeUserId"] is None
+    print("MCP team project, member/lead rights and assignee checks passed")
+
+if os.environ.get("MCP_TEST_USER"):
+    # A project with required fields cannot receive an incomplete MCP task.
+    field_page, _ = page(f"/projects/{pid}/fields")
+    page(f"/projects/{pid}/fields", {"_csrf": csrf(field_page), "name": "MCP required fixture",
+                                     "field_type": "text", "is_required": "1"})
+    call("create_task", {"title": "MCP incomplete fixture", "project_id": pid, "request_key": "missing-required-field"}, error=True)
+    call("update_task", {"task_id": tid, "project_id": pid, "request_key": "move-required-field"}, error=True)
+    assert call("get_task", {"task_id": tid})["task"]["projectId"] is None
+    print("MCP required custom-field guard passed")
