@@ -56,6 +56,7 @@ final class McpTools
         private readonly UserPreferenceRepository $preferences,
         private readonly McpReferenceTools $referenceTools,
         private readonly McpCollaborationTools $collaborationTools,
+        private readonly McpWorkspaceTools $workspaceTools,
     ) {}
 
     /**
@@ -148,7 +149,7 @@ final class McpTools
                 ['task_ids'=>['type'=>'array','minItems'=>1,'maxItems'=>100,'items'=>$id],'confirmed'=>$confirm,'request_key'=>$key],
                 ['task_ids','confirmed','request_key'], false);
         }
-        return array_merge($defs,McpReferenceTools::definitions($write,$delete),McpCollaborationTools::definitions($write,$delete));
+        return array_merge($defs,McpReferenceTools::definitions($write,$delete),McpCollaborationTools::definitions($write,$delete),McpWorkspaceTools::definitions($write,$delete));
     }
 
     /**
@@ -168,6 +169,7 @@ final class McpTools
      */
     public function read(int $uid, string $name, array $args): array
     {
+        if (McpWorkspaceTools::handlesRead($name)) { return $this->workspaceTools->read($uid,$name,$args); }
         if (McpCollaborationTools::handlesRead($name)) { return $this->collaborationTools->read($uid,$name,$args); }
         $project = $this->optionalInt($args,'project_id');
         if ($project !== null && $this->projects->findForUser($uid,$project) === null) {
@@ -483,7 +485,7 @@ final class McpTools
 
     public static function isGeneralMutation(string $name): bool
     {
-        return $name==='update_tasks'||McpReferenceTools::handles($name)||McpCollaborationTools::handlesWrite($name);
+        return $name==='update_tasks'||McpReferenceTools::handles($name)||McpCollaborationTools::handlesWrite($name)||McpWorkspaceTools::handlesWrite($name);
     }
 
     /**
@@ -492,6 +494,7 @@ final class McpTools
      */
     public function mutateGeneral(int $uid,string $name,array $args): array
     {
+        if (McpWorkspaceTools::handlesWrite($name)) { return $this->workspaceTools->mutate($uid,$name,$args); }
         if (McpCollaborationTools::handlesWrite($name)) { return $this->collaborationTools->mutate($uid,$name,$args); }
         if ($name!=='update_tasks') { return $this->referenceTools->mutate($uid,$name,$args); }
         $ids=$args['task_ids'];
@@ -509,6 +512,7 @@ final class McpTools
     /** @param array<string,mixed> $args */
     public function assertGeneralReplayScope(int $uid,string $name,array $args): void
     {
+        if (McpWorkspaceTools::handlesWrite($name)) { return; } // ID-only receipts, even after ownership changes or deletion.
         if (McpCollaborationTools::handlesWrite($name)) { $this->collaborationTools->assertReplayScope($uid,$name,$args); return; }
         if ($name==='update_tasks') {
             foreach ($args['task_ids'] as $id) { $this->task($uid,(int)$id); }
@@ -521,6 +525,7 @@ final class McpTools
      */
     public function afterGeneralCommit(string $name,array $result,bool $replay): array
     {
+        if (McpWorkspaceTools::handlesWrite($name)) { return $this->workspaceTools->afterCommit($name,$result); }
         return McpCollaborationTools::handlesWrite($name)?$this->collaborationTools->afterCommit($name,$result,$replay):$result;
     }
 

@@ -68,6 +68,15 @@ try {
     $offset = (new DateTimeImmutable('now', new DateTimeZone($appTimezone)))->format('P');
     $db->exec('SET time_zone = ' . $db->quote($offset));
 
+    // Expired resumable MCP uploads are not published attachments.
+    // Bound the cleanup batch and leave recurrence processing independent.
+    try {
+        $db->exec('DELETE FROM mcp_attachment_uploads WHERE expires_at <= UTC_TIMESTAMP() LIMIT 100');
+    } catch (Throwable $error) {
+        error_log('TMS expired MCP upload cleanup failed: ' . get_class($error));
+    }
+
+
     $activity = new ActivityRepository($db);
     $tasks = new TaskRepository($db);
     $secretBox = NotificationSecretBoxFactory::create(

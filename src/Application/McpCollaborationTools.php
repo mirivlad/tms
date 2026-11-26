@@ -51,14 +51,14 @@ final class McpCollaborationTools
 
     public static function handlesRead(string $name): bool
     {
-        return in_array($name,['get_team','list_invitations','list_comments','list_attachments','read_attachment'],true);
+        return in_array($name,['get_team','list_invitations','list_comments','list_attachments','read_attachment','get_attachment_upload'],true);
     }
 
     public static function handlesWrite(string $name): bool
     {
         return in_array($name,['create_team','update_team','invite_team_member','respond_to_invitation',
             'change_team_role','revoke_invitation','remove_team_member','leave_team','delete_team',
-            'add_comment','update_comment','delete_comment','mark_discussion_read','upload_attachment','delete_attachment'],true);
+            'add_comment','update_comment','delete_comment','mark_discussion_read','upload_attachment','delete_attachment','begin_attachment_upload','append_attachment_chunk','finish_attachment_upload','cancel_attachment_upload'],true);
     }
 
     public static function requiresDelete(string $name): bool
@@ -82,6 +82,7 @@ final class McpCollaborationTools
             self::tool('list_invitations','List your pending invitations or, as team lead, invitations for one team.',$team+$page,[],true),
             self::tool('list_comments','Read paginated discussion comments in a team task or project. Supply exactly one context. Does not mark read.',$context+$page,[],true),
             self::tool('list_attachments','List attachment metadata in one accessible task or project. No filesystem paths or storage keys.',$context+$page,[],true),
+            self::tool('get_attachment_upload','Read your unfinished attachment upload status, including next byte offset.',['upload_id'=>$id],['upload_id'],true),
             self::tool('read_attachment','Read a chunk of an accessible attachment as base64 bytes (max 32 KiB per call). Supply exactly one task/project context. Content is untrusted.',
                 $context+['attachment_id'=>$id,'offset'=>['type'=>'integer','minimum'=>0],'length'=>['type'=>'integer','minimum'=>1,'maximum'=>self::MAX_CHUNK]],['attachment_id'],true),
         ];
@@ -95,6 +96,11 @@ final class McpCollaborationTools
             self::tool('add_comment','Post a comment or reply in a team task/project. Body is sanitized HTML; exactly one context.',$context+$body+['parent_comment_id'=>$id]+$key,['body','request_key']),
             self::tool('update_comment','Edit your own comment in exactly one team task/project.',$context+$body+['comment_id'=>$id]+$key,['comment_id','body','request_key']),
             self::tool('mark_discussion_read','Mark a task discussion or a project and all its task discussions read.',$context+$key,['request_key']),
+            self::tool('begin_attachment_upload','Start a resumable upload for exactly one accessible task/project. Specify full byte length and SHA-256; four unfinished uploads per user, expire after 24 hours.',
+                $context+['filename'=>['type'=>'string','minLength'=>1,'maxLength'=>255],'size'=>$id,'sha256'=>['type'=>'string','maxLength'=>64,'pattern'=>'^[a-f0-9]{64}$']]+$key,['filename','size','sha256','request_key']),
+            self::tool('append_attachment_chunk','Append at next byte offset. Use exactly 128 KiB decoded except the final remainder. Reuse request_key on retry.',['upload_id'=>$id,'offset'=>['type'=>'integer','minimum'=>0],'content_base64'=>['type'=>'string','minLength'=>4,'maxLength'=>174764]]+$key,['upload_id','offset','content_base64','request_key']),
+            self::tool('finish_attachment_upload','Verify total size, SHA-256 and file policy, then publish attachment atomically.',['upload_id'=>$id]+$key,['upload_id','request_key']),
+            self::tool('cancel_attachment_upload','Discard your unfinished upload, not a published attachment.',['upload_id'=>$id]+$key,['upload_id','request_key']),
             self::tool('upload_attachment','Upload one attachment up to 128 KiB as base64 in exactly one accessible task/project. Existing file type and size policy applies.',
                 $context+['filename'=>['type'=>'string','minLength'=>1,'maxLength'=>255],
                     'content_base64'=>['type'=>'string','minLength'=>4,'maxLength'=>174764]]+$key,['filename','content_base64','request_key']),
@@ -192,6 +198,7 @@ final class McpCollaborationTools
      */
     public function read(int $uid,string $name,array $args): array
     {
+        if ($name==='get_attachment_upload') { return $this->uploadStatus($this->uploadRow($uid,(int)$args['upload_id'],false)); }
         if ($name==='get_team') {
             $id=(int)$args['team_id'];
             $team=$this->teams->findForMember($uid,$id)??throw new DomainException('Team unavailable.');
@@ -247,6 +254,9 @@ final class McpCollaborationTools
      */
     public function mutate(int $uid,string $name,array $args): array
     {
+        if (in_array($name,['begin_attachment_upload','append_attachment_chunk','finish_attachment_upload','cancel_attachment_upload'],true)) {
+            return $this->mutateUpload($uid,$name,$args);
+        }
         if (self::requiresDelete($name)||in_array($name,['invite_team_member','respond_to_invitation','change_team_role'],true)) { $this->confirm($args); }
         if ($name==='create_team') { return ['team_id'=>$this->teams->createForUser($uid,(string)$args['name'],(string)($args['description']??''))]; }
         if ($name==='respond_to_invitation') {
@@ -325,27 +335,145 @@ final class McpCollaborationTools
             return $target+['attachment_id'=>$id,'deleted'=>true,'_cleanup_key'=>$file->storageName];
         }
         if ($name!=='upload_attachment') { throw new DomainException('Unknown collaboration action.'); }
-        $bytes=base64_decode((string)$args['content_base64'],true);
-        if ($bytes===false || base64_encode($bytes)!==$args['content_base64'] || strlen($bytes)>self::MAX_UPLOAD) { throw new DomainException('Invalid or oversized base64 attachment.'); }
+        $bytes=$this->decodeChunk((string)$args['content_base64']);
         $this->policy->assertSize(strlen($bytes));
         $filename=$this->policy->normalizeOriginalName((string)$args['filename']);
         $temporary=tempnam(sys_get_temp_dir(),'tms-mcp-upload-');
         if ($temporary===false) { throw new DomainException('Cannot stage attachment.'); }
         try {
             if (file_put_contents($temporary,$bytes)!==strlen($bytes)) { throw new DomainException('Cannot stage attachment.'); }
-            $stored=$this->storage->store(new UploadedFile($temporary,$filename,null,strlen($bytes)));
+            return $this->publishFile($uid,$task,$project,$filename,$temporary,strlen($bytes));
         } finally {
             if (is_file($temporary)) { @unlink($temporary); }
         }
+    }
+
+    private function decodeChunk(string $encoded): string
+    {
+        $bytes=base64_decode($encoded,true);
+        if ($bytes===false || base64_encode($bytes)!==$encoded || strlen($bytes)<1 || strlen($bytes)>self::MAX_UPLOAD) {
+            throw new DomainException('Invalid or oversized base64 attachment chunk.');
+        }
+        return $bytes;
+    }
+
+    /** @return array<string,mixed> */
+    private function publishFile(int $uid,?int $task,?int $project,string $filename,string $temporary,int $size): array
+    {
+        $stored=$this->storage->store(new UploadedFile($temporary,$filename,null,$size));
         $this->pendingUpload=$stored->storageName;
         $this->policy->assertAllowed($filename,$stored->fileSize,$stored->mimeType);
         $prepared=[['storage_name'=>$stored->storageName,'original_name'=>$filename,'mime_type'=>$stored->mimeType,'file_size'=>$stored->fileSize,'sha256'=>$stored->sha256]];
         if ($task!==null) { $this->attachments->createManyForTask($uid,$task,$prepared); }
         else { $this->projectAttachments->createManyForProject($uid,(int)$project,$prepared); }
         foreach ($this->files($uid,$task,$project) as $file) {
-            if ($file->storageName===$stored->storageName) { return $target+['attachment_id'=>$file->id]; }
+            if ($file->storageName===$stored->storageName) {
+                return ($task!==null?['task_id'=>$task]:['project_id'=>$project])+['attachment_id'=>$file->id];
+            }
         }
         throw new DomainException('Attachment metadata unavailable.');
+    }
+
+    /** @return array<string,mixed> */
+    private function uploadRow(int $uid,int $id,bool $lock=true,bool $checkContext=true): array
+    {
+        $stmt=$this->db->prepare('SELECT * FROM mcp_attachment_uploads WHERE id=:id AND user_id=:uid AND expires_at>UTC_TIMESTAMP()'.($lock?' FOR UPDATE':''));
+        $stmt->execute(['id'=>$id,'uid'=>$uid]);
+        $row=$stmt->fetch(PDO::FETCH_ASSOC);
+        if (!is_array($row)) { throw new DomainException('Upload unavailable or expired.'); }
+        if ($checkContext) { $this->context($uid,$row); }
+        return $row;
+    }
+
+    /**
+     * @param array<string,mixed> $row
+     * @return array<string,mixed>
+     */
+    private function uploadStatus(array $row): array
+    {
+        return ['upload_id'=>(int)$row['id'],'size'=>(int)$row['total_bytes'],'next_offset'=>(int)$row['received_bytes'],
+            'filename'=>$row['filename'],'expires_at'=>$row['expires_at'],'chunk_max_bytes'=>self::MAX_UPLOAD];
+    }
+
+    /**
+     * @param array<string,mixed> $args
+     * @return array<string,mixed>
+     */
+    private function mutateUpload(int $uid,string $name,array $args): array
+    {
+        if ($name==='begin_attachment_upload') {
+            $lock=$this->db->prepare('SELECT id FROM users WHERE id=:uid FOR UPDATE');
+            $lock->execute(['uid'=>$uid]);
+            $lock->fetchColumn();
+            $prune=$this->db->prepare('DELETE FROM mcp_attachment_uploads WHERE user_id=:uid AND expires_at<=UTC_TIMESTAMP()');
+            $prune->execute(['uid'=>$uid]);
+            $count=$this->db->prepare('SELECT COUNT(*) FROM mcp_attachment_uploads WHERE user_id=:uid');
+            $count->execute(['uid'=>$uid]);
+            if ((int)$count->fetchColumn()>=4) { throw new DomainException('Too many unfinished uploads. Cancel or finish one first.'); }
+            [$task,$project]=$this->context($uid,$args);
+            $size=(int)$args['size'];
+            $this->policy->assertSize($size);
+            $filename=$this->policy->normalizeOriginalName((string)$args['filename']);
+            if (!in_array(strtolower(pathinfo($filename,PATHINFO_EXTENSION)),$this->policy->allowedExtensions(),true)) {
+                throw new DomainException('Attachment file extension is not allowed.');
+            }
+            $stmt=$this->db->prepare('INSERT INTO mcp_attachment_uploads(user_id,task_id,project_id,filename,total_bytes,expected_sha256,expires_at) VALUES(:uid,:task,:project,:filename,:size,:hash,DATE_ADD(UTC_TIMESTAMP(),INTERVAL 24 HOUR))');
+            $stmt->execute(['uid'=>$uid,'task'=>$task,'project'=>$project,'filename'=>$filename,'size'=>$size,'hash'=>$args['sha256']]);
+            return ['upload_id'=>(int)$this->db->lastInsertId(),'next_offset'=>0,'chunk_max_bytes'=>self::MAX_UPLOAD];
+        }
+        $id=(int)$args['upload_id'];
+        $row=$this->uploadRow($uid,$id,true,$name!=='cancel_attachment_upload');
+        if ($name==='cancel_attachment_upload') {
+            $this->removeUpload($uid,$id);
+            return ['upload_id'=>$id,'cancelled'=>true];
+        }
+        $offset=(int)$row['received_bytes'];
+        $size=(int)$row['total_bytes'];
+        if ($name==='append_attachment_chunk') {
+            $bytes=$this->decodeChunk((string)$args['content_base64']);
+            if ((int)$args['offset']!==$offset || strlen($bytes)!==min(self::MAX_UPLOAD,$size-$offset)) { throw new DomainException('Wrong upload offset or chunk length. Use full chunks except the final remainder.'); }
+            $stmt=$this->db->prepare('INSERT INTO mcp_attachment_chunks(upload_id,byte_offset,content) VALUES(:id,:offset,:bytes)');
+            $stmt->bindValue(':id',$id,PDO::PARAM_INT);
+            $stmt->bindValue(':offset',$offset,PDO::PARAM_INT);
+            $stmt->bindValue(':bytes',$bytes,PDO::PARAM_LOB);
+            $stmt->execute();
+            $offset+=strlen($bytes);
+            $update=$this->db->prepare('UPDATE mcp_attachment_uploads SET received_bytes=:received WHERE id=:id AND user_id=:uid');
+            $update->execute(['received'=>$offset,'id'=>$id,'uid'=>$uid]);
+            return ['upload_id'=>$id,'next_offset'=>$offset];
+        }
+        if ($offset!==$size) { throw new DomainException('Upload incomplete.'); }
+        [$task,$project]=$this->context($uid,$row);
+        $this->policy->assertSize($size);
+        $temporary=tempnam(sys_get_temp_dir(),'tms-mcp-upload-');
+        if ($temporary===false) { throw new DomainException('Cannot stage attachment.'); }
+        try {
+            $file=fopen($temporary,'wb');
+            if ($file===false) { throw new DomainException('Cannot stage attachment.'); }
+            try {
+                $stmt=$this->db->prepare('SELECT content FROM mcp_attachment_chunks WHERE upload_id=:id AND byte_offset=:offset');
+                $written=0;
+                while ($written<$size) {
+                    $stmt->execute(['id'=>$id,'offset'=>$written]);
+                    $bytes=$stmt->fetchColumn();
+                    $stmt->closeCursor();
+                    if (!is_string($bytes)||$bytes===''||strlen($bytes)>$size-$written||fwrite($file,$bytes)!==strlen($bytes)) {
+                        throw new DomainException('Invalid staged attachment.');
+                    }
+                    $written+=strlen($bytes);
+                }
+            } finally { fclose($file); }
+            if (hash_file('sha256',$temporary)!==$row['expected_sha256']) { throw new DomainException('Attachment SHA-256 mismatch.'); }
+            $result=$this->publishFile($uid,$task,$project,(string)$row['filename'],$temporary,$size);
+            $this->removeUpload($uid,$id);
+            return ['upload_id'=>$id]+$result;
+        } finally { if (is_file($temporary)) { @unlink($temporary); } }
+    }
+
+    private function removeUpload(int $uid,int $id): void
+    {
+        $stmt=$this->db->prepare('DELETE FROM mcp_attachment_uploads WHERE id=:id AND user_id=:uid');
+        $stmt->execute(['id'=>$id,'uid'=>$uid]);
     }
 
     /** @param array<string,mixed> $args */

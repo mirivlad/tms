@@ -15,6 +15,11 @@ final class SavedViewRepository
     {
     }
 
+    private function rollbackOwnedTransaction(): void
+    {
+        if ($this->db->inTransaction()) { $this->db->rollBack(); }
+    }
+
     /** @return list<SavedViewRecord> */
     public function listForUser(int $userId): array
     {
@@ -67,7 +72,8 @@ final class SavedViewRepository
     {
         $name = $this->normalizeName($name);
 
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             if ($isDefault) {
                 $this->clearDefault($userId);
@@ -86,12 +92,10 @@ final class SavedViewRepository
                 'is_default' => $isDefault ? 1 : 0,
             ]);
             $id = (int) $this->db->lastInsertId();
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
             return $id;
         } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             if ($error instanceof JsonException) {
                 throw new DomainException('Unable to encode saved view.', 0, $error);
             }
@@ -105,7 +109,8 @@ final class SavedViewRepository
             return false;
         }
 
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             $this->clearDefault($userId);
             $stmt = $this->db->prepare(
@@ -114,11 +119,9 @@ final class SavedViewRepository
                  WHERE id = :id AND user_id = :user_id'
             );
             $stmt->execute(['id' => $viewId, 'user_id' => $userId]);
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
         } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             throw $error;
         }
         return true;

@@ -341,7 +341,8 @@ final class ProjectRepository
             return true;
         }
 
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             if ($teamId === null) {
                 $stmt = $this->db->prepare(
@@ -386,12 +387,10 @@ final class ProjectRepository
                 $clearPersonalMetadata->execute(['project_id' => $projectId]);
             }
 
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
             return true;
         } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             throw $error;
         }
     }
@@ -417,7 +416,8 @@ final class ProjectRepository
             return $stmt->rowCount() === 1;
         }
 
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             $fallback = $this->personalDefaultStatusId($userId);
             if ($fallback === null) {
@@ -569,16 +569,14 @@ final class ProjectRepository
             ]);
             $deleted = $stmt->rowCount() === 1;
             if (!$deleted) {
-                $this->db->rollBack();
+                if ($ownsTransaction) { $this->db->rollBack(); }
                 return false;
             }
 
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
             return true;
         } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             throw $error;
         }
     }
