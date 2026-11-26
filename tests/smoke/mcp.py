@@ -45,8 +45,8 @@ rpc("tools/list", token="", expected=401)
 rpc("tools/list", origin="https://untrusted.invalid", expected=403)
 assert rpc("initialize", {"protocolVersion": "2025-11-25"})["result"]["protocolVersion"] == "2025-11-25"
 rpc("notifications/initialized", expected=202, notification=True)
-assert len(rpc("tools/list", token=read)["result"]["tools"]) == 13
-assert len(rpc("tools/list")["result"]["tools"]) == 28
+assert len(rpc("tools/list", token=read)["result"]["tools"]) == 18
+assert len(rpc("tools/list")["result"]["tools"]) == 42
 call("list_projects", {})
 call("list_statuses", {})
 args = {"title": "MCP smoke test", "description": "<script>alert(1)</script>", "priority": 2,
@@ -107,7 +107,7 @@ if os.environ.get("MCP_TEST_USER"):
     page("/settings/mcp", {"label": "browser token", "scope": "read", "days": "1", "password": os.environ["MCP_TEST_PASSWORD"]}, 403)
     created, headers = page("/settings/mcp", {"label": "browser token", "scope": "read", "days": "1", "password": os.environ["MCP_TEST_PASSWORD"], "_csrf": csrf(settings)})
     secret = re.search(r'tms_mcp_[0-9a-f]{64}', created).group(0)
-    assert len(rpc("tools/list", token=secret)["result"]["tools"]) == 13
+    assert len(rpc("tools/list", token=secret)["result"]["tools"]) == 18
     refreshed, _ = page("/settings/mcp")
     assert secret not in refreshed
     print("MCP browser token issuance, CSRF and one-time disclosure passed")
@@ -116,7 +116,7 @@ if os.environ.get("MCP_TEST_USER"):
     created, _ = page("/settings/mcp", permanent_form)
     permanent = re.search(r'tms_mcp_[0-9a-f]{64}', created).group(0)
     assert "No expiration" in created or "Бессрочно" in created
-    assert len(rpc("tools/list", token=permanent)["result"]["tools"]) == 13
+    assert len(rpc("tools/list", token=permanent)["result"]["tools"]) == 18
     row = next(row for row in re.findall(r"<tr>.*?</tr>", created, re.S) if "permanent-browser-token" in row)
     revoke_path = re.search(r'action="(/settings/mcp/[0-9]+/revoke)"', row).group(1)
     page(revoke_path, {"_csrf": csrf(created)})
@@ -131,11 +131,11 @@ if os.environ.get("MCP_TEST_USER"):
     created, _ = page("/settings/mcp", deletion_form)
     deletion_token = re.search(r'tms_mcp_[0-9a-f]{64}', created).group(0)
     tools = {t["name"]: t for t in rpc("tools/list", token=deletion_token)["result"]["tools"]}
-    assert len(tools) == 34
+    assert len(tools) == 54
     assert tools["delete_task"]["annotations"]["destructiveHint"]
     assert tools["delete_tasks"]["annotations"]["destructiveHint"]
     assert not tools["delete_tasks"]["annotations"]["readOnlyHint"]
-    assert len(rpc("tools/list")["result"]["tools"]) == 28
+    assert len(rpc("tools/list")["result"]["tools"]) == 42
     print("MCP opt-in scope issuance and tool discovery passed")
 
     # Every fixture is created by this smoke test; the production API is not used.
@@ -445,3 +445,101 @@ entry=call("create_task",{"title":"MCP multiline task","custom_fields":{str(note
 assert entry["custom_fields"][str(note)]==multiline
 assert call("list_tasks",{"without_project":True,"custom_filters":{str(note):"second line"}})["total"]==1
 print("MCP multiline custom field passed")
+
+# MCP team lifecycle, invitations and discussions on disposable users only.
+if os.environ.get("MCP_TEST_USER") and os.environ.get("MCP_FOREIGN_USER"):
+    team_args={"name":"MCP collaboration fixture","description":"Original","request_key":"collab-team"}
+    collab=call("create_team",team_args)["team_id"]
+    assert call("create_team",team_args)["replayed"]
+    assert call("get_team",{"team_id":collab})["team"]["name"]==team_args["name"]
+    call("get_team",{"team_id":collab},foreign,error=True)
+    call("update_team",{"team_id":collab,"name":"MCP collaboration renamed","request_key":"collab-rename"})
+    invite={"team_id":collab,"identifier":os.environ["MCP_FOREIGN_USER"],"confirmed":True,"request_key":"collab-invite"}
+    call("invite_team_member",dict(invite,confirmed=False),error=True)
+    invitation=call("invite_team_member",invite)["invitation_id"]
+    assert call("invite_team_member",invite)["replayed"]
+    assert any(i["id"]==invitation and "invitedEmail" not in i for i in call("list_invitations",{},foreign)["invitations"])
+    call("list_invitations",{"team_id":collab},foreign,error=True)
+    respond={"invitation_id":invitation,"response":"accept","confirmed":True,"request_key":"collab-accept"}
+    call("respond_to_invitation",respond,error=True)
+    call("respond_to_invitation",respond,foreign)
+    assert call("respond_to_invitation",respond,foreign)["replayed"]
+    members=call("get_team",{"team_id":collab},foreign)["members"]
+    lead_id=next(m["user_id"] for m in members if m["role"]=="lead")
+    collaborator=next(m["user_id"] for m in members if m["role"]=="member")
+    assert all("email" not in m for m in members)
+    role={"team_id":collab,"user_id":collaborator,"role":"lead","confirmed":True,"request_key":"collab-role"}
+    call("change_team_role",role,foreign,error=True)
+    call("change_team_role",dict(role,user_id=lead_id,role="member",request_key="last-lead"),error=True)
+    proj=call("create_project",{"name":"Collaboration fixture project","team_id":collab,"request_key":"collab-project"})["project_id"]
+    task=call("create_task",{"title":"Discussion fixture","project_id":proj,"request_key":"collab-task"})["task_id"]
+    root={"task_id":task,"body":"<p>First message</p><script>bad()</script>","request_key":"collab-comment"}
+    comment=call("add_comment",root)["comment_id"]
+    assert call("add_comment",root)["replayed"]
+    replies=call("list_comments",{"task_id":task},foreign)
+    assert replies["total"]==1 and "<script>" not in replies["comments"][0]["bodyHtml"]
+    reply=call("add_comment",{"task_id":task,"body":"Reply","parent_comment_id":comment,"request_key":"collab-reply"},foreign)["comment_id"]
+    call("add_comment",{"project_id":proj,"body":"Wrong context","parent_comment_id":comment,"request_key":"wrong-parent"},error=True)
+    call("update_comment",{"task_id":task,"comment_id":comment,"body":"Forbidden","request_key":"wrong-author"},foreign,error=True)
+    call("update_comment",{"task_id":task,"comment_id":reply,"body":"Updated reply","request_key":"reply-edit"},foreign)
+    assert call("list_comments",{"task_id":task,"limit":1})["next_offset"]==1
+    call("mark_discussion_read",{"project_id":proj,"request_key":"collab-read"},foreign)
+    call("delete_comment",{"task_id":task,"comment_id":reply,"confirmed":True,"request_key":"collab-remove-comment"},error=True)
+    call("delete_comment",{"task_id":task,"comment_id":reply,"confirmed":True,"request_key":"collab-remove-comment"},deletion_token)
+    call("delete_team",{"team_id":collab,"confirmed":True,"request_key":"collab-delete-protected"},deletion_token,error=True)
+    call("remove_team_member",{"team_id":collab,"user_id":collaborator,"confirmed":True,"request_key":"collab-remove-member"},deletion_token)
+    call("list_comments",{"task_id":task},foreign,error=True)
+    empty=call("create_team",{"name":"Empty team fixture","request_key":"empty-team"})["team_id"]
+    call("delete_team",{"team_id":empty,"confirmed":True,"request_key":"empty-team-delete"},deletion_token)
+    # Exercise remaining membership transitions, including replay after leaving.
+    life=call("create_team",{"name":"Membership lifecycle fixture","request_key":"membership-team"})["team_id"]
+    iv={"team_id":life,"identifier":os.environ["MCP_FOREIGN_USER"],"confirmed":True,"request_key":"lifecycle-invite-1"}
+    i1=call("invite_team_member",iv)["invitation_id"]
+    revoke={"team_id":life,"invitation_id":i1,"confirmed":True,"request_key":"lifecycle-revoke"}
+    call("revoke_invitation",revoke,error=True)
+    call("revoke_invitation",revoke,deletion_token)
+    call("respond_to_invitation",{"invitation_id":i1,"response":"accept","confirmed":True,"request_key":"revoked-accept"},foreign,error=True)
+    i2=call("invite_team_member",dict(iv,request_key="lifecycle-invite-2"))["invitation_id"]
+    call("respond_to_invitation",{"invitation_id":i2,"response":"decline","confirmed":True,"request_key":"lifecycle-decline"},foreign)
+    i3=call("invite_team_member",dict(iv,request_key="lifecycle-invite-3"))["invitation_id"]
+    call("respond_to_invitation",{"invitation_id":i3,"response":"accept","confirmed":True,"request_key":"lifecycle-accept"},foreign)
+    change={"team_id":life,"user_id":collaborator,"role":"lead","confirmed":True,"request_key":"lifecycle-promote"}
+    call("change_team_role",change)
+    assert any(m["user_id"]==collaborator and m["role"]=="lead" for m in call("get_team",{"team_id":life})["members"])
+    leave={"team_id":life,"confirmed":True,"request_key":"lifecycle-leave"}
+    call("leave_team",leave,error=True)
+    call("leave_team",leave,deletion_token)
+    assert call("leave_team",leave,deletion_token)["replayed"]
+    call("get_team",{"team_id":life},error=True)
+    assert call("get_team",{"team_id":life},foreign)["team"]["currentUserRole"]=="lead"
+    print("MCP team membership, invitation and discussion safeguards passed")
+
+# Attachments use the existing file type policy and never expose storage paths.
+import base64
+content=b"MCP disposable attachment fixture.\n"
+encoded=base64.b64encode(content).decode()
+upload={"task_id":task_id,"filename":"fixture.txt","content_base64":encoded,"request_key":"mcp-upload"}
+aid=call("upload_attachment",upload)["attachment_id"]
+assert call("upload_attachment",upload)["replayed"]
+files=call("list_attachments",{"task_id":task_id})
+assert any(x["id"]==aid and "storageName" not in x and "storage_name" not in x for x in files["attachments"])
+part=call("read_attachment",{"task_id":task_id,"attachment_id":aid,"length":5})
+assert base64.b64decode(part["content_base64"])==content[:5] and part["next_offset"]==5
+tail=call("read_attachment",{"task_id":task_id,"attachment_id":aid,"offset":5})
+assert base64.b64decode(tail["content_base64"])==content[5:] and tail["next_offset"] is None
+call("read_attachment",{"task_id":task_id,"attachment_id":aid},foreign,error=True)
+call("upload_attachment",dict(upload,filename="fixture.exe",request_key="blocked-upload"),error=True)
+call("upload_attachment",dict(upload,content_base64="!!!!",request_key="bad-upload"),error=True)
+pa=call("upload_attachment",{"project_id":pid,"filename":"project.txt","content_base64":encoded,"request_key":"mcp-project-file"})["attachment_id"]
+assert base64.b64decode(call("read_attachment",{"project_id":pid,"attachment_id":pa})["content_base64"])==content
+call("list_attachments",{"project_id":pid,"task_id":task_id},error=True)
+if os.environ.get("MCP_TEST_USER"):
+    remove={"task_id":task_id,"attachment_id":aid,"confirmed":True,"request_key":"mcp-file-delete"}
+    call("delete_attachment",remove,error=True)
+    call("delete_attachment",dict(remove,confirmed=False),deletion_token,error=True)
+    deleted=call("delete_attachment",remove,deletion_token)
+    assert deleted["attachment_cleanup_pending"]==0 and "_cleanup_key" not in deleted
+    assert call("delete_attachment",remove,deletion_token)["replayed"]
+    call("read_attachment",{"task_id":task_id,"attachment_id":aid},error=True)
+    call("delete_attachment",{"project_id":pid,"attachment_id":pa,"confirmed":True,"request_key":"mcp-project-file-delete"},deletion_token)
+print("MCP attachment upload, chunk reads, isolation, validation and cleanup passed")

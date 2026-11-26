@@ -16,6 +16,11 @@ final class TeamRepository
     {
     }
 
+    private function rollbackOwnedTransaction(): void
+    {
+        if ($this->db->inTransaction()) { $this->db->rollBack(); }
+    }
+
     /** @return list<TeamRecord> */
     public function listForUser(int $userId): array
     {
@@ -62,7 +67,8 @@ final class TeamRepository
         $name = $this->normalizeName($name);
         $description = $this->normalizeDescription($description);
 
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             $stmt = $this->db->prepare(
                 'INSERT INTO teams (name, description, created_by, created_at, updated_at)
@@ -85,12 +91,10 @@ final class TeamRepository
                 'role' => 'lead',
             ]);
 
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
             return $teamId;
         } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             throw $error;
         }
     }

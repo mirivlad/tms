@@ -14,6 +14,11 @@ final class ProjectAttachmentRepository
     {
     }
 
+    private function rollbackOwnedTransaction(): void
+    {
+        if ($this->db->inTransaction()) { $this->db->rollBack(); }
+    }
+
     /** @return list<ProjectAttachmentRecord> */
     public function listForProject(int $userId, int $projectId): array
     {
@@ -78,7 +83,8 @@ final class ProjectAttachmentRepository
             throw new DomainException('Project is unavailable.');
         }
 
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             $stmt = $this->db->prepare(
                 'INSERT INTO project_attachments (
@@ -100,11 +106,9 @@ final class ProjectAttachmentRepository
                     'sha256' => $file['sha256'],
                 ]);
             }
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
         } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             throw $error;
         }
     }

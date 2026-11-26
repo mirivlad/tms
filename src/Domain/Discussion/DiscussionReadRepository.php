@@ -12,6 +12,11 @@ final class DiscussionReadRepository
     {
     }
 
+    private function rollbackOwnedTransaction(): void
+    {
+        if ($this->db->inTransaction()) { $this->db->rollBack(); }
+    }
+
     /**
      * @param list<int> $taskIds
      * @return array<int, array{count:int,unread:int}>
@@ -171,7 +176,8 @@ final class DiscussionReadRepository
 
     public function markProjectRead(int $userId, int $projectId): void
     {
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             $project = $this->db->prepare(
                 "INSERT INTO discussion_read_markers (
@@ -224,11 +230,9 @@ final class DiscussionReadRepository
                 'project_id' => $projectId,
             ]);
 
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
         } catch (\Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             throw $error;
         }
     }

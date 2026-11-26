@@ -465,7 +465,8 @@ final class ApplicationFactory
 
         $mcpTokens = new \Tms\Domain\Mcp\McpTokenRepository($db);
         $mcpReferenceTools = new McpReferenceTools($projects, $statuses, $projectStatuses, $taskTypes, $customers, $customFields, $projectCustomFields);
-        $mcpTools = new McpTools($tasks, $projects, $statuses, $projectStatuses, $checklists, $eventPublisher, $descriptionSanitizer, $appTimezone, $attachments, $attachmentStorage, $taskTypes, $customers, $teams, $customFields, $projectCustomFields, $customValues, $customValueCodec, $activity, $recurrences, $recurrenceSchedule, $preferences, $mcpReferenceTools);
+        $mcpCollaborationTools = new McpCollaborationTools($db, $teams, $teamInvitations, $users, $teamInvitationDelivery, $projects, $tasks, $discussions, $discussionReads, $eventPublisher, $descriptionSanitizer, $attachments, $projectAttachments, $attachmentPolicy, $attachmentStorage);
+        $mcpTools = new McpTools($tasks, $projects, $statuses, $projectStatuses, $checklists, $eventPublisher, $descriptionSanitizer, $appTimezone, $attachments, $attachmentStorage, $taskTypes, $customers, $teams, $customFields, $projectCustomFields, $customValues, $customValueCodec, $activity, $recurrences, $recurrenceSchedule, $preferences, $mcpReferenceTools, $mcpCollaborationTools);
         $mcpController = new \Tms\Http\Controller\McpController($db, $mcpTokens, $mcpTools);
         $app->map(['POST', 'GET', 'DELETE'], '/mcp', [$mcpController, 'handle']);
 

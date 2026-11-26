@@ -17,6 +17,11 @@ final class TeamInvitationRepository
     {
     }
 
+    private function rollbackOwnedTransaction(): void
+    {
+        if ($this->db->inTransaction()) { $this->db->rollBack(); }
+    }
+
     public function invite(
         int $teamId,
         int $invitedUserId,
@@ -63,9 +68,10 @@ final class TeamInvitationRepository
     public function listPendingForUser(
         int $userId,
         ?DateTimeImmutable $now = null,
+        bool $persistExpiry = true,
     ): array {
         $now ??= new DateTimeImmutable('now', new DateTimeZone('UTC'));
-        $this->expirePending($now);
+        if ($persistExpiry) { $this->expirePending($now); }
 
         $stmt = $this->db->prepare(
             $this->selectSql()
@@ -100,9 +106,9 @@ final class TeamInvitationRepository
     }
 
     /** @return list<TeamInvitationRecord> */
-    public function listForTeam(int $actorUserId, int $teamId): array
+    public function listForTeam(int $actorUserId, int $teamId, bool $persistExpiry = true): array
     {
-        $this->expirePending(new DateTimeImmutable('now', new DateTimeZone('UTC')));
+        if ($persistExpiry) { $this->expirePending(new DateTimeImmutable('now', new DateTimeZone('UTC'))); }
         $stmt = $this->db->prepare(
             $this->selectSql()
             . ' WHERE i.team_id = :team_id
@@ -128,16 +134,17 @@ final class TeamInvitationRepository
     ): bool {
         $now ??= new DateTimeImmutable('now', new DateTimeZone('UTC'));
 
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             $invitation = $this->pendingForUser($invitedUserId, $invitationId);
             if ($invitation === null) {
-                $this->db->rollBack();
+                if ($ownsTransaction) { $this->db->rollBack(); }
                 return false;
             }
             if ($invitation->expiresAt <= $now->format('Y-m-d H:i:s')) {
                 $this->markExpired($invitationId, $now);
-                $this->db->commit();
+                if ($ownsTransaction) { $this->db->commit(); }
                 return false;
             }
 
@@ -164,12 +171,10 @@ final class TeamInvitationRepository
                 'user_id' => $invitedUserId,
             ]);
 
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
             return $update->rowCount() === 1;
         } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             throw $error;
         }
     }
