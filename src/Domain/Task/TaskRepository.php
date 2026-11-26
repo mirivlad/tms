@@ -13,7 +13,7 @@ final class TaskRepository
     {
     }
 
-    public function findForUser(int $userId, int $taskId): ?TaskRecord
+    public function findForUser(int $userId, int $taskId, bool $lock = false): ?TaskRecord
     {
         $stmt = $this->db->prepare(
             'SELECT t.id, t.created_by, t.title, t.description, t.deadline, t.scheduled_at, t.status_id, t.type_id,
@@ -21,7 +21,7 @@ final class TaskRepository
              FROM tasks t
              WHERE t.id = :task_id
                AND ' . $this->taskAccessCondition('t', 'find_') . '
-             LIMIT 1'
+             LIMIT 1' . ($lock ? ' FOR UPDATE' : '')
         );
         $stmt->execute(['task_id' => $taskId] + $this->taskAccessParams($userId, 'find_'));
 
@@ -451,8 +451,8 @@ final class TaskRepository
         if ($this->findForUser($userId, $taskId) === null) {
             return false;
         }
-        $stmt = $this->db->prepare('DELETE FROM tasks WHERE id = :task_id');
-        $stmt->execute(['task_id' => $taskId]);
+        $stmt = $this->db->prepare('DELETE FROM tasks WHERE id = :task_id AND ' . $this->taskAccessCondition('tasks', 'delete_'));
+        $stmt->execute(['task_id' => $taskId] + $this->taskAccessParams($userId, 'delete_'));
         return $stmt->rowCount() === 1;
     }
 

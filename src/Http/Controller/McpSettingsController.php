@@ -41,11 +41,11 @@ final class McpSettingsController
         $label=$body['label']??null;
         $scope=$body['scope']??null;
         $days=$body['days']??null;
-        if (!is_string($label)||!in_array($scope,['read','write'],true)||!is_string($days)||!ctype_digit($days)) {
+        if (!is_string($label)||!in_array($scope,['read','write','delete'],true)||!is_string($days)||!ctype_digit($days)) {
             return $this->render($request,$response->withStatus(422),error:$this->translator->trans('mcp.invalid'));
         }
         try {
-            $secret=$this->tokens->issue($uid,trim($label),$scope==='write',(int)$days);
+            $secret=$this->tokens->issue($uid,trim($label),$scope!=='read',(int)$days,$scope==='delete');
         } catch (\InvalidArgumentException) {
             return $this->render($request,$response->withStatus(422),error:$this->translator->trans('mcp.invalid'));
         }

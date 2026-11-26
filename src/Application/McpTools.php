@@ -8,6 +8,8 @@ use DateTimeImmutable;
 use DateTimeZone;
 use DomainException;
 use Tms\Domain\Checklist\ChecklistRepository;
+use Tms\Domain\Attachment\AttachmentRepository;
+use Tms\Infrastructure\AttachmentStorage;
 use Tms\Domain\Project\ProjectRepository;
 use Tms\Domain\Project\ProjectStatusRepository;
 use Tms\Domain\Status\StatusRepository;
@@ -26,12 +28,14 @@ final class McpTools
         private readonly DomainEventPublisher $events,
         private readonly TaskDescriptionSanitizer $sanitizer,
         private readonly string $timezone,
+        private readonly AttachmentRepository $attachments,
+        private readonly AttachmentStorage $storage,
     ) {}
 
     /**
      * @return list<array<string,mixed>>
      */
-    public static function definitions(bool $write): array
+    public static function definitions(bool $write, bool $delete = false): array
     {
         $id = ['type'=>'integer','minimum'=>1];
         $str = ['type'=>'string','maxLength'=>2000];
@@ -60,6 +64,14 @@ final class McpTools
             $defs[] = self::tool('add_checklist_item','Add a checklist item to an accessible task.', ['task_id'=>$id,'text'=>['type'=>'string','minLength'=>1,'maxLength'=>500],'request_key'=>$key], ['task_id','text','request_key'], false);
             $defs[] = self::tool('set_checklist_completed','Set a checklist item completion state.', ['task_id'=>$id,'item_id'=>$id,'completed'=>['type'=>'boolean'],'request_key'=>$key], ['task_id','item_id','completed','request_key'], false);
         }
+        if ($write && $delete) {
+            $confirm = ['type'=>'boolean','description'=>'Must be true only after explicit user approval of these exact tasks.'];
+            $defs[] = self::tool('delete_task','Permanently delete one accessible task and its attachments. Show the task and obtain explicit user approval before calling.',
+                ['task_id'=>$id,'confirmed'=>$confirm,'request_key'=>$key], ['task_id','confirmed','request_key'], false);
+            $defs[] = self::tool('delete_tasks','Permanently delete 1–100 accessible tasks by explicit IDs, atomically. Show the exact selection and obtain explicit user approval before calling. Never delete by wildcard.',
+                ['task_ids'=>['type'=>'array','minItems'=>1,'maxItems'=>100,'items'=>$id],'confirmed'=>$confirm,'request_key'=>$key],
+                ['task_ids','confirmed','request_key'], false);
+        }
         return $defs;
     }
 
@@ -71,7 +83,7 @@ final class McpTools
     private static function tool(string $name, string $description, array $properties, array $required, bool $read): array
     {
         return ['name'=>$name,'description'=>$description,'inputSchema'=>['type'=>'object','properties'=>(object)$properties,'required'=>$required,'additionalProperties'=>false],
-            'annotations'=>['readOnlyHint'=>$read,'destructiveHint'=>in_array($name,['update_task','complete_task','set_checklist_completed'],true),'idempotentHint'=>true,'openWorldHint'=>false]];
+            'annotations'=>['readOnlyHint'=>$read,'destructiveHint'=>in_array($name,['update_task','complete_task','set_checklist_completed','delete_task','delete_tasks'],true),'idempotentHint'=>true,'openWorldHint'=>false]];
     }
 
     /**
@@ -171,6 +183,73 @@ final class McpTools
             default: throw new DomainException('Unknown write tool.');
         }
         return $id;
+    }
+
+    /**
+     * @param array<string,mixed> $args
+     * @return list<int>
+     */
+    public function deletionIds(string $name, array $args): array
+    {
+        if (($args['confirmed'] ?? false) !== true) {
+            throw new DomainException('Explicit deletion confirmation required.');
+        }
+        $ids = $name === 'delete_task' ? [$this->requiredInt($args,'task_id')] : ($args['task_ids'] ?? []);
+        if (!is_array($ids) || $ids === [] || count($ids) > 100) {
+            throw new DomainException('Provide 1–100 distinct task IDs.');
+        }
+        $result = [];
+        foreach ($ids as $id) {
+            if (!is_int($id) || $id < 1 || isset($result[$id])) {
+                throw new DomainException('Provide 1–100 distinct task IDs.');
+            }
+            $result[$id] = $id;
+        }
+        sort($result, SORT_NUMERIC);
+        return $result;
+    }
+
+    /**
+     * Caller owns the database transaction. Lock tasks in ID order, validate all
+     * before deleting any, and defer irreversible filesystem cleanup until commit.
+     * @param list<int> $ids
+     * @return list<string>
+     */
+    public function deleteTasks(int $uid, array $ids): array
+    {
+        $tasks = [];
+        foreach ($ids as $id) {
+            $task = $this->tasks->findForUser($uid,$id,true);
+            if ($task === null) { throw new DomainException('Task not found or inaccessible; no tasks deleted.'); }
+            $tasks[] = $task;
+        }
+        $keys = [];
+        foreach ($tasks as $task) {
+            foreach ($this->attachments->listForTask($uid,$task->id) as $attachment) {
+                $keys[] = $attachment->storageName;
+            }
+            if (!$this->tasks->deleteForUser($uid,$task->id)) {
+                throw new DomainException('Task unavailable; no tasks deleted.');
+            }
+            $this->events->taskEvent($uid,$task,'task.deleted');
+        }
+        return $keys;
+    }
+
+    /** @param list<string> $keys */
+    public function cleanupDeletedAttachments(array $keys): int
+    {
+        $failed = 0;
+        foreach ($keys as $key) {
+            try {
+                if ($this->storage->delete($key)) { continue; }
+            } catch (\Throwable $e) {
+                error_log('TMS MCP attachment cleanup failed: '.get_class($e));
+            }
+            ++$failed;
+        }
+        if ($failed > 0) { error_log('TMS MCP pending attachment cleanup: '.$failed); }
+        return $failed;
     }
 
     private function addItem(int $uid,TaskRecord $task,string $text): void
