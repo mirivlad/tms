@@ -20,8 +20,8 @@ try {
         case 'issue':
             if (!$user->isActive||!$user->isApproved) { throw new RuntimeException('User inactive or unapproved.'); }
             $scope=$argv[4]??'read';
-            if (!in_array($scope,['read','write'],true)||!ctype_digit($argv[5]??'30')) { throw new RuntimeException('Invalid scope or expiry.'); }
-            echo $tokens->issue($user->id,$argv[3]??'',$scope==='write',(int)($argv[5]??30)).PHP_EOL;
+            if (!in_array($scope,['read','write','delete'],true)||!ctype_digit($argv[5]??'30')) { throw new RuntimeException('Invalid scope or expiry.'); }
+            echo $tokens->issue($user->id,$argv[3]??'',$scope!=='read',(int)($argv[5]??30),$scope==='delete').PHP_EOL;
             break;
         case 'list':
             echo json_encode($tokens->listForUser($user->id),JSON_PRETTY_PRINT|JSON_THROW_ON_ERROR|JSON_UNESCAPED_UNICODE).PHP_EOL;
@@ -30,7 +30,7 @@ try {
             if (!$tokens->revoke($user->id,(int)($argv[3]??0))) { throw new RuntimeException('Token unavailable.'); }
             echo "Revoked.\n";
             break;
-        default: throw new RuntimeException('Usage: mcp-token.php issue USER LABEL [read|write] [days: 0 for permanent, 1–365 otherwise] | list USER | revoke USER ID');
+        default: throw new RuntimeException('Usage: mcp-token.php issue USER LABEL [read|write|delete] [days: 0 for permanent, 1–365 otherwise] | list USER | revoke USER ID');
     }
 } catch (Throwable $e) {
     fwrite(STDERR,$e->getMessage().PHP_EOL);

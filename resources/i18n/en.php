@@ -470,6 +470,7 @@ return [
     'mcp.scope' => 'Permissions',
     'mcp.read' => 'Read only',
     'mcp.write' => 'Read and write',
+    'mcp.delete' => 'Read, write and delete tasks',
     'mcp.days' => 'Validity in days (0 = no expiration)',
     'mcp.permanent' => 'No expiration',
     'mcp.issue' => 'Create token',
