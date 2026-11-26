@@ -30,7 +30,7 @@ try {
             if (!$tokens->revoke($user->id,(int)($argv[3]??0))) { throw new RuntimeException('Token unavailable.'); }
             echo "Revoked.\n";
             break;
-        default: throw new RuntimeException('Usage: mcp-token.php issue USER LABEL [read|write] [days] | list USER | revoke USER ID');
+        default: throw new RuntimeException('Usage: mcp-token.php issue USER LABEL [read|write] [days: 0 for permanent, 1–365 otherwise] | list USER | revoke USER ID');
     }
 } catch (Throwable $e) {
     fwrite(STDERR,$e->getMessage().PHP_EOL);

@@ -83,6 +83,8 @@ docker compose -f compose.portainer.yaml logs --tail=100 telegram-poller
 
 ## Интеграции с ИИ (MCP)
 
+Для бессрочного токена укажите 0 дней. По умолчанию срок остаётся 30 дней. Бессрочный токен хранится с NULL в поле expires_at и действует до отзыва или блокировки учётной записи.
+
 TMS предоставляет stateless Streamable HTTP MCP по адресу APP_URL + /mcp. Поддерживаются версии протокола 2025-03-26, 2025-06-18 и 2025-11-25, JSON-ответы, initialize, ping и инструменты. GET/DELETE возвращают 405, SSE-поток и сессии MCP не используются. OAuth discovery, протокол 2026-07-28 и прямое подключение ChatGPT в первую реализацию не входят. Нужен клиент с поддержкой Bearer-заголовка либо доверенный адаптер; не передавайте токен публичным прокси.
 
 Пользователь управляет токенами в разделе «Профиль → Интеграции с ИИ (MCP)». Для выпуска нужен текущий пароль, секрет показывается один раз. По умолчанию доступ только на чтение. Запись разрешает изменение задач и чек-листов в рамках существующих личных и командных прав пользователя; административные действия и удаление задач не доступны. Токены хранятся в виде SHA-256, просроченные, отозванные и принадлежащие неактивным/неодобренным учётным записям не принимаются. Неиспользуемые токены отзывайте явно; смена пароля не отзывает MCP-токены автоматически.
@@ -91,6 +93,7 @@ TMS предоставляет stateless Streamable HTTP MCP по адресу A
 
     docker compose exec app php bin/mcp-token.php issue USER Codex read 30
     docker compose exec app php bin/mcp-token.php issue USER Codex-write write 30
+    docker compose exec app php bin/mcp-token.php issue USER Codex-permanent write 0
     docker compose exec app php bin/mcp-token.php list USER
     docker compose exec app php bin/mcp-token.php revoke USER ID
 

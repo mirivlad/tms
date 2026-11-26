@@ -111,3 +111,16 @@ if os.environ.get("MCP_TEST_USER"):
     refreshed, _ = page("/settings/mcp")
     assert secret not in refreshed
     print("MCP browser token issuance, CSRF and one-time disclosure passed")
+
+    permanent_form = {"label": "permanent-browser-token", "scope": "read", "days": "0", "password": os.environ["MCP_TEST_PASSWORD"], "_csrf": csrf(refreshed)}
+    created, _ = page("/settings/mcp", permanent_form)
+    permanent = re.search(r'tms_mcp_[0-9a-f]{64}', created).group(0)
+    assert "No expiration" in created or "Бессрочно" in created
+    assert len(rpc("tools/list", token=permanent)["result"]["tools"]) == 4
+    row = next(row for row in re.findall(r"<tr>.*?</tr>", created, re.S) if "permanent-browser-token" in row)
+    revoke_path = re.search(r'action="(/settings/mcp/[0-9]+/revoke)"', row).group(1)
+    page(revoke_path, {"_csrf": csrf(created)})
+    rpc("tools/list", token=permanent, expected=401)
+    invalid = dict(permanent_form, days="366")
+    page("/settings/mcp", invalid, 422)
+    print("Permanent token issuance, read-only access, revocation and validity bounds passed")

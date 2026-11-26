@@ -1,0 +1,1 @@
+ALTER TABLE mcp_tokens MODIFY COLUMN expires_at DATETIME NULL;

@@ -85,12 +85,13 @@ Do not enable `APP_DEBUG` on an Internet-facing production instance except for a
 
 TMS provides a stateless Streamable HTTP MCP endpoint at APP_URL + /mcp. It supports protocol revisions 2025-03-26, 2025-06-18 and 2025-11-25, JSON responses, initialize, ping and tools. GET/DELETE return 405; there is no SSE stream or session state. OAuth discovery, the 2026-07-28 protocol and direct ChatGPT connection are not part of this initial implementation. Use a client that supports custom Bearer headers, or a trusted adapter; never expose a token to a public proxy.
 
-Each account can manage expiring credentials under Profile → AI integrations (MCP). Creation requires the current password; the secret is displayed once. Read-only is the default. Read/write allows task and checklist changes with the user's existing personal/team permissions; it does not grant administrator access or task deletion. Credentials are stored as SHA-256 hashes, and disabled/unapproved accounts and revoked or expired credentials are rejected. Revoke unused tokens explicitly; password changes do not automatically revoke MCP tokens.
+Each account can manage expiring or permanent credentials under Profile → AI integrations (MCP). Creation requires the current password; the secret is displayed once. Read-only is the default. Read/write allows task and checklist changes with the user's existing personal/team permissions; it does not grant administrator access or task deletion. Credentials are stored as SHA-256 hashes, and disabled/unapproved accounts and revoked or expired credentials are rejected. Enter 0 days to create a permanent token; the default remains 30 days. Permanent tokens have a NULL expiry and remain valid until revoked or the account is disabled. Revoke unused tokens explicitly; password changes do not automatically revoke MCP tokens.
 
 Operators can also manage credentials through the app container:
 
     docker compose exec app php bin/mcp-token.php issue USER Codex read 30
     docker compose exec app php bin/mcp-token.php issue USER Codex-write write 30
+    docker compose exec app php bin/mcp-token.php issue USER Codex-permanent write 0
     docker compose exec app php bin/mcp-token.php list USER
     docker compose exec app php bin/mcp-token.php revoke USER ID
 
