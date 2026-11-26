@@ -340,6 +340,19 @@ jobs:
       - name: Exercise extended feature workflow
         run: bash tests/smoke/feature-workflows.sh
 
+      - name: Exercise authenticated MCP workflow
+        run: |
+          docker compose exec -T -e TMS_ADMIN_PASSWORD=ci-mcp-password-12345 app php bin/create-admin.php mcpci mcpci@example.invalid
+          docker compose exec -T -e TMS_ADMIN_PASSWORD=ci-mcp-password-12345 app php bin/create-admin.php mcpother mcpother@example.invalid
+          export MCP_WRITE_TOKEN="$(docker compose exec -T app php bin/mcp-token.php issue mcpci smoke-write write 1)"
+          export MCP_READ_TOKEN="$(docker compose exec -T app php bin/mcp-token.php issue mcpci smoke-read read 1)"
+          export MCP_FOREIGN_TOKEN="$(docker compose exec -T app php bin/mcp-token.php issue mcpother smoke-other write 1)"
+          export MCP_TEST_USER=mcpci MCP_TEST_PASSWORD=ci-mcp-password-12345
+          python3 tests/smoke/mcp.py
+          read_id=$(docker compose exec -T app php bin/mcp-token.php list mcpci | python3 -c 'import json,sys; print(next(t["id"] for t in json.load(sys.stdin) if t["label"]=="smoke-read"))')
+          docker compose exec -T app php bin/mcp-token.php revoke mcpci "$read_id"
+          MCP_EXPECT_REVOKED=1 python3 tests/smoke/mcp.py
+
       - name: Exercise v0.1.4 to v0.2 database upgrade
         run: bash tests/smoke/upgrade-v014-to-v020.sh
 

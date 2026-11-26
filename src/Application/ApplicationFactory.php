@@ -463,6 +463,11 @@ final class ApplicationFactory
         $requireAdmin = new RequireAdminMiddleware($sessions, $app->getResponseFactory(), $translator);
         $sanitizeTaskDescription = new SanitizeTaskDescriptionMiddleware($descriptionSanitizer);
 
+        $mcpTokens = new \Tms\Domain\Mcp\McpTokenRepository($db);
+        $mcpTools = new McpTools($tasks, $projects, $statuses, $projectStatuses, $checklists, $eventPublisher, $descriptionSanitizer, $appTimezone);
+        $mcpController = new \Tms\Http\Controller\McpController($db, $mcpTokens, $mcpTools);
+        $app->map(['POST', 'GET', 'DELETE'], '/mcp', [$mcpController, 'handle']);
+
         $app->get('/', static function (ServerRequestInterface $request, ResponseInterface $response) use ($sessions, $publicController): ResponseInterface {
             if ($sessions->isAuthenticated()) {
                 return $response->withHeader('Location', '/dashboard')->withStatus(302);
@@ -611,6 +616,10 @@ final class ApplicationFactory
         $app->get('/notifications', [$internalNotificationController, 'index'])->add($requireAuth);
         $app->get('/notifications/{id:[0-9]+}/open', [$internalNotificationController, 'open'])->add($requireAuth);
         $app->post('/notifications/read-all', [$internalNotificationController, 'markAllRead'])->add($requireAuth);
+        $mcpSettings = new \Tms\Http\Controller\McpSettingsController($twig, $sessions, $users, $mcpTokens, $translator, rtrim($appUrl, '/') . '/mcp');
+        $app->get('/settings/mcp', [$mcpSettings, 'show'])->add($requireAuth);
+        $app->post('/settings/mcp', [$mcpSettings, 'issue'])->add($requireAuth);
+        $app->post('/settings/mcp/{id:[0-9]+}/revoke', [$mcpSettings, 'revoke'])->add($requireAuth);
         $app->get('/settings/profile', [$profileController, 'show'])->add($requireAuth);
         $app->post('/settings/profile', [$profileController, 'save'])->add($requireAuth);
         $app->get('/settings/notifications', [$notificationController, 'show'])->add($requireAuth);
@@ -664,7 +673,7 @@ final class ApplicationFactory
         $app->post('/admin/notifications/telegram-webhook', [$notificationAdminController, 'setupTelegramWebhook'])->add($requireAdmin)->add($requireAuth);
         $app->post('/telegram/webhook', [$telegramWebhookController, 'handle']);
 
-        $app->add(new CsrfMiddleware($app->getResponseFactory(), $translator, ['/telegram/webhook', '/api/notifications/mobile/login', '/api/notifications/chimeport/introspect']));
+        $app->add(new CsrfMiddleware($app->getResponseFactory(), $translator, ['/telegram/webhook', '/api/notifications/mobile/login', '/api/notifications/chimeport/introspect', '/mcp']));
         $app->add(TwigMiddleware::create($app, $twig));
         $app->add(new UserTimezoneMiddleware($sessions, $preferences, $appTimezone));
         $app->add(new UserActivityMiddleware($sessions, $users));

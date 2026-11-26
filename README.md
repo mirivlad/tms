@@ -29,6 +29,7 @@ ghcr.io/mirivlad/tms:v0.4.4
 - recurring task series with calendar schedules and N-days-after-completion mode;
 - per-user language, timezone and theme settings;
 - optional self-registration and administrator approval;
+- MCP AI integration with expiring read/write or read-only tokens;
 - SMTP/email notifications;
 - Telegram notifications with **Long polling** or **Webhook**, optional HTTP/SOCKS proxy and per-user delivery testing;
 - browser and local-console password recovery;
