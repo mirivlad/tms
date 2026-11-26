@@ -160,6 +160,9 @@ jobs:
           - administrator user management, direct account creation, quick user details and impersonation;
           - SMTP/email and Telegram notification delivery with administrator-managed credentials, selectable Long polling/Webhook command delivery, independently saved HTTP/SOCKS proxy settings and per-user Telegram delivery testing;
           - Russian and English interface catalogs with count-aware pluralization for natural numeric UI labels;
+          - MCP AI integration at /mcp: stateless Streamable HTTP, task/project/status discovery, task creation and editing, completion and checklist management;
+          - per-client expiring read-only or read/write Bearer credentials, password-confirmed issuance and revocation in Profile, transactional mutation replay protection and audit;
+          - existing user/team access rules and notification events remain in effect for MCP operations; OAuth and direct ChatGPT connectivity are not yet included;
           - MariaDB migrations, first-admin CLI bootstrap, Docker Compose and Portainer deployment.
 
           $outro
