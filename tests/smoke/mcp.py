@@ -124,3 +124,78 @@ if os.environ.get("MCP_TEST_USER"):
     invalid = dict(permanent_form, days="366")
     page("/settings/mcp", invalid, 422)
     print("Permanent token issuance, read-only access, revocation and validity bounds passed")
+
+    # Issue the new opt-in scope through the browser on the disposable test DB.
+    refreshed, _ = page("/settings/mcp")
+    deletion_form = dict(permanent_form, scope="delete", label="deletion-test", _csrf=csrf(refreshed))
+    created, _ = page("/settings/mcp", deletion_form)
+    deletion_token = re.search(r'tms_mcp_[0-9a-f]{64}', created).group(0)
+    tools = {t["name"]: t for t in rpc("tools/list", token=deletion_token)["result"]["tools"]}
+    assert len(tools) == 11
+    assert tools["delete_task"]["annotations"]["destructiveHint"]
+    assert tools["delete_tasks"]["annotations"]["destructiveHint"]
+    assert not tools["delete_tasks"]["annotations"]["readOnlyHint"]
+    assert len(rpc("tools/list")["result"]["tools"]) == 9
+    print("MCP opt-in scope issuance and tool discovery passed")
+
+    # Every fixture is created by this smoke test; the production API is not used.
+    def fixture(label, token=write):
+        return call("create_task", {"title": "MCP disposable fixture " + label,
+                                   "request_key": "fixture-" + label}, token)["task_id"]
+
+    a, b, c = (fixture(label) for label in ("a", "b", "c"))
+    outsider = fixture("foreign", foreign)
+    # Attach a small file using the normal browser upload workflow.
+    from pathlib import Path
+    attachment_root = os.environ.get("ATTACHMENT_STORAGE_PATH")
+    def stored_files():
+        return set(Path(attachment_root).glob("*/*")) if attachment_root else set()
+    before = stored_files()
+    edit_page, _ = page(f"/tasks/{a}/edit")
+    boundary = "tms-smoke-fixture-attachment"
+    payload = (
+        f"--{boundary}\r\nContent-Disposition: form-data; name=\"_csrf\"\r\n\r\n{csrf(edit_page)}\r\n"
+        f"--{boundary}\r\nContent-Disposition: form-data; name=\"attachments[]\"; filename=\"mcp-fixture.txt\"\r\n"
+        f"Content-Type: text/plain\r\n\r\nMCP disposable attachment\r\n--{boundary}--\r\n"
+    ).encode()
+    upload = urllib.request.Request(site + f"/tasks/{a}/attachments", payload,
+                                    {"Content-Type": f"multipart/form-data; boundary={boundary}"})
+    with opener.open(upload, timeout=15) as response:
+        assert response.status == 200
+    preview, _ = page(f"/api/tasks/{a}")
+    attachment = re.search(rf'/tasks/{a}/attachments/[0-9]+', preview).group(0)
+    assert page(attachment)[0].strip() == "MCP disposable attachment"
+    new_files = stored_files() - before
+    if attachment_root:
+        assert len(new_files) == 1
+    single = {"task_id": c, "confirmed": True, "request_key": "fixture-single"}
+    for restricted in (read, write, foreign):
+        call("delete_task", single, restricted, error=True)
+    call("delete_task", dict(single, confirmed=False), deletion_token, error=True)
+    assert call("get_task", {"task_id": c})["task"]["id"] == c
+
+    batch = {"task_ids": [a, b], "confirmed": True, "request_key": "fixture-batch"}
+    for invalid in ([], [a, a], [a, outsider], [a, 2147483647]):
+        call("delete_tasks", dict(batch, task_ids=invalid), deletion_token, error=True)
+        assert call("get_task", {"task_id": a})["task"]["id"] == a
+        assert call("get_task", {"task_id": b})["task"]["id"] == b
+
+    result = call("delete_task", single, deletion_token)
+    assert result["deleted_ids"] == [c] and not result["replayed"]
+    assert result["attachment_cleanup_pending"] == 0
+    assert call("delete_task", single, deletion_token)["replayed"]
+    call("get_task", {"task_id": c}, error=True)
+    assert page(attachment)[0].strip() == "MCP disposable attachment"
+    result = call("delete_tasks", batch, deletion_token)
+    assert result["deleted_count"] == 2 and result["deleted_ids"] == sorted([a, b])
+    assert not result["replayed"] and result["attachment_cleanup_pending"] == 0
+    assert call("delete_tasks", batch, deletion_token)["replayed"]
+    page(attachment, expected=404)
+    if attachment_root:
+        assert not any(path.exists() for path in new_files)
+    call("delete_tasks", dict(batch, task_ids=[outsider]), deletion_token, error=True)
+    for fixture_id in (a, b):
+        call("get_task", {"task_id": fixture_id}, error=True)
+    assert call("get_task", {"task_id": outsider}, foreign)["task"]["id"] == outsider
+    assert call("get_task", {"task_id": task_id})["task"]["id"] == task_id
+    print("MCP disposal of fixtures: authorization, atomicity, confirmation and replay passed")
