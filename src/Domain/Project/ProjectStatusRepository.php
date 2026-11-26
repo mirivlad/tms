@@ -15,6 +15,11 @@ final class ProjectStatusRepository
     {
     }
 
+    private function rollbackOwnedTransaction(): void
+    {
+        if ($this->db->inTransaction()) { $this->db->rollBack(); }
+    }
+
     /** @return list<StatusRecord> */
     public function listForProject(int $userId, int $projectId, bool $boardOnly = false): array
     {
@@ -86,7 +91,8 @@ final class ProjectStatusRepository
         $this->assertProjectManageable($userId, $projectId);
         $name = $this->normalizeName($name);
 
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             if ($isDefault) {
                 $this->clearFlag($projectId, 'is_default');
@@ -115,12 +121,10 @@ final class ProjectStatusRepository
                 'show_on_board' => $showOnBoard ? 1 : 0,
             ]);
             $id = (int) $this->db->lastInsertId();
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
             return $id;
         } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             throw $error;
         }
     }
@@ -212,7 +216,8 @@ final class ProjectStatusRepository
             return false;
         }
 
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             $stmt = $this->db->prepare(
                 'UPDATE statuses SET sort_order = :sort_order, updated_at = CURRENT_TIMESTAMP
@@ -225,12 +230,10 @@ final class ProjectStatusRepository
                     'project_id' => $projectId,
                 ]);
             }
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
             return true;
         } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             throw $error;
         }
     }
@@ -245,7 +248,8 @@ final class ProjectStatusRepository
             return false;
         }
 
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             $this->clearFlag($projectId, $column);
             $stmt = $this->db->prepare(
@@ -253,12 +257,10 @@ final class ProjectStatusRepository
                  WHERE id = :id AND user_id IS NULL AND project_id = :project_id"
             );
             $stmt->execute(['id' => $statusId, 'project_id' => $projectId]);
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
             return true;
         } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             throw $error;
         }
     }
