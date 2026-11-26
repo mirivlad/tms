@@ -470,7 +470,8 @@ return [
     'mcp.scope' => 'Permissions',
     'mcp.read' => 'Read only',
     'mcp.write' => 'Read and write',
-    'mcp.days' => 'Validity in days',
+    'mcp.days' => 'Validity in days (0 = no expiration)',
+    'mcp.permanent' => 'No expiration',
     'mcp.issue' => 'Create token',
     'mcp.tokens' => 'MCP tokens',
     'mcp.expires' => 'Expires',
@@ -478,5 +479,5 @@ return [
     'mcp.revoke' => 'Revoke',
     'mcp.empty' => 'No tokens yet.',
     'mcp.bad_password' => 'Incorrect current password.',
-    'mcp.invalid' => 'Enter a valid name, permissions and validity period (1–365 days).',
+    'mcp.invalid' => 'Enter a valid name, permissions and validity period (0 for no expiration, or 1–365 days).',
 ];

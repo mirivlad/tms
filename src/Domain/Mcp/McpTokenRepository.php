@@ -18,7 +18,7 @@ final class McpTokenRepository
         }
         $stmt = $this->db->prepare(
             'SELECT m.id,m.user_id,m.can_write FROM mcp_tokens m JOIN users u ON u.id=m.user_id
-             WHERE m.token_hash=:hash AND m.revoked_at IS NULL AND m.expires_at > UTC_TIMESTAMP()
+             WHERE m.token_hash=:hash AND m.revoked_at IS NULL AND (m.expires_at IS NULL OR m.expires_at > UTC_TIMESTAMP())
              AND u.is_active=1 AND u.approved_at IS NOT NULL' . ($lock ? ' FOR UPDATE' : '')
         );
         $stmt->execute(['hash' => hash('sha256', $secret)]);
@@ -28,13 +28,13 @@ final class McpTokenRepository
 
     public function issue(int $userId, string $label, bool $write, int $days): string
     {
-        if ($days < 1 || $days > 365 || trim($label) === '' || mb_strlen($label) > 100) {
-            throw new \InvalidArgumentException('Label and expiry (1–365 days) required.');
+        if ($days < 0 || $days > 365 || trim($label) === '' || mb_strlen($label) > 100) {
+            throw new \InvalidArgumentException('Label and expiry (0 for permanent, 1–365 days) required.');
         }
         $token = 'tms_mcp_' . bin2hex(random_bytes(32));
         $stmt = $this->db->prepare('INSERT INTO mcp_tokens(user_id,label,token_hash,can_write,expires_at,created_at)
-            VALUES(:uid,:label,:hash,:write,DATE_ADD(UTC_TIMESTAMP(), INTERVAL :days DAY),UTC_TIMESTAMP())');
-        $stmt->execute(['uid'=>$userId,'label'=>$label,'hash'=>hash('sha256',$token),'write'=>(int)$write,'days'=>$days]);
+            VALUES(:uid,:label,:hash,:write,CASE WHEN :permanent = 1 THEN NULL ELSE DATE_ADD(UTC_TIMESTAMP(), INTERVAL :days DAY) END,UTC_TIMESTAMP())');
+        $stmt->execute(['uid'=>$userId,'label'=>$label,'hash'=>hash('sha256',$token),'write'=>(int)$write,'days'=>$days,'permanent'=>(int)($days===0)]);
         return $token;
     }
 

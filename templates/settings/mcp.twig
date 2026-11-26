@@ -14,7 +14,7 @@
         <input type="hidden" name="_csrf" value="{{ csrf_token }}">
         <label>{{ t('mcp.label') }}<input name="label" required maxlength="100" placeholder="Codex"></label>
         <label>{{ t('mcp.scope') }}<select name="scope"><option value="read">{{ t('mcp.read') }}</option><option value="write">{{ t('mcp.write') }}</option></select></label>
-        <label>{{ t('mcp.days') }}<input name="days" type="number" required min="1" max="365" value="30"></label>
+        <label>{{ t('mcp.days') }}<input name="days" type="number" required min="0" max="365" value="30"></label>
         <label>{{ t('profile.current_password') }}<input name="password" type="password" required autocomplete="current-password"></label>
         <div class="form-actions field-wide"><button type="submit">{{ t('mcp.issue') }}</button></div>
     </form>
@@ -23,7 +23,7 @@
     <h2>{{ t('mcp.tokens') }}</h2>
     <table>
         <thead><tr><th>{{ t('mcp.label') }}</th><th>{{ t('mcp.scope') }}</th><th>{{ t('mcp.expires') }}</th><th>{{ t('mcp.revoked') }}</th><th></th></tr></thead>
-        <tbody>{% for token in tokens %}<tr><td>{{ token.label }}</td><td>{{ t(token.can_write ? 'mcp.write' : 'mcp.read') }}</td><td>{{ token.expires_at }} UTC</td><td>{{ token.revoked_at ?? '—' }}</td><td>
+        <tbody>{% for token in tokens %}<tr><td>{{ token.label }}</td><td>{{ t(token.can_write ? 'mcp.write' : 'mcp.read') }}</td><td>{% if token.expires_at is null %}{{ t('mcp.permanent') }}{% else %}{{ token.expires_at }} UTC{% endif %}</td><td>{{ token.revoked_at ?? '—' }}</td><td>
         {% if not token.revoked_at %}<form method="post" action="/settings/mcp/{{ token.id }}/revoke"><input type="hidden" name="_csrf" value="{{ csrf_token }}"><button type="submit">{{ t('mcp.revoke') }}</button></form>{% endif %}
         </td></tr>{% else %}<tr><td colspan="5">{{ t('mcp.empty') }}</td></tr>{% endfor %}</tbody>
     </table>
