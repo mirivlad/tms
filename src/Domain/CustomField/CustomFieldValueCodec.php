@@ -44,6 +44,52 @@ final class CustomFieldValueCodec
         return $this->decodeList($stored);
     }
 
+    public function matchesFilter(CustomFieldRecord $field, ?string $stored, mixed $filter): bool
+    {
+        if ($stored === null) {
+            return false;
+        }
+
+        if (in_array($field->type, ['text', 'textarea'], true)) {
+            return is_string($filter) && mb_stripos($stored, $filter) !== false;
+        }
+        if (in_array($field->type, ['select', 'checkbox'], true)) {
+            return is_string($filter) && $stored === $filter;
+        }
+        if ($field->type === 'money') {
+            if (!is_array($filter)) {
+                return false;
+            }
+            try {
+                $storedMinor = $this->moneyMinorUnits($stored);
+                $min = isset($filter['min']) && is_string($filter['min'])
+                    ? $this->moneyMinorUnits($filter['min'])
+                    : null;
+                $max = isset($filter['max']) && is_string($filter['max'])
+                    ? $this->moneyMinorUnits($filter['max'])
+                    : null;
+            } catch (DomainException) {
+                return false;
+            }
+            return ($min === null || $storedMinor >= $min) && ($max === null || $storedMinor <= $max);
+        }
+        if ($field->type === 'checkbox_list') {
+            if (!is_array($filter) || !is_array($filter['values'] ?? null)) {
+                return false;
+            }
+            $wanted = array_values(array_filter($filter['values'], 'is_string'));
+            if ($wanted === []) {
+                return false;
+            }
+            $selected = $this->selectedOptions($field, $stored);
+            if (($filter['match'] ?? 'any') === 'all') {
+                return count(array_diff($wanted, $selected)) === 0;
+            }
+            return array_intersect($wanted, $selected) !== [];
+        }
+        return false;
+    }
+
     private function encodeText(CustomFieldRecord $field, mixed $input, int $maxLength): ?string
     {
         $value = is_scalar($input) ? trim((string) $input) : '';

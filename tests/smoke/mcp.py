@@ -45,8 +45,8 @@ rpc("tools/list", token="", expected=401)
 rpc("tools/list", origin="https://untrusted.invalid", expected=403)
 assert rpc("initialize", {"protocolVersion": "2025-11-25"})["result"]["protocolVersion"] == "2025-11-25"
 rpc("notifications/initialized", expected=202, notification=True)
-assert len(rpc("tools/list", token=read)["result"]["tools"]) == 9
-assert len(rpc("tools/list")["result"]["tools"]) == 18
+assert len(rpc("tools/list", token=read)["result"]["tools"]) == 13
+assert len(rpc("tools/list")["result"]["tools"]) == 28
 call("list_projects", {})
 call("list_statuses", {})
 args = {"title": "MCP smoke test", "description": "<script>alert(1)</script>", "priority": 2,
@@ -107,7 +107,7 @@ if os.environ.get("MCP_TEST_USER"):
     page("/settings/mcp", {"label": "browser token", "scope": "read", "days": "1", "password": os.environ["MCP_TEST_PASSWORD"]}, 403)
     created, headers = page("/settings/mcp", {"label": "browser token", "scope": "read", "days": "1", "password": os.environ["MCP_TEST_PASSWORD"], "_csrf": csrf(settings)})
     secret = re.search(r'tms_mcp_[0-9a-f]{64}', created).group(0)
-    assert len(rpc("tools/list", token=secret)["result"]["tools"]) == 9
+    assert len(rpc("tools/list", token=secret)["result"]["tools"]) == 13
     refreshed, _ = page("/settings/mcp")
     assert secret not in refreshed
     print("MCP browser token issuance, CSRF and one-time disclosure passed")
@@ -116,7 +116,7 @@ if os.environ.get("MCP_TEST_USER"):
     created, _ = page("/settings/mcp", permanent_form)
     permanent = re.search(r'tms_mcp_[0-9a-f]{64}', created).group(0)
     assert "No expiration" in created or "Бессрочно" in created
-    assert len(rpc("tools/list", token=permanent)["result"]["tools"]) == 9
+    assert len(rpc("tools/list", token=permanent)["result"]["tools"]) == 13
     row = next(row for row in re.findall(r"<tr>.*?</tr>", created, re.S) if "permanent-browser-token" in row)
     revoke_path = re.search(r'action="(/settings/mcp/[0-9]+/revoke)"', row).group(1)
     page(revoke_path, {"_csrf": csrf(created)})
@@ -131,11 +131,11 @@ if os.environ.get("MCP_TEST_USER"):
     created, _ = page("/settings/mcp", deletion_form)
     deletion_token = re.search(r'tms_mcp_[0-9a-f]{64}', created).group(0)
     tools = {t["name"]: t for t in rpc("tools/list", token=deletion_token)["result"]["tools"]}
-    assert len(tools) == 21
+    assert len(tools) == 34
     assert tools["delete_task"]["annotations"]["destructiveHint"]
     assert tools["delete_tasks"]["annotations"]["destructiveHint"]
     assert not tools["delete_tasks"]["annotations"]["readOnlyHint"]
-    assert len(rpc("tools/list")["result"]["tools"]) == 18
+    assert len(rpc("tools/list")["result"]["tools"]) == 28
     print("MCP opt-in scope issuance and tool discovery passed")
 
     # Every fixture is created by this smoke test; the production API is not used.
@@ -318,3 +318,130 @@ if os.environ.get("MCP_TEST_USER"):
     call("update_task", {"task_id": tid, "project_id": pid, "request_key": "move-required-field"}, error=True)
     assert call("get_task", {"task_id": tid})["task"]["projectId"] is None
     print("MCP required custom-field guard passed")
+
+# Recurrence uses the existing schedule and author-only permissions.
+future = call("create_task", {"title": "MCP monthly fixture", "deadline": "2030-01-31T12:00:00+09:00", "request_key": "rec-task"})
+rid = future["task_id"]
+spawn = next(s["id"] for s in call("list_statuses", {})["statuses"] if s["isDefault"] and not s["isCompletion"])
+schedule = {"task_id": rid, "mode": "monthly", "spawn_status_id": spawn, "request_key": "rec-monthly"}
+rec = call("set_recurrence", schedule)["recurrence"]
+assert rec["mode"] == "monthly" and rec["anchorDay"] == 31 and rec["nextDeadline"].startswith("2030-02-28")
+assert call("set_recurrence", schedule)["replayed"]
+call("set_recurrence", dict(schedule, task_id=tid, request_key="no-deadline"), error=True)
+call("set_recurrence", dict(schedule, request_key="rec-foreign"), foreign, error=True)
+complete_status = next(s["id"] for s in call("list_statuses", {})["statuses"] if s["isCompletion"])
+call("set_recurrence", dict(schedule, spawn_status_id=complete_status, request_key="rec-completed"), error=True)
+assert any(t["id"] == rid for t in call("list_tasks", {"deadline_from":"2030-01-31", "deadline_to":"2030-01-31", "without_project":True})["tasks"])
+call("list_tasks", {"deadline_from":"2030-02-30"}, error=True)
+call("list_tasks", {"deadline_from":"2030-02-01", "deadline_to":"2030-01-01"}, error=True)
+assert call("get_task_history", {"task_id":rid})["history"]
+call("get_task_history", {"task_id":rid}, foreign, error=True)
+assert call("get_project_history", {"project_id":pid})["history"]
+call("get_project_history", {"project_id":pid}, foreign, error=True)
+if os.environ.get("MCP_TEST_USER"):
+    call("delete_recurrence", {"task_id":rid,"confirmed":True,"request_key":"rec-delete"}, error=True)
+    call("delete_recurrence", {"task_id":rid,"confirmed":False,"request_key":"rec-delete"}, deletion_token, error=True)
+    assert call("delete_recurrence", {"task_id":rid,"confirmed":True,"request_key":"rec-delete"}, deletion_token)["recurrence"] is None
+    # Required fields, patch semantics, lineage and rejection of lossy moves.
+    required = next(f["id"] for f in call("list_custom_fields", {"project_id":pid})["fields"] if f["name"] == "MCP required fixture")
+    filled = call("create_task", {"title":"MCP required filled","project_id":pid,"custom_fields":{str(required):"value"},"request_key":"required-filled"})
+    fid=filled["task_id"]
+    assert filled["custom_fields"][str(required)] == "value"
+    assert call("update_task", {"task_id":fid,"priority":2,"request_key":"field-preserve"})["custom_fields"][str(required)]=="value"
+    call("update_task", {"task_id":fid,"custom_fields":{str(required):None},"request_key":"field-clear-required"}, error=True)
+    call("update_task", {"task_id":fid,"project_id":None,"request_key":"field-loss"}, error=True)
+    assert call("get_task", {"task_id":fid})["custom_fields"][str(required)]=="value"
+    field_page,_=page("/custom-fields")
+    page("/custom-fields", {"_csrf":csrf(field_page),"name":"MCP lineage fixture","field_type":"text"})
+    original=next(f["id"] for f in call("list_custom_fields", {})["fields"] if f["name"]=="MCP lineage fixture")
+    dest=call("create_project", {"name":"MCP lineage destination","request_key":"lineage-project"})["project_id"]
+    clone=next(f["id"] for f in call("list_custom_fields", {"project_id":dest})["fields"] if f["sourceFieldId"]==original)
+    src=call("create_task", {"title":"MCP lineage task","custom_fields":{str(original):"preserve"},"request_key":"lineage-task"})["task_id"]
+    moved=call("update_task", {"task_id":src,"project_id":dest,"request_key":"lineage-move"})
+    assert moved["custom_fields"][str(clone)]=="preserve"
+    assert call("update_task", {"task_id":src,"project_id":None,"request_key":"lineage-back"})["custom_fields"][str(original)]=="preserve"
+    call("update_task", {"task_id":src,"custom_fields":{str(clone):"foreign field"},"request_key":"wrong-field"}, error=True)
+print("MCP recurrence, history, advanced filters and custom field values passed")
+
+# Reference writes, role changes and generic receipts.
+create_ref = {"kind":"task_type","name":"MCP reference type","request_key":"reference-create"}
+ref = call("create_reference",create_ref)
+typ_id=ref["reference_id"]
+assert call("create_reference",create_ref)["reference_id"]==typ_id
+assert call("create_reference",create_ref)["replayed"]
+call("create_reference",dict(create_ref,name="Different"),error=True)
+call("create_reference",dict(create_ref,request_key="read-ref"),read,error=True)
+call("update_reference",{"kind":"task_type","reference_id":typ_id,"name":"Forbidden","request_key":"foreign-ref"},foreign,error=True)
+call("update_reference",{"kind":"task_type","reference_id":typ_id,"name":"MCP renamed reference","request_key":"ref-rename"})
+assert any(t["id"]==typ_id and t["name"]=="MCP renamed reference" for t in call("list_task_types",{})["task_types"])
+customer_id=call("create_reference",{"kind":"customer","name":"MCP ref customer","request_key":"customer-ref"})["reference_id"]
+status_args={"kind":"status","project_id":pid,"name":"MCP project review","color":"#224466","request_key":"status-ref"}
+status_id=call("create_reference",status_args)["reference_id"]
+call("create_reference",dict(status_args,request_key="foreign-status-ref"),foreign,error=True)
+call("set_status_role",{"project_id":pid,"status_id":status_id,"role":"default","request_key":"status-role"})
+assert any(s["id"]==status_id and s["isDefault"] for s in call("list_statuses",{"project_id":pid})["statuses"])
+ids=[s["id"] for s in call("list_statuses",{"project_id":pid})["statuses"]]
+ordered=list(reversed(ids))
+assert call("reorder_references",{"kind":"status","project_id":pid,"reference_ids":ordered,"request_key":"status-order"})["reference_ids"]==ordered
+assert [s["id"] for s in call("list_statuses",{"project_id":pid})["statuses"]]==ordered
+call("reorder_references",{"kind":"status","project_id":pid,"reference_ids":[status_id],"request_key":"bad-status-order"},error=True)
+field=call("create_reference",{"kind":"custom_field","name":"MCP option fixture","field_type":"select","options":["A","B"],"request_key":"ref-field"})["reference_id"]
+f=call("create_task",{"title":"MCP ref value","type_id":typ_id,"customer_id":customer_id,"custom_fields":{str(field):"B"},"request_key":"ref-task"})
+assert f["custom_fields"][str(field)]=="B"
+call("update_reference",{"kind":"custom_field","reference_id":field,"field_type":"text","request_key":"ref-change-type"},error=True)
+call("update_reference",{"kind":"custom_field","reference_id":field,"name":"MCP renamed field","request_key":"ref-field-rename"})
+assert call("get_task",{"task_id":f["task_id"]})["custom_fields"][str(field)]=="B"
+if os.environ.get("MCP_TEST_USER"):
+    destructive={"reference_id":field,"field_type":"select","options":["A"],"confirmed":True,"request_key":"ref-prune"}
+    call("replace_custom_field_definition",destructive,error=True)
+    call("replace_custom_field_definition",dict(destructive,confirmed=False),deletion_token,error=True)
+    call("replace_custom_field_definition",destructive,deletion_token)
+    assert call("get_task",{"task_id":f["task_id"]})["custom_fields"][str(field)] is None
+    call("delete_reference",{"kind":"task_type","reference_id":typ_id,"confirmed":True,"request_key":"used-type"},deletion_token,error=True)
+    call("delete_reference",{"kind":"status","project_id":pid,"reference_id":status_id,"confirmed":True,"request_key":"default-status"},deletion_token,error=True)
+    delete_field={"kind":"custom_field","reference_id":field,"confirmed":True,"request_key":"delete-field"}
+    call("delete_reference",delete_field,error=True)
+    call("delete_reference",delete_field,deletion_token)
+    assert call("delete_reference",delete_field,deletion_token)["replayed"]
+    assert all(x["id"]!=field for x in call("list_custom_fields",{})["fields"])
+print("MCP reference management and destructive definition safeguards passed")
+
+a=call("create_task",{"title":"MCP bulk fixture A","request_key":"bulk-a"})["task_id"]
+b=call("create_task",{"title":"MCP bulk fixture B","request_key":"bulk-b"})["task_id"]
+bulk={"task_ids":[b,a],"priority":3,"type_id":typ_id,"request_key":"bulk-write"}
+assert call("update_tasks",bulk)["updated_ids"]==sorted([a,b])
+assert call("update_tasks",bulk)["replayed"]
+for bad in ([a,a],[a,2147483647]):
+    call("update_tasks",dict(bulk,task_ids=bad,priority=0,request_key="bulk-invalid"),error=True)
+    assert call("get_task",{"task_id":a})["task"]["priority"]==3
+call("update_tasks",dict(bulk,priority=0),error=True)
+# A later item with incompatible metadata must roll back an earlier valid update.
+if os.environ.get("MCP_TEST_USER") and os.environ.get("MCP_FOREIGN_USER"):
+    call("update_tasks",{"task_ids":[task_id,shared_id],"type_id":typ_id,"priority":0,"request_key":"bulk-mixed"},error=True)
+    assert call("get_task",{"task_id":task_id})["task"]["priority"]==3
+counts=call("summarize_tasks",{"query":"MCP bulk fixture","priority":3})
+assert counts["total"]==2 and counts["by_priority"]["3"]==2 and counts["by_project"]["none"]==2
+assert call("summarize_tasks",{"query":"MCP bulk fixture"},foreign)["total"]==0
+print("MCP atomic bulk updates, replay and scoped analytics passed")
+
+# The same field comparison semantics as the web UI, with strict filter validation.
+money=call("create_reference",{"kind":"custom_field","name":"MCP filter money","field_type":"money","request_key":"filter-money"})["reference_id"]
+tags=call("create_reference",{"kind":"custom_field","name":"MCP filter tags","field_type":"checkbox_list","options":["red","blue"],"request_key":"filter-tags"})["reference_id"]
+check=call("create_reference",{"kind":"custom_field","name":"MCP filter check","field_type":"checkbox","request_key":"filter-check"})["reference_id"]
+match=call("create_task",{"title":"MCP filter fixture","custom_fields":{str(money):"100.25",str(tags):["red","blue"],str(check):True},"request_key":"filter-fixture"})
+q={"without_project":True,"query":"MCP filter fixture","custom_filters":{str(money):{"min":"100","max":"101"},str(tags):{"values":["red","blue"],"match":"all"},str(check):True}}
+assert call("list_tasks",q)["total"]==1
+assert call("summarize_tasks",q)["total"]==1
+assert call("list_tasks",dict(q,custom_filters={str(money):{"min":"101"}}))["total"]==0
+assert call("list_tasks",dict(q,custom_filters={str(tags):["blue"]}))["total"]==1
+call("list_tasks",dict(q,custom_filters={str(money):{"min":"101","max":"100"}}),error=True)
+call("list_tasks",dict(q,custom_filters={str(tags):{"values":["unknown"],"match":"all"}}),error=True)
+call("list_tasks",dict(q,without_project=False),error=True)
+call("list_tasks",q,foreign,error=True)
+print("MCP custom field range, option and checkbox filters passed")
+note=call("create_reference",{"kind":"custom_field","name":"MCP multiline fixture","field_type":"textarea","request_key":"textarea-field"})["reference_id"]
+multiline="First line\nSecond line"
+entry=call("create_task",{"title":"MCP multiline task","custom_fields":{str(note):multiline},"request_key":"textarea-task"})
+assert entry["custom_fields"][str(note)]==multiline
+assert call("list_tasks",{"without_project":True,"custom_filters":{str(note):"second line"}})["total"]==1
+print("MCP multiline custom field passed")

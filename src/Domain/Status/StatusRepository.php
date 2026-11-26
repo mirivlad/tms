@@ -14,6 +14,11 @@ final class StatusRepository
     {
     }
 
+    private function rollbackOwnedTransaction(): void
+    {
+        if ($this->db->inTransaction()) { $this->db->rollBack(); }
+    }
+
     /** @return list<StatusRecord> */
     public function listForUser(int $userId, bool $boardOnly = false): array
     {
@@ -126,7 +131,8 @@ final class StatusRepository
     ): int {
         $name = $this->normalizeName($name);
 
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             if ($isDefault) {
                 $this->clearDefault($userId);
@@ -156,12 +162,10 @@ final class StatusRepository
             ]);
 
             $id = (int) $this->db->lastInsertId();
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
             return $id;
         } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             throw $error;
         }
     }
@@ -247,7 +251,8 @@ final class StatusRepository
             return false;
         }
 
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             $stmt = $this->db->prepare(
                 'UPDATE statuses SET sort_order = :sort_order, updated_at = CURRENT_TIMESTAMP
@@ -260,12 +265,10 @@ final class StatusRepository
                     'user_id' => $userId,
                 ]);
             }
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
             return true;
         } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             throw $error;
         }
     }
@@ -279,7 +282,8 @@ final class StatusRepository
             return false;
         }
 
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             $clear = $this->db->prepare(
                 "UPDATE statuses SET {$column} = 0 WHERE user_id = :user_id AND project_id IS NULL"
@@ -292,12 +296,10 @@ final class StatusRepository
             );
             $set->execute(['id' => $statusId, 'user_id' => $userId]);
 
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
             return true;
         } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             throw $error;
         }
     }

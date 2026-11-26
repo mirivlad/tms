@@ -14,6 +14,11 @@ final class TaskTypeRepository
     {
     }
 
+    private function rollbackOwnedTransaction(): void
+    {
+        if ($this->db->inTransaction()) { $this->db->rollBack(); }
+    }
+
     /**
      * @return list<TaskTypeRecord>
      */
@@ -132,7 +137,8 @@ final class TaskTypeRepository
             return false;
         }
 
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             $stmt = $this->db->prepare(
                 'UPDATE task_types SET sort_order = :sort_order, updated_at = CURRENT_TIMESTAMP
@@ -145,12 +151,10 @@ final class TaskTypeRepository
                     'user_id' => $userId,
                 ]);
             }
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
             return true;
         } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             throw $error;
         }
     }

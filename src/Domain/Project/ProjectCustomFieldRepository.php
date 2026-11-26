@@ -17,6 +17,11 @@ final class ProjectCustomFieldRepository
     {
     }
 
+    private function rollbackOwnedTransaction(): void
+    {
+        if ($this->db->inTransaction()) { $this->db->rollBack(); }
+    }
+
     /** @return list<CustomFieldRecord> */
     public function listForProject(int $userId, int $projectId): array
     {
@@ -111,7 +116,8 @@ final class ProjectCustomFieldRepository
         $typeChanged = $existing->type !== $type;
         $optionsChanged = $existing->options !== $options;
 
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             $stmt = $this->db->prepare(
                 'UPDATE custom_fields
@@ -139,12 +145,10 @@ final class ProjectCustomFieldRepository
                 $this->pruneCheckboxListValues($fieldId, $options);
             }
 
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
             return true;
         } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             throw $error;
         }
     }
@@ -181,7 +185,8 @@ final class ProjectCustomFieldRepository
             return false;
         }
 
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             $stmt = $this->db->prepare(
                 'UPDATE custom_fields
@@ -195,12 +200,10 @@ final class ProjectCustomFieldRepository
                     'project_id' => $projectId,
                 ]);
             }
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
             return true;
         } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             throw $error;
         }
     }

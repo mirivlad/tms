@@ -14,6 +14,11 @@ final class TaskCustomFieldValueRepository
     {
     }
 
+    private function rollbackOwnedTransaction(): void
+    {
+        if ($this->db->inTransaction()) { $this->db->rollBack(); }
+    }
+
     /** @return array<int, string> */
     public function listForTask(int $userId, int $taskId): array
     {
@@ -87,7 +92,8 @@ final class TaskCustomFieldValueRepository
             throw new DomainException('Custom field is unavailable.');
         }
 
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             $delete = $this->db->prepare(
                 'DELETE FROM task_custom_field_values
@@ -117,11 +123,9 @@ final class TaskCustomFieldValueRepository
                 ]);
             }
 
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
         } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             throw $error;
         }
     }
