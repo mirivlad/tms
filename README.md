@@ -4,10 +4,10 @@
 
 TMS is a lightweight, self-hosted task management system for people who want to keep tasks and data on infrastructure they control.
 
-> **Current stable release:** `v0.5.5`
+> **Current stable release:** `v0.6.0`
 
 ```text
-ghcr.io/mirivlad/tms:v0.5.5
+ghcr.io/mirivlad/tms:v0.6.0
 ```
 
 `latest` follows the newest stable release. For reproducible deployments, pin a versioned tag. CI-tested development builds from `main` are published as `edge` and immutable `sha-<commit>` tags.
@@ -55,6 +55,7 @@ TMS can forward user-scoped notifications from its own inbox to a trusted ChimeP
 | Account recovery | [Account recovery](docs/ACCOUNT_RECOVERY.md) | [Восстановление доступа](docs/ACCOUNT_RECOVERY.ru.md) |
 | Architecture | [Architecture](docs/ARCHITECTURE.md) | — |
 | Project scope | [Project scope](docs/PROJECT_SCOPE.md) | — |
+| MCP integration and capabilities | [MCP](docs/MCP_CAPABILITIES.md) | [MCP](docs/MCP_CAPABILITIES.ru.md) |
 | Roadmap | [Roadmap](docs/ROADMAP.md) | — |
 | Security policy | [Security](SECURITY.md) | — |
 
@@ -64,12 +65,12 @@ The complete manuals for the current stable release are available directly from 
 
 | Manual | HTML | PDF |
 | --- | --- | --- |
-| User handbook — English | [Open HTML](https://github.com/mirivlad/tms/releases/download/v0.5.5/tms-user-handbook-en.html) | [Download PDF](https://github.com/mirivlad/tms/releases/download/v0.5.5/tms-user-handbook-en.pdf) |
-| User handbook — Русский | [Открыть HTML](https://github.com/mirivlad/tms/releases/download/v0.5.5/tms-user-handbook-ru.html) | [Скачать PDF](https://github.com/mirivlad/tms/releases/download/v0.5.5/tms-user-handbook-ru.pdf) |
-| Administrator handbook — English | [Open HTML](https://github.com/mirivlad/tms/releases/download/v0.5.5/tms-admin-handbook-en.html) | [Download PDF](https://github.com/mirivlad/tms/releases/download/v0.5.5/tms-admin-handbook-en.pdf) |
-| Administrator handbook — Русский | [Открыть HTML](https://github.com/mirivlad/tms/releases/download/v0.5.5/tms-admin-handbook-ru.html) | [Скачать PDF](https://github.com/mirivlad/tms/releases/download/v0.5.5/tms-admin-handbook-ru.pdf) |
+| User handbook — English | [Open HTML](https://github.com/mirivlad/tms/releases/download/v0.6.0/tms-user-handbook-en.html) | [Download PDF](https://github.com/mirivlad/tms/releases/download/v0.6.0/tms-user-handbook-en.pdf) |
+| User handbook — Русский | [Открыть HTML](https://github.com/mirivlad/tms/releases/download/v0.6.0/tms-user-handbook-ru.html) | [Скачать PDF](https://github.com/mirivlad/tms/releases/download/v0.6.0/tms-user-handbook-ru.pdf) |
+| Administrator handbook — English | [Open HTML](https://github.com/mirivlad/tms/releases/download/v0.6.0/tms-admin-handbook-en.html) | [Download PDF](https://github.com/mirivlad/tms/releases/download/v0.6.0/tms-admin-handbook-en.pdf) |
+| Administrator handbook — Русский | [Открыть HTML](https://github.com/mirivlad/tms/releases/download/v0.6.0/tms-admin-handbook-ru.html) | [Скачать PDF](https://github.com/mirivlad/tms/releases/download/v0.6.0/tms-admin-handbook-ru.pdf) |
 
-[Open the full v0.5.5 release](https://github.com/mirivlad/tms/releases/tag/v0.5.5) for release notes and all attached artifacts.
+[Open the full v0.6.0 release](https://github.com/mirivlad/tms/releases/tag/v0.6.0) for release notes and all attached artifacts.
 
 ## Quick start with the published image
 

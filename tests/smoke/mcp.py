@@ -45,8 +45,8 @@ rpc("tools/list", token="", expected=401)
 rpc("tools/list", origin="https://untrusted.invalid", expected=403)
 assert rpc("initialize", {"protocolVersion": "2025-11-25"})["result"]["protocolVersion"] == "2025-11-25"
 rpc("notifications/initialized", expected=202, notification=True)
-assert len(rpc("tools/list", token=read)["result"]["tools"]) == 18
-assert len(rpc("tools/list")["result"]["tools"]) == 42
+assert len(rpc("tools/list", token=read)["result"]["tools"]) == 25
+assert len(rpc("tools/list")["result"]["tools"]) == 61
 call("list_projects", {})
 call("list_statuses", {})
 args = {"title": "MCP smoke test", "description": "<script>alert(1)</script>", "priority": 2,
@@ -107,7 +107,7 @@ if os.environ.get("MCP_TEST_USER"):
     page("/settings/mcp", {"label": "browser token", "scope": "read", "days": "1", "password": os.environ["MCP_TEST_PASSWORD"]}, 403)
     created, headers = page("/settings/mcp", {"label": "browser token", "scope": "read", "days": "1", "password": os.environ["MCP_TEST_PASSWORD"], "_csrf": csrf(settings)})
     secret = re.search(r'tms_mcp_[0-9a-f]{64}', created).group(0)
-    assert len(rpc("tools/list", token=secret)["result"]["tools"]) == 18
+    assert len(rpc("tools/list", token=secret)["result"]["tools"]) == 25
     refreshed, _ = page("/settings/mcp")
     assert secret not in refreshed
     print("MCP browser token issuance, CSRF and one-time disclosure passed")
@@ -116,7 +116,7 @@ if os.environ.get("MCP_TEST_USER"):
     created, _ = page("/settings/mcp", permanent_form)
     permanent = re.search(r'tms_mcp_[0-9a-f]{64}', created).group(0)
     assert "No expiration" in created or "Бессрочно" in created
-    assert len(rpc("tools/list", token=permanent)["result"]["tools"]) == 18
+    assert len(rpc("tools/list", token=permanent)["result"]["tools"]) == 25
     row = next(row for row in re.findall(r"<tr>.*?</tr>", created, re.S) if "permanent-browser-token" in row)
     revoke_path = re.search(r'action="(/settings/mcp/[0-9]+/revoke)"', row).group(1)
     page(revoke_path, {"_csrf": csrf(created)})
@@ -131,11 +131,11 @@ if os.environ.get("MCP_TEST_USER"):
     created, _ = page("/settings/mcp", deletion_form)
     deletion_token = re.search(r'tms_mcp_[0-9a-f]{64}', created).group(0)
     tools = {t["name"]: t for t in rpc("tools/list", token=deletion_token)["result"]["tools"]}
-    assert len(tools) == 54
+    assert len(tools) == 75
     assert tools["delete_task"]["annotations"]["destructiveHint"]
     assert tools["delete_tasks"]["annotations"]["destructiveHint"]
     assert not tools["delete_tasks"]["annotations"]["readOnlyHint"]
-    assert len(rpc("tools/list")["result"]["tools"]) == 42
+    assert len(rpc("tools/list")["result"]["tools"]) == 61
     print("MCP opt-in scope issuance and tool discovery passed")
 
     # Every fixture is created by this smoke test; the production API is not used.
@@ -543,3 +543,135 @@ if os.environ.get("MCP_TEST_USER"):
     call("read_attachment",{"task_id":task_id,"attachment_id":aid},error=True)
     call("delete_attachment",{"project_id":pid,"attachment_id":pa,"confirmed":True,"request_key":"mcp-project-file-delete"},deletion_token)
 print("MCP attachment upload, chunk reads, isolation, validation and cleanup passed")
+
+# Workspace operations use real web saved-view queries, user settings and calendar.
+view_args={"name":"MCP workspace view","query":"project=all&priority=high&q=fixture&sort=deadline&order=asc&untrusted=discard","is_default":True,"request_key":"workspace-view"}
+vid=call("create_saved_view",view_args)["view_id"]
+assert call("create_saved_view",view_args)["replayed"]
+view=call("get_saved_view",{"view_id":vid})["view"]
+assert view["query"]["project"]=="all" and view["query"]["priority"]=="high"
+assert "untrusted" not in view["query"] and view["isDefault"]
+call("get_saved_view",{"view_id":vid},foreign,error=True)
+assert all(v["id"]!=vid for v in call("list_saved_views",{},foreign)["views"])
+view2=call("create_saved_view",{"name":"MCP alternate view","query":"q=alternate","request_key":"workspace-view-2"})["view_id"]
+call("set_default_saved_view",{"view_id":view2,"request_key":"workspace-view-default"})
+assert call("get_saved_view",{"view_id":view2})["view"]["isDefault"]
+assert not call("get_saved_view",{"view_id":vid})["view"]["isDefault"]
+call("set_default_saved_view",{"view_id":vid,"request_key":"workspace-view-foreign"},foreign,error=True)
+daytask=call("create_task",{"title":"Calendar fixture","scheduled_at":"2031-03-02T10:00:00+09:00","deadline":"2031-03-04T12:00:00+09:00","request_key":"workspace-cal-task"})["task_id"]
+for mode,date in [("planned_only","2031-03-02"),("deadlines_only","2031-03-04")]:
+    result=call("list_calendar",{"from":date,"to":date,"mode":mode,"without_project":True})
+    assert any(t["id"]==daytask for t in result["tasks"]),result
+    assert all(t["id"]!=daytask for t in call("list_calendar",{"from":date,"to":date,"mode":mode},foreign)["tasks"])
+call("list_calendar",{"from":"2031-02-30","to":"2031-03-01"},error=True)
+call("list_calendar",{"from":"2031-03-02","to":"2030-03-01"},error=True)
+call("list_calendar",{"from":"2031-01-01","to":"2033-01-01"},error=True)
+old_pref=call("get_preferences",{})["preferences"]
+change={"theme":"midnight","confirmed":True,"request_key":"workspace-pref"}
+call("update_preferences",dict(change,confirmed=False),error=True)
+call("update_preferences",change)
+assert call("get_preferences",{})["preferences"]["theme"]=="midnight"
+assert call("get_preferences",{},foreign)["preferences"]["theme"]!="midnight"
+assert call("get_preferences",{})["preferences"]["timezone"]==old_pref["timezone"]
+call("update_preferences",{"timezone":"Invalid/Timezone","confirmed":True,"request_key":"workspace-invalid-tz"},error=True)
+old_settings=call("get_notification_settings",{})["settings"]
+assert "email_address" not in old_settings and "telegram_chat_id" not in old_settings
+patch={"notify_tomorrow":True,"tomorrow_time":"10:15","confirmed":True,"request_key":"workspace-notifications"}
+call("update_notification_settings",dict(patch,confirmed=False),error=True)
+call("update_notification_settings",patch)
+settings=call("get_notification_settings",{})["settings"]
+assert settings["notify_tomorrow"] and settings["tomorrow_time"]=="10:15"
+assert settings["high_minutes"]==old_settings["high_minutes"]
+call("update_notification_settings",{"tomorrow_time":"25:00","confirmed":True,"request_key":"workspace-invalid-time"},error=True)
+assert call("get_notification_settings",{},foreign)["settings"]["tomorrow_time"]!="10:15"
+inbox=call("list_notifications",{},read)
+assert "notifications" in inbox and "unread" in inbox
+if inbox["notifications"]:
+    nid=inbox["notifications"][0]["id"]
+    call("mark_notification_read",{"notification_id":nid,"request_key":"workspace-notification-foreign"},foreign,error=True)
+    call("mark_notification_read",{"notification_id":nid,"request_key":"workspace-notification-read"})
+call("mark_all_notifications_read",{"confirmed":False,"request_key":"workspace-all-read"},error=True)
+call("mark_all_notifications_read",{"confirmed":True,"request_key":"workspace-all-read"})
+assert call("list_notifications",{})["unread"]==0
+assert call("restore_default_statuses",{"request_key":"workspace-restore"})["created_count"]>=0
+assert call("restore_default_statuses",{"request_key":"workspace-restore"})["replayed"]
+print("MCP saved views, calendar, notification inbox, preferences and defaults passed")
+
+if os.environ.get("MCP_TEST_USER"):
+    delete_view={"view_id":vid,"confirmed":True,"request_key":"workspace-delete-view"}
+    call("delete_saved_view",delete_view,error=True)
+    call("delete_saved_view",dict(delete_view,confirmed=False),deletion_token,error=True)
+    call("delete_saved_view",delete_view,deletion_token)
+    assert call("delete_saved_view",delete_view,deletion_token)["replayed"]
+    call("get_saved_view",{"view_id":vid},error=True)
+    transfer_id=call("create_project",{"name":"Transfer workspace fixture","request_key":"workspace-transfer-project"})["project_id"]
+    team_id=call("create_team",{"name":"Transfer workspace team","request_key":"workspace-transfer-team"})["team_id"]
+    tr={"project_id":transfer_id,"team_id":team_id,"confirmed":True,"request_key":"workspace-transfer"}
+    call("transfer_project",dict(tr,confirmed=False),error=True)
+    call("transfer_project",tr,foreign,error=True)
+    call("transfer_project",tr)
+    assert call("transfer_project",tr)["replayed"]
+    assert call("get_project",{"project_id":transfer_id})["project"]["ownerTeamId"]==team_id
+    call("transfer_project",dict(tr,team_id=None,request_key="workspace-transfer-back"))
+    assert call("get_project",{"project_id":transfer_id})["project"]["ownerTeamId"] is None
+    call("upload_attachment",{"project_id":transfer_id,"filename":"cleanup.txt","content_base64":encoded,"request_key":"workspace-delete-file"})
+    delete={"project_id":transfer_id,"confirmed":True,"request_key":"workspace-delete-project"}
+    call("delete_project",delete,error=True)
+    call("delete_project",dict(delete,confirmed=False),deletion_token,error=True)
+    removed=call("delete_project",delete,deletion_token)
+    assert removed["attachment_cleanup_pending"]==0 and "_cleanup_keys" not in removed
+    assert call("delete_project",delete,deletion_token)["replayed"]
+    call("get_project",{"project_id":transfer_id},error=True)
+    # Existing project with tasks must not be deleted accidentally.
+    call("delete_project",{"project_id":pid,"confirmed":True,"request_key":"workspace-delete-nonempty"},deletion_token,error=True)
+    assert call("get_project",{"project_id":pid})["project"]["id"]==pid
+    print("MCP project ownership, deletion, cleanup and access safeguards passed")
+
+# Resumable uploads survive independent requests and are verified before publication.
+import hashlib
+payload=b"Resumable attachment fixture line.\n"*9000
+digest=hashlib.sha256(payload).hexdigest()
+start={"task_id":task_id,"filename":"resumable.txt","size":len(payload),"sha256":digest,"request_key":"chunk-start"}
+up=call("begin_attachment_upload",start)
+upid=up["upload_id"]
+assert call("begin_attachment_upload",start)["upload_id"]==upid
+assert call("get_attachment_upload",{"upload_id":upid},read)["next_offset"]==0
+call("get_attachment_upload",{"upload_id":upid},foreign,error=True)
+call("begin_attachment_upload",dict(start,filename="bad.exe",request_key="bad-extension"),error=True)
+call("begin_attachment_upload",dict(start,size=2147483647,request_key="oversized"),error=True)
+finish={"upload_id":upid,"request_key":"chunk-finish"}
+call("finish_attachment_upload",finish,error=True)
+chunk_size=up["chunk_max_bytes"]
+assert len(payload)>chunk_size
+for offset in range(0,len(payload),chunk_size):
+    chunk={"upload_id":upid,"offset":offset,"content_base64":base64.b64encode(payload[offset:offset+chunk_size]).decode(),"request_key":"chunk-"+str(offset)}
+    if offset==0:
+        call("append_attachment_chunk",dict(chunk,offset=1,request_key="chunk-wrong-offset"),error=True)
+        call("append_attachment_chunk",dict(chunk,content_base64=base64.b64encode(b"tiny").decode(),request_key="chunk-tiny"),error=True)
+        call("append_attachment_chunk",chunk,foreign,error=True)
+    ack=call("append_attachment_chunk",chunk)
+    assert ack["next_offset"]==min(len(payload),offset+chunk_size)
+    assert call("append_attachment_chunk",chunk)["replayed"]
+    assert call("get_attachment_upload",{"upload_id":upid})["next_offset"]==ack["next_offset"]
+published=call("finish_attachment_upload",finish)
+assert call("finish_attachment_upload",finish)["replayed"]
+aid=published["attachment_id"]
+call("get_attachment_upload",{"upload_id":upid},error=True)
+downloaded=b""
+offset=0
+while offset is not None:
+    data=call("read_attachment",{"task_id":task_id,"attachment_id":aid,"offset":offset})
+    downloaded+=base64.b64decode(data["content_base64"])
+    offset=data["next_offset"]
+assert downloaded==payload
+bad=call("begin_attachment_upload",{"task_id":task_id,"filename":"bad-hash.txt","size":len(content),"sha256":"0"*64,"request_key":"bad-hash-start"})["upload_id"]
+call("append_attachment_chunk",{"upload_id":bad,"offset":0,"content_base64":encoded,"request_key":"bad-hash-bytes"})
+call("finish_attachment_upload",{"upload_id":bad,"request_key":"bad-hash-finish"},error=True)
+cancel={"upload_id":bad,"request_key":"bad-hash-cancel"}
+call("cancel_attachment_upload",cancel,foreign,error=True)
+call("cancel_attachment_upload",cancel)
+assert call("cancel_attachment_upload",cancel)["replayed"]
+call("get_attachment_upload",{"upload_id":bad},error=True)
+if os.environ.get("MCP_TEST_USER"):
+    call("delete_attachment",{"task_id":task_id,"attachment_id":aid,"confirmed":True,"request_key":"chunk-delete"},deletion_token)
+print("MCP resumable attachment upload, verification, isolation and replay passed")
