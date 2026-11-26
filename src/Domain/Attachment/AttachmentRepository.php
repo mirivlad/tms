@@ -14,6 +14,11 @@ final class AttachmentRepository
     {
     }
 
+    private function rollbackOwnedTransaction(): void
+    {
+        if ($this->db->inTransaction()) { $this->db->rollBack(); }
+    }
+
     /** @return list<AttachmentRecord> */
     public function listForTask(int $userId, int $taskId): array
     {
@@ -86,7 +91,8 @@ final class AttachmentRepository
             throw new DomainException('Task is unavailable.');
         }
 
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) { $this->db->beginTransaction(); }
         try {
             $stmt = $this->db->prepare(
                 'INSERT INTO attachments (
@@ -108,11 +114,9 @@ final class AttachmentRepository
                     'sha256' => $file['sha256'],
                 ]);
             }
-            $this->db->commit();
+            if ($ownsTransaction) { $this->db->commit(); }
         } catch (Throwable $error) {
-            if ($this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
+            if ($ownsTransaction) { $this->rollbackOwnedTransaction(); }
             throw $error;
         }
     }

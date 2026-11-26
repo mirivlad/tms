@@ -165,6 +165,7 @@ jobs:
           - opt-in single and atomic batch task deletion (up to 100 explicit IDs), with user confirmation, a separate deletion-enabled Bearer scope, transactional receipts and post-commit attachment cleanup; existing tokens retain their original permissions;
           - expanded MCP project lifecycle management, task assignment and movement, type/customer lookup and selection, checklist editing and reordering; 9/18/21 dynamically discovered tools by token scope;
           - MCP planning and reference management: recurrence, field values and lineage-safe moves, history, advanced filters and scoped analytics, atomic bulk updates; 13/28/34 tools depending on token scope;
+          - MCP collaboration: teams, invitations and roles, threaded discussions and read markers, attachment upload and chunked reads; 18/42/54 dynamically discovered tools by scope;
           - existing user/team access rules and notification events remain in effect for MCP operations; OAuth and direct ChatGPT connectivity are not yet included;
           - MariaDB migrations, first-admin CLI bootstrap, Docker Compose and Portainer deployment.
 

@@ -55,6 +55,7 @@ final class McpTools
         private readonly RecurrenceSchedule $recurrenceSchedule,
         private readonly UserPreferenceRepository $preferences,
         private readonly McpReferenceTools $referenceTools,
+        private readonly McpCollaborationTools $collaborationTools,
     ) {}
 
     /**
@@ -147,7 +148,7 @@ final class McpTools
                 ['task_ids'=>['type'=>'array','minItems'=>1,'maxItems'=>100,'items'=>$id],'confirmed'=>$confirm,'request_key'=>$key],
                 ['task_ids','confirmed','request_key'], false);
         }
-        return array_merge($defs,McpReferenceTools::definitions($write,$delete));
+        return array_merge($defs,McpReferenceTools::definitions($write,$delete),McpCollaborationTools::definitions($write,$delete));
     }
 
     /**
@@ -167,6 +168,7 @@ final class McpTools
      */
     public function read(int $uid, string $name, array $args): array
     {
+        if (McpCollaborationTools::handlesRead($name)) { return $this->collaborationTools->read($uid,$name,$args); }
         $project = $this->optionalInt($args,'project_id');
         if ($project !== null && $this->projects->findForUser($uid,$project) === null) {
             throw new DomainException('Project not found or inaccessible.');
@@ -481,7 +483,7 @@ final class McpTools
 
     public static function isGeneralMutation(string $name): bool
     {
-        return $name==='update_tasks'||McpReferenceTools::handles($name);
+        return $name==='update_tasks'||McpReferenceTools::handles($name)||McpCollaborationTools::handlesWrite($name);
     }
 
     /**
@@ -490,6 +492,7 @@ final class McpTools
      */
     public function mutateGeneral(int $uid,string $name,array $args): array
     {
+        if (McpCollaborationTools::handlesWrite($name)) { return $this->collaborationTools->mutate($uid,$name,$args); }
         if ($name!=='update_tasks') { return $this->referenceTools->mutate($uid,$name,$args); }
         $ids=$args['task_ids'];
         if (!is_array($ids) || $ids===[] || count(array_unique($ids))!==count($ids)) { throw new DomainException('Distinct task IDs required.'); }
@@ -506,9 +509,24 @@ final class McpTools
     /** @param array<string,mixed> $args */
     public function assertGeneralReplayScope(int $uid,string $name,array $args): void
     {
+        if (McpCollaborationTools::handlesWrite($name)) { $this->collaborationTools->assertReplayScope($uid,$name,$args); return; }
         if ($name==='update_tasks') {
             foreach ($args['task_ids'] as $id) { $this->task($uid,(int)$id); }
         } else { $this->referenceTools->assertScope($uid,$args); }
+    }
+
+    /**
+     * @param array<string,mixed> $result
+     * @return array<string,mixed>
+     */
+    public function afterGeneralCommit(string $name,array $result,bool $replay): array
+    {
+        return McpCollaborationTools::handlesWrite($name)?$this->collaborationTools->afterCommit($name,$result,$replay):$result;
+    }
+
+    public function rollbackGeneral(): void
+    {
+        $this->collaborationTools->rollback();
     }
 
     /**
