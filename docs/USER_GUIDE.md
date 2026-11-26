@@ -119,3 +119,9 @@ Use **Forgot password** on the login page. Depending on deployment configuration
 ## Push notifications through your TMS account
 
 If the administrator configured the optional ChimePort delivery service, open **Settings → Notifications** in TMS and click **Enable notifications on this device**. Allow notifications in your browser. You do not need a second account: notification access and message recipients are verified by TMS. On Android, the ChimePort app can also accept your **TMS server address** and existing TMS login and password; the password is sent only to TMS. A browser may delay delivery while asleep or offline; the in-app TMS inbox remains the canonical history.
+
+## AI task management
+
+Open Profile → AI integrations (MCP), enter a connection name, choose read-only or read/write, set a validity period and confirm your password. Copy the endpoint and the newly issued secret into an MCP client supporting a custom Authorization: Bearer header. The secret is displayed once. Revoke a lost or unused credential from the same screen.
+
+The client can list projects/statuses, search tasks, read task checklists, create tasks with checklist items, edit title/description/priority/status/dates, complete tasks and update checklist progress. Tasks use your existing permissions and the regular TMS notification rules. Describe what you want in natural language, ask the client to search for duplicates first, and specify dates and time zones explicitly. The integration does not allow task deletion or administrative actions. Direct ChatGPT connection and OAuth are not yet supported.
