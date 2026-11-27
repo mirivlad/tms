@@ -2,6 +2,8 @@
 
 # TMS
 
+[![Угостить разработчика кофе / Buy me a coffee](https://img.shields.io/badge/Support-Buy%20me%20a%20coffee-7055a5?style=flat-square&logo=buymeacoffee&logoColor=white)](https://mirv.top/support/)
+
 TMS is a lightweight, self-hosted task management system for people who want to keep tasks and data on infrastructure they control.
 
 > **Current stable release:** `v0.6.1`
@@ -133,4 +135,4 @@ Copyright (C) 2026 Vladimir Tomashevskiy.
 
 Если проект оказался полезен, вы можете добровольно поддержать его развитие. / If this project is useful to you, you can voluntarily support its development.
 
-[![Угостить разработчика кофе / Buy me a coffee](https://img.shields.io/badge/Support-Buy%20me%20a%20coffee-7055a5?style=flat-square&logo=buymeacoffee&logoColor=white)](https://mirv.top/support/)
+[Страница поддержки / Support page](https://mirv.top/support/)
