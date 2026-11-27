@@ -1,6 +1,6 @@
 # MCP capability audit (TMS 0.6.0)
 
-The MCP endpoint is a vendor-neutral, stateless Streamable HTTP endpoint at APP_URL + /mcp. It does not require a ChatGPT-specific adapter for clients that support remote HTTP and an Authorization: Bearer header. Supported protocol revisions are 2025-03-26, 2025-06-18 and 2025-11-25. OAuth is planned for 0.6.1.
+The MCP endpoint is a vendor-neutral, stateless Streamable HTTP endpoint at APP_URL + /mcp. It does not require a ChatGPT-specific adapter for clients that support remote HTTP and an Authorization: Bearer header. Supported protocol revisions are 2025-03-26, 2025-06-18 and 2025-11-25. OAuth is implemented in 0.6.1.
 
 ## Client contract
 
@@ -33,3 +33,6 @@ The server is stateless; there is no session ID or SSE stream. GET/DELETE are no
 | Visual layout, sorting/rendering of GUI | Client's responsibility; saved view queries preserve supported sorting |
 
 This is functional coverage of ordinary task management, not a claim that every browser route is exposed. Existing user permissions and confirmation requirements apply. The source of truth for exact tool schemas is tools/list, not this table.
+
+
+OAuth connections: [OAuth 0.6.1 guide](MCP_OAUTH.md).

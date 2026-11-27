@@ -167,7 +167,8 @@ jobs:
           - MCP planning and reference management: recurrence, field values and lineage-safe moves, history, advanced filters and scoped analytics, atomic bulk updates; 13/28/34 tools depending on token scope;
           - MCP collaboration: teams, invitations and roles, threaded discussions and read markers, attachment upload and chunked reads; 18/42/54 dynamically discovered tools by scope;
           - MCP workspace workflows: calendar, saved views, internal notifications, user preferences, ownership transfer and safe empty project deletion, resumable attachments; 25/61/75 tools by scope;
-          - existing user/team access rules and notification events remain in effect for MCP operations; OAuth and direct ChatGPT connectivity are not yet included;
+          - MCP OAuth authorization-code flow with PKCE S256, protected-resource and server discovery, dynamic client registration, scoped short-lived access tokens, refresh rotation and revocation; existing Bearer credentials remain supported; direct ChatGPT integration is a separate step;
+          - existing user/team access rules and notification events remain in effect for MCP operations;
           - MariaDB migrations, first-admin CLI bootstrap, Docker Compose and Portainer deployment.
 
           $outro

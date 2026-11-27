@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="{{ locale }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ t('oauth.title') }} · TMS</title>
+    <link rel="stylesheet" href="/assets/themes.css">
+    <link rel="stylesheet" href="/assets/app.css">
+</head>
+<body class="auth-page" data-theme="paper">
+<main class="auth-card">
+    <div class="brand">TMS</div>
+    <h1>{{ t('oauth.title') }}</h1>
+    <p>{{ t('oauth.client') }}: <strong>{{ client_name }}</strong></p>
+    <p>{{ t('oauth.redirect') }}: <code>{{ redirect_uri }}</code></p>
+    <p>{{ t('oauth.warning') }}</p>
+    <ul>
+        <li>{{ t('mcp.read') }}</li>
+        {% if can_write %}<li>{{ t('mcp.write') }}</li>{% endif %}
+        {% if can_delete %}<li><strong>{{ t('oauth.delete_warning') }}</strong></li>{% endif %}
+    </ul>
+    {% if error %}<div class="alert" role="alert">{{ t('auth.invalid_credentials') }}</div>{% endif %}
+    <form method="post" action="/oauth/authorize" autocomplete="on">
+        <input type="hidden" name="_csrf" value="{{ csrf_token }}">
+        <input type="hidden" name="nonce" value="{{ nonce }}">
+        <label>{{ t('auth.username') }}<input name="username" value="{{ username }}" required autocomplete="username" maxlength="255"></label>
+        <label>{{ t('auth.password') }}<input type="password" name="password" required autocomplete="current-password"></label>
+        <button name="decision" value="allow" type="submit">{{ t('oauth.allow') }}</button>
+        <button name="decision" value="deny" type="submit" formnovalidate>{{ t('oauth.deny') }}</button>
+    </form>
+    <p>{{ t('oauth.revoke_hint') }}</p>
+</main>
+</body>
+</html>

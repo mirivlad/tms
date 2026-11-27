@@ -17,7 +17,7 @@ services:
       start_period: 20s
 
   app:
-    image: &tms-image ${TMS_IMAGE:-ghcr.io/mirivlad/tms:v0.6.0}
+    image: &tms-image ${TMS_IMAGE:-ghcr.io/mirivlad/tms:v0.6.1}
     restart: unless-stopped
     depends_on:
       db:
@@ -29,6 +29,7 @@ services:
       APP_DEBUG: ${APP_DEBUG:-false}
       APP_URL: ${APP_URL:?Set APP_URL to the browser-visible TMS URL}
       APP_TIMEZONE: ${APP_TIMEZONE:-UTC}
+      MCP_OAUTH_ENABLED: ${MCP_OAUTH_ENABLED:-true}
       APP_LOCALE: ${APP_LOCALE:-en}
       DB_HOST: db
       DB_PORT: 3306
