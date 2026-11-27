@@ -463,13 +463,26 @@ final class ApplicationFactory
         $requireAdmin = new RequireAdminMiddleware($sessions, $app->getResponseFactory(), $translator);
         $sanitizeTaskDescription = new SanitizeTaskDescriptionMiddleware($descriptionSanitizer);
 
-        $mcpTokens = new \Tms\Domain\Mcp\McpTokenRepository($db);
+        $oauthServer = new \Tms\Domain\Mcp\OAuthServer($db, $appUrl);
+        $oauth = $this->boolEnv('MCP_OAUTH_ENABLED', true) && $oauthServer->enabled() ? $oauthServer : null;
+        $mcpTokens = new \Tms\Domain\Mcp\McpTokenRepository($db, $oauth?->resource);
         $mcpReferenceTools = new McpReferenceTools($projects, $statuses, $projectStatuses, $taskTypes, $customers, $customFields, $projectCustomFields);
         $mcpCollaborationTools = new McpCollaborationTools($db, $teams, $teamInvitations, $users, $teamInvitationDelivery, $projects, $tasks, $discussions, $discussionReads, $eventPublisher, $descriptionSanitizer, $attachments, $projectAttachments, $attachmentPolicy, $attachmentStorage);
         $mcpWorkspaceTools = new McpWorkspaceTools($projects, $tasks, $projectAttachments, $attachmentStorage, $eventPublisher, $savedViews, $savedViewQuery, $internalNotifications, $notificationSettings, $preferences, $userBootstrap, $appTimezone);
         $mcpTools = new McpTools($tasks, $projects, $statuses, $projectStatuses, $checklists, $eventPublisher, $descriptionSanitizer, $appTimezone, $attachments, $attachmentStorage, $taskTypes, $customers, $teams, $customFields, $projectCustomFields, $customValues, $customValueCodec, $activity, $recurrences, $recurrenceSchedule, $preferences, $mcpReferenceTools, $mcpCollaborationTools, $mcpWorkspaceTools);
-        $mcpController = new \Tms\Http\Controller\McpController($db, $mcpTokens, $mcpTools);
+        $mcpController = new \Tms\Http\Controller\McpController($db, $mcpTokens, $mcpTools, $oauth);
         $app->map(['POST', 'GET', 'DELETE'], '/mcp', [$mcpController, 'handle']);
+        if ($oauth !== null) {
+            $oauthController = new \Tms\Http\Controller\OAuthController($oauth, $twig, $passwordAuthenticator, $sessions);
+            $app->get('/.well-known/oauth-protected-resource', [$oauthController, 'resourceMetadata']);
+            $app->get('/.well-known/oauth-protected-resource/mcp', [$oauthController, 'resourceMetadata']);
+            $app->get('/.well-known/oauth-authorization-server', [$oauthController, 'metadata']);
+            $app->get('/oauth/authorize', [$oauthController, 'authorize']);
+            $app->post('/oauth/authorize', [$oauthController, 'decide']);
+            $app->post('/oauth/register', [$oauthController, 'register']);
+            $app->post('/oauth/token', [$oauthController, 'token']);
+            $app->post('/oauth/revoke', [$oauthController, 'revoke']);
+        }
 
         $app->get('/', static function (ServerRequestInterface $request, ResponseInterface $response) use ($sessions, $publicController): ResponseInterface {
             if ($sessions->isAuthenticated()) {
@@ -676,7 +689,7 @@ final class ApplicationFactory
         $app->post('/admin/notifications/telegram-webhook', [$notificationAdminController, 'setupTelegramWebhook'])->add($requireAdmin)->add($requireAuth);
         $app->post('/telegram/webhook', [$telegramWebhookController, 'handle']);
 
-        $app->add(new CsrfMiddleware($app->getResponseFactory(), $translator, ['/telegram/webhook', '/api/notifications/mobile/login', '/api/notifications/chimeport/introspect', '/mcp']));
+        $app->add(new CsrfMiddleware($app->getResponseFactory(), $translator, ['/telegram/webhook', '/api/notifications/mobile/login', '/api/notifications/chimeport/introspect', '/mcp', '/oauth/register', '/oauth/token', '/oauth/revoke']));
         $app->add(TwigMiddleware::create($app, $twig));
         $app->add(new UserTimezoneMiddleware($sessions, $preferences, $appTimezone));
         $app->add(new UserActivityMiddleware($sessions, $users));

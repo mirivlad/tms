@@ -481,4 +481,12 @@ return [
     'mcp.empty' => 'No tokens yet.',
     'mcp.bad_password' => 'Incorrect current password.',
     'mcp.invalid' => 'Enter a valid name, permissions and validity period (0 for no expiration, or 1–365 days).',
+    'oauth.title' => 'Authorize an AI client',
+    'oauth.client' => 'Requested client name (self-declared)',
+    'oauth.redirect' => 'Callback address',
+    'oauth.warning' => 'Only continue if you recognize this application and callback address. Your password is entered only into TMS. The application receives access to data allowed by your account and the permissions below.',
+    'oauth.delete_warning' => 'Permanent deletion of tasks and other objects; allow only if you explicitly need this.',
+    'oauth.allow' => 'Sign in and authorize',
+    'oauth.deny' => 'Deny',
+    'oauth.revoke_hint' => 'You can revoke this connection in Profile → AI integrations (MCP).',
 ];

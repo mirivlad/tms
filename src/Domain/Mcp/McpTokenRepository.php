@@ -8,20 +8,22 @@ use PDO;
 
 final class McpTokenRepository
 {
-    public function __construct(private readonly PDO $db) {}
+    public function __construct(private readonly PDO $db, private readonly ?string $resource = null) {}
 
     /** @return array{id:int,user_id:int,can_write:bool,can_delete:bool}|null */
     public function authenticate(string $secret, bool $lock = false): ?array
     {
-        if (!preg_match('/^tms_mcp_[a-f0-9]{64}$/D', $secret)) {
+        if (!preg_match('/^tms_(?:mcp|oauth)_[a-f0-9]{64}$/D', $secret)) {
             return null;
         }
         $stmt = $this->db->prepare(
             'SELECT m.id,m.user_id,m.can_write,m.can_delete FROM mcp_tokens m JOIN users u ON u.id=m.user_id
              WHERE m.token_hash=:hash AND m.revoked_at IS NULL AND (m.expires_at IS NULL OR m.expires_at > UTC_TIMESTAMP())
-             AND u.is_active=1 AND u.approved_at IS NOT NULL' . ($lock ? ' FOR UPDATE' : '')
+             AND u.is_active=1 AND u.approved_at IS NOT NULL
+             AND ((m.oauth_client_id IS NULL AND :legacy = 1) OR (m.oauth_client_id IS NOT NULL AND :oauth = 1 AND m.oauth_resource = :resource))' . ($lock ? ' FOR UPDATE' : '')
         );
-        $stmt->execute(['hash' => hash('sha256', $secret)]);
+        $stmt->execute(['hash' => hash('sha256', $secret),'legacy'=>(int)str_starts_with($secret,'tms_mcp_'),
+            'oauth'=>(int)str_starts_with($secret,'tms_oauth_'),'resource'=>$this->resource]);
         $row = $stmt->fetch();
         return is_array($row) ? ['id'=>(int)$row['id'], 'user_id'=>(int)$row['user_id'], 'can_write'=>(bool)$row['can_write'],'can_delete'=>(bool)$row['can_delete']] : null;
     }
@@ -41,7 +43,7 @@ final class McpTokenRepository
     /** @return list<array<string,mixed>> */
     public function listForUser(int $userId): array
     {
-        $stmt = $this->db->prepare('SELECT id,label,can_write,can_delete,created_at,expires_at,revoked_at FROM mcp_tokens WHERE user_id=:uid ORDER BY id DESC');
+        $stmt = $this->db->prepare('SELECT id,label,can_write,can_delete,created_at,expires_at,revoked_at,oauth_client_id,oauth_refresh_expires_at FROM mcp_tokens WHERE user_id=:uid ORDER BY id DESC');
         $stmt->execute(['uid'=>$userId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

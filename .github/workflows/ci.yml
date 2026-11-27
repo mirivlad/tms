@@ -349,6 +349,7 @@ jobs:
           export MCP_FOREIGN_TOKEN="$(docker compose exec -T app php bin/mcp-token.php issue mcpother smoke-other write 1)"
           export MCP_TEST_USER=mcpci MCP_TEST_PASSWORD=ci-mcp-password-12345 MCP_FOREIGN_USER=mcpother MCP_FOREIGN_PASSWORD=ci-mcp-password-12345
           python3 tests/smoke/mcp.py
+          python3 tests/smoke/mcp_oauth.py
           read_id=$(docker compose exec -T app php bin/mcp-token.php list mcpci | python3 -c 'import json,sys; print(next(t["id"] for t in json.load(sys.stdin) if t["label"]=="smoke-read"))')
           docker compose exec -T app php bin/mcp-token.php revoke mcpci "$read_id"
           MCP_EXPECT_REVOKED=1 python3 tests/smoke/mcp.py

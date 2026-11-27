@@ -72,6 +72,8 @@ try {
     // Bound the cleanup batch and leave recurrence processing independent.
     try {
         $db->exec('DELETE FROM mcp_attachment_uploads WHERE expires_at <= UTC_TIMESTAMP() LIMIT 100');
+        $db->exec('DELETE FROM mcp_oauth_codes WHERE expires_at <= UTC_TIMESTAMP() LIMIT 100');
+        $db->exec('DELETE FROM mcp_oauth_used_refresh WHERE expires_at <= UTC_TIMESTAMP() LIMIT 100');
     } catch (Throwable $error) {
         error_log('TMS expired MCP upload cleanup failed: ' . get_class($error));
     }
